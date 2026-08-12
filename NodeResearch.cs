@@ -113,7 +113,10 @@ namespace CM_Semi_Random_Research
         public static void SwitchToSemiRandomResearch(Window windowToClose)
         {
             SetUsingNodeResearch(false);
-            Messages.Message("Control passed to Semi-Random Research. Selection restricted.", MessageTypeDefOf.NeutralEvent, false);
+            if (NodeResearchInstalled)
+            {
+                Messages.Message("Control passed to Semi-Random Research. Selection restricted.", MessageTypeDefOf.NeutralEvent, false);
+            }
 
             ResearchProjectDef activeProj = Find.ResearchManager.GetProject();
             ResearchTracker tracker = Current.Game?.World?.GetComponent<ResearchTracker>();

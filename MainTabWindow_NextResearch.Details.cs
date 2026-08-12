@@ -68,14 +68,18 @@ namespace CM_Semi_Random_Research
 
                 if (Prefs.DevMode && !selectedProject.IsFinished)
                 {
+                    string debugLabel = "Debug: Finish now";
+                    Text.Font = GameFont.Small;
+                    float debugButtonWidth = Text.CalcSize(debugLabel).x + 24f;
+
                     Rect debugButtonRect = new Rect(
                         0f,
                         outRect.yMax + gapHeight,
-                        120f,
+                        debugButtonWidth,
                         debugFinishResearchNowButtonHeight
                     );
 
-                    if (Widgets.ButtonText(debugButtonRect, "Debug: Finish now"))
+                    if (ColoredButtonText(debugButtonRect, debugLabel, FooterDebugButtonColor))
                     {
                         Find.ResearchManager.SetCurrentProject(selectedProject);
                         Find.ResearchManager.FinishProject(selectedProject);

@@ -32,6 +32,7 @@ namespace CM_Semi_Random_Research
         private static readonly Color FooterTreeButtonColor = new Color(0.22f, 0.38f, 0.55f);
         private static readonly Color FooterRerollButtonColor = new Color(0.55f, 0.38f, 0.14f);
         private static readonly Color FooterStartButtonColor = new Color(0.22f, 0.48f, 0.28f);
+        private static readonly Color FooterDebugButtonColor = new Color(0.55f, 0.22f, 0.22f);
 
         private Dictionary<ResearchProjectDef, List<Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>>>> cachedUnlockedDefsGroupedByPrerequisites;
 

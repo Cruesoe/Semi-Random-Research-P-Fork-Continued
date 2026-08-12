@@ -81,4 +81,11 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <RimWorldModAssemblies>C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\Semi-Random-Research-Progression-Fork\1.6\Assemblies</RimWorldModAssemblies>
+  </PropertyGroup>
+  <Target Name="CopyToRimWorldMod" AfterTargets="Build">
+    <MakeDir Directories="$(RimWorldModAssemblies)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(RimWorldModAssemblies)" SkipUnchangedFiles="true" />
+  </Target>
 </Project>
