@@ -1,0 +1,17 @@
+## Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Build
+[Bb]in/
+[Oo]bj/
+*.dll
+*.pdb
+*.cache
+
+## OS
+Thumbs.db
+Desktop.ini
