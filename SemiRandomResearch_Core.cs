@@ -14,8 +14,7 @@ namespace CM_Semi_Random_Research
     {
         public static bool IsControllingResearchSelection =>
             SemiRandomResearchMod.settings != null &&
-            SemiRandomResearchMod.settings.featureEnabled &&
-            !SemiRandomResearchMod.settings.usingNodeResearch;
+            SemiRandomResearchMod.settings.featureEnabled;
 
         public static bool CanSelectNormalResearchNow(ResearchProjectDef rpd)
         {

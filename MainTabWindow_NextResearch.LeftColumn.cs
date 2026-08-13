@@ -327,35 +327,28 @@ namespace CM_Semi_Random_Research
                     researchButtonRect = new Rect(researchTreeButtonRect.xMax + buttonSpacing, footerButtonY, footerButtonWidth, footerHeight);
                 }
 
-                bool nodeInstalled = ResearchTabWindowSwitcher.NodeResearchInstalled;
-                string treeButtonText = nodeInstalled ? "Node Research" : "Research Tree";
+                Type preferredTreeType = ResearchTabWindowSwitcher.ResolvePreferredTreeWindowType();
+                string treeButtonText = "Research Tree";
+                string treeButtonTip = "View the standard Research Tree (View only).";
+                if (preferredTreeType == ResearchTabWindowSwitcher.NodeResearchWindowType)
+                {
+                    treeButtonText = "Node Research";
+                    treeButtonTip = "Switch to Node Research. Prohibit normal project selection still applies if it is enabled.";
+                }
+                else if (preferredTreeType == ResearchTabWindowSwitcher.YartWindowType)
+                {
+                    treeButtonText = "YART";
+                    treeButtonTip = "Switch to YART. Prohibit normal project selection still applies if it is enabled.";
+                }
 
-                // switch to Node Research if installed, otherwise just view the standard Research Tree
                 if (ColoredButtonText(researchTreeButtonRect, treeButtonText, FooterTreeButtonColor))
                 {
                     SoundDefOf.Click.PlayOneShotOnCamera();
-
-                    if (nodeInstalled)
-                    {
-                        ResearchTabWindowSwitcher.SwitchToNodeResearch(this);
-                    }
-                    else
-                    {
-                        ResearchTabWindowSwitcher.OpenResearchWindow(typeof(MainTabWindow_Research), this);
-                        SoundDefOf.TabOpen.PlayOneShotOnCamera();
-                    }
-
+                    ResearchTabWindowSwitcher.SwitchToPreferredTree(this);
                     Event.current.Use();
                 }
 
-                if (nodeInstalled)
-                {
-                    TooltipHandler.TipRegion(researchTreeButtonRect, "Switch to Node Research (Passes control allowing free selection).");
-                }
-                else
-                {
-                    TooltipHandler.TipRegion(researchTreeButtonRect, "View the standard Research Tree (View only).");
-                }
+                TooltipHandler.TipRegion(researchTreeButtonRect, treeButtonTip);
 
                 if (showRerollButton)
                 {

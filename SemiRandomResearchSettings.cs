@@ -30,6 +30,12 @@ namespace CM_Semi_Random_Research
         AddChoiceOnlyOnGain
     }
 
+    public enum PreferredResearchTree
+    {
+        NodeResearch,
+        YART
+    }
+
     // =========================================================================
     // MOD SETTINGS CLASS
     // =========================================================================
@@ -55,6 +61,7 @@ namespace CM_Semi_Random_Research
         public bool equalizeCost = false;
         public bool verboseLogging = false;
         public bool usingNodeResearch = false;
+        public PreferredResearchTree preferredResearchTree = PreferredResearchTree.NodeResearch;
 
         private bool loggedSettings = false;
 
@@ -81,6 +88,7 @@ namespace CM_Semi_Random_Research
             Scribe_Values.Look(ref autoOpenOnCompletion, "autoOpenOnCompletion", true);
             Scribe_Values.Look(ref autoPickNextResearch, "autoPickNextResearch", false);
             Scribe_Values.Look(ref usingNodeResearch, "usingNodeResearch", false);
+            Scribe_Values.Look(ref preferredResearchTree, "preferredResearchTree", PreferredResearchTree.NodeResearch);
         }
 
         public void DoSettingsWindowContents(Rect inRect)
@@ -105,7 +113,24 @@ namespace CM_Semi_Random_Research
 
             if (ResearchTabWindowSwitcher.NodeResearchInstalled)
             {
-                listing.CheckboxLabeled("Delegate UI to Node Research", ref usingNodeResearch, "Passes control of research selection to Node Research.");
+                listing.CheckboxLabeled("Delegate UI to Node Research", ref usingNodeResearch, "Use Node Research as the Research tab. This does not change Prohibit normal project selection.");
+            }
+
+            if (ResearchTabWindowSwitcher.NodeResearchInstalled || ResearchTabWindowSwitcher.YartInstalled)
+            {
+                listing.Label("Tree button opens");
+                Rect treeButtonOptionRect = listing.GetRect(26);
+                List<FloatMenuOption> treeOptions = new List<FloatMenuOption>();
+                if (ResearchTabWindowSwitcher.NodeResearchInstalled)
+                {
+                    treeOptions.Add(new FloatMenuOption("Node Research", () => { preferredResearchTree = PreferredResearchTree.NodeResearch; }));
+                }
+                if (ResearchTabWindowSwitcher.YartInstalled)
+                {
+                    treeOptions.Add(new FloatMenuOption("YART", () => { preferredResearchTree = PreferredResearchTree.YART; }));
+                }
+                string treeButtonLabel = preferredResearchTree == PreferredResearchTree.YART ? "YART" : "Node Research";
+                DoButtonOption(treeButtonOptionRect, treeButtonLabel, "Which research tree the Semi-Random footer button opens. Defaults to Node Research.", treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10);
             }
 
             listing.GapLine();

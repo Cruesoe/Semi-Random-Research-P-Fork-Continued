@@ -116,7 +116,7 @@ namespace CM_Semi_Random_Research
             [HarmonyPrefix]
             public static void Prefix(ResearchProjectDef proj, ref bool doCompletionDialog, Pawn researcher, ref bool doCompletionLetter)
             {
-                if (!SemiRandomResearchMod.settings.featureEnabled || SemiRandomResearchMod.settings.usingNodeResearch)
+                if (!SemiRandomResearchMod.settings.featureEnabled)
                 {
                     if (!isFinishingResearch)
                     {
@@ -231,6 +231,30 @@ namespace CM_Semi_Random_Research
             public static void Finalizer()
             {
                 isFinishingResearch = false;
+            }
+        }
+
+        [HarmonyPatch(typeof(ResearchManager))]
+        [HarmonyPatch(nameof(ResearchManager.SetCurrentProject))]
+        [HarmonyPatch(new[] { typeof(ResearchProjectDef) })]
+        public static class ResearchManager_SetCurrentProject
+        {
+            [HarmonyPrefix]
+            public static bool Prefix(ResearchProjectDef proj)
+            {
+                if (proj == null || !SemiRandomResearchUtility.IsControllingResearchSelection)
+                {
+                    return true;
+                }
+
+                ResearchTracker tracker = Current.Game?.World?.GetComponent<ResearchTracker>();
+                if (tracker == null || tracker.IsSelectableProject(proj))
+                {
+                    return true;
+                }
+
+                Messages.Message("Semi Random Research is active.", MessageTypeDefOf.RejectInput, false);
+                return false;
             }
         }
 

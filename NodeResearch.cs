@@ -19,8 +19,11 @@ namespace CM_Semi_Random_Research
     {
         public const string PackageId = "ferny.noderesearch";
         public const string WindowTypeName = "BetterResearchMenu.MainTabWindow_BetterResearch";
+        public const string YartPackageId = "seohyeon.yart";
+        public const string YartWindowTypeName = "YART.MainTabWindow_YART";
 
         private static Type cachedNodeResearchWindowType;
+        private static Type cachedYartWindowType;
 
         private static readonly FieldInfo TabWindowIntField =
             AccessTools.Field(typeof(MainButtonDef), "tabWindowInt");
@@ -31,6 +34,13 @@ namespace CM_Semi_Random_Research
 
         public static bool NodeResearchInstalled =>
             ModLister.GetActiveModWithIdentifier(PackageId) != null;
+
+        public static Type YartWindowType =>
+            cachedYartWindowType
+            ?? (cachedYartWindowType = AccessTools.TypeByName(YartWindowTypeName));
+
+        public static bool YartInstalled =>
+            ModLister.GetActiveModWithIdentifier(YartPackageId) != null;
 
         public static void SetUsingNodeResearch(bool value)
         {
@@ -104,7 +114,14 @@ namespace CM_Semi_Random_Research
             }
 
             SetUsingNodeResearch(true);
-            Messages.Message("Control passed to Node Research. Free selection enabled.", MessageTypeDefOf.NeutralEvent, false);
+            if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
+            {
+                Messages.Message("Switched to Node Research. Prohibit normal project selection is still on.", MessageTypeDefOf.NeutralEvent, false);
+            }
+            else
+            {
+                Messages.Message("Switched to Node Research. Free selection enabled.", MessageTypeDefOf.NeutralEvent, false);
+            }
 
             OpenResearchWindow(NodeResearchWindowType, windowToClose);
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
@@ -113,9 +130,16 @@ namespace CM_Semi_Random_Research
         public static void SwitchToSemiRandomResearch(Window windowToClose)
         {
             SetUsingNodeResearch(false);
-            if (NodeResearchInstalled)
+            if (NodeResearchInstalled || YartInstalled)
             {
-                Messages.Message("Control passed to Semi-Random Research. Selection restricted.", MessageTypeDefOf.NeutralEvent, false);
+                if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
+                {
+                    Messages.Message("Switched to Semi-Random Research. Selection restricted.", MessageTypeDefOf.NeutralEvent, false);
+                }
+                else
+                {
+                    Messages.Message("Switched to Semi-Random Research.", MessageTypeDefOf.NeutralEvent, false);
+                }
             }
 
             ResearchProjectDef activeProj = Find.ResearchManager.GetProject();
@@ -126,6 +150,75 @@ namespace CM_Semi_Random_Research
             }
 
             OpenResearchWindow(typeof(MainTabWindow_NextResearch), windowToClose);
+            SoundDefOf.TabOpen.PlayOneShotOnCamera();
+        }
+
+        public static void SwitchToYart(Window windowToClose)
+        {
+            if (!YartInstalled || YartWindowType == null)
+            {
+                return;
+            }
+
+            SetUsingNodeResearch(false);
+            if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
+            {
+                Messages.Message("Switched to YART. Prohibit normal project selection is still on.", MessageTypeDefOf.NeutralEvent, false);
+            }
+            else
+            {
+                Messages.Message("Switched to YART.", MessageTypeDefOf.NeutralEvent, false);
+            }
+
+            OpenResearchWindow(YartWindowType, windowToClose);
+            SoundDefOf.TabOpen.PlayOneShotOnCamera();
+        }
+
+        public static Type ResolvePreferredTreeWindowType()
+        {
+            PreferredResearchTree preferred = SemiRandomResearchMod.settings != null
+                ? SemiRandomResearchMod.settings.preferredResearchTree
+                : PreferredResearchTree.NodeResearch;
+
+            if (preferred == PreferredResearchTree.YART && YartInstalled && YartWindowType != null)
+            {
+                return YartWindowType;
+            }
+
+            if (preferred == PreferredResearchTree.NodeResearch && NodeResearchInstalled && NodeResearchWindowType != null)
+            {
+                return NodeResearchWindowType;
+            }
+
+            if (YartInstalled && YartWindowType != null)
+            {
+                return YartWindowType;
+            }
+
+            if (NodeResearchInstalled && NodeResearchWindowType != null)
+            {
+                return NodeResearchWindowType;
+            }
+
+            return typeof(MainTabWindow_Research);
+        }
+
+        public static void SwitchToPreferredTree(Window windowToClose)
+        {
+            Type windowType = ResolvePreferredTreeWindowType();
+            if (windowType == NodeResearchWindowType)
+            {
+                SwitchToNodeResearch(windowToClose);
+                return;
+            }
+
+            if (windowType == YartWindowType)
+            {
+                SwitchToYart(windowToClose);
+                return;
+            }
+
+            OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose);
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
     }

@@ -17,6 +17,14 @@ namespace CM_Semi_Random_Research
         private HashSet<KnowledgeCategoryDef> pendingResearchRerolls = new HashSet<KnowledgeCategoryDef>();
 
         public List<ResearchProjectDef> CurrentProject => currentProjects;
+
+        public bool IsSelectableProject(ResearchProjectDef proj)
+        {
+            if (proj == null)
+                return false;
+
+            return currentProjects.Contains(proj) || currentAvailableProjects.Contains(proj);
+        }
     
         private Dictionary<string, bool> rerolled = new Dictionary<string, bool>();
         private Dictionary<string, List<ResearchProjectDef>> projectDefsCacheByType = new Dictionary<string, List<ResearchProjectDef>>();

@@ -77,6 +77,7 @@
     <Compile Include="SemiRandomResearchMod.cs" />
     <Compile Include="SemiRandomResearch_Core.cs" />
     <Compile Include="NodeResearch.cs" />
+    <Compile Include="YART.cs" />
     <Compile Include="SemiRandomResearch_Patches.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
