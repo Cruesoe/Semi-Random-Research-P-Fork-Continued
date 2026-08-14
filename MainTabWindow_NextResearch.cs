@@ -29,6 +29,7 @@ namespace CM_Semi_Random_Research
         private static readonly Color FulfilledPrerequisiteColor = Color.green;
 
         private static readonly Texture2D SettingsIcon = ContentFinder<Texture2D>.Get("UI/Settings", true);
+        private static readonly Texture2D PlusIcon = ContentFinder<Texture2D>.Get("UI/Plus", true);
 
         private static readonly Color ActiveProjectLabelColor = new ColorInt(219, 201, 126, 255).ToColor;
         private static readonly Color FooterTreeButtonColor = new Color(0.22f, 0.38f, 0.55f);
@@ -723,14 +724,87 @@ namespace CM_Semi_Random_Research
             float rightWidth = canvas.width * 0.45f;
             float columnMargin = 16f;
 
+            // Match the left column's footer strip so both columns share the same bottom line break.
+            float rightFooterPaddingTop = 12f;
+            float footerButtonHeight = 40f;
+            float footerButtonWidth = 120f;
+            float iconSize = 28f;
+            float rightFooterPaddingBottom = 12f;
+            float rightFooterHeight = rightFooterPaddingTop + footerButtonHeight + rightFooterPaddingBottom;
+
             Rect leftRect = new Rect(columnMargin, mainContentY, leftWidth - columnMargin, availableHeight);
             Rect rightRect = new Rect(leftWidth + columnMargin, mainContentY, rightWidth - (columnMargin * 2), availableHeight);
+            Rect rightContentRect = new Rect(rightRect.x, rightRect.y, rightRect.width, rightRect.height - rightFooterHeight);
+            Rect rightFooterRect = new Rect(rightRect.x, rightRect.yMax - rightFooterHeight, rightRect.width, rightFooterHeight);
 
             DrawLeftColumn(leftRect);
-            DrawRightColumn(rightRect);
+            DrawRightColumn(rightContentRect);
 
-            float iconSize = 24f;
-            Rect settingsBtnRect = new Rect(canvas.width - iconSize, canvas.height - iconSize, iconSize, iconSize);
+            if (IsRepaint)
+            {
+                GUI.color = new Color(0.4f, 0.4f, 0.4f, 0.6f);
+                Widgets.DrawLineHorizontal(rightFooterRect.x, rightFooterRect.y, rightFooterRect.width);
+                GUI.color = Color.white;
+            }
+
+            float footerButtonY = rightFooterRect.y + rightFooterPaddingTop;
+
+            if (Prefs.DevMode && selectedProject != null && !selectedProject.IsFinished)
+            {
+                Rect debugButtonRect = new Rect(
+                    rightFooterRect.x + (rightFooterRect.width - footerButtonWidth) / 2f,
+                    footerButtonY,
+                    footerButtonWidth,
+                    footerButtonHeight);
+
+                if (ColoredButtonText(debugButtonRect, "Finish Now", FooterDebugButtonColor))
+                {
+                    Find.ResearchManager.SetCurrentProject(selectedProject);
+                    Find.ResearchManager.FinishProject(selectedProject);
+
+                    ResearchTracker researchTracker = cachedTracker ?? Current.Game.World.GetComponent<ResearchTracker>();
+                    string categoryKey = ResearchTracker.GetCategoryKey(selectedProject);
+                    researchTracker.SetCurrentProjectByKey(selectedProject, categoryKey);
+                    researchTracker.ConsiderProjectFinished(selectedProject);
+                    researchTracker.GetCurrentlyAvailableProjects();
+                }
+            }
+
+            float iconGap = 4f;
+            float iconY = footerButtonY + (footerButtonHeight - iconSize) / 2f;
+            Rect settingsBtnRect = new Rect(rightFooterRect.xMax - iconSize, iconY, iconSize, iconSize);
+
+            if (ResearchInflationInstalled)
+            {
+                Rect inflationBtnRect = new Rect(
+                    settingsBtnRect.x - iconSize - iconGap,
+                    iconY,
+                    iconSize,
+                    iconSize);
+
+                if (IsRepaint && PlusIcon != null)
+                    GUI.DrawTexture(inflationBtnRect, PlusIcon);
+                else if (IsRepaint)
+                {
+                    Text.Font = GameFont.Medium;
+                    Text.Anchor = TextAnchor.MiddleCenter;
+                    GUI.color = Color.white;
+                    Widgets.Label(inflationBtnRect, "+");
+                    Text.Anchor = TextAnchor.UpperLeft;
+                    Text.Font = GameFont.Small;
+                    GUI.color = Color.white;
+                }
+
+                if (Clicked(inflationBtnRect))
+                {
+                    SoundDefOf.Click.PlayOneShotOnCamera();
+                    Mod inflationMod = FindModByPackageId(ResearchInflationPackageId);
+                    if (inflationMod != null)
+                        Find.WindowStack.Add(new Dialog_ModSettings(inflationMod));
+                }
+                TooltipHandler.TipRegion(inflationBtnRect, "Open Research: Inflation Settings");
+            }
+
             if (IsRepaint && SettingsIcon != null)
                 GUI.DrawTexture(settingsBtnRect, SettingsIcon);
             if (Clicked(settingsBtnRect))
@@ -740,6 +814,40 @@ namespace CM_Semi_Random_Research
                 Find.WindowStack.Add(new Dialog_ModSettings(ourMod));
             }
             TooltipHandler.TipRegion(settingsBtnRect, "Open Semi-Random Research Settings");
+        }
+
+        private const string ResearchInflationPackageId = "cruesoe.research.inflation";
+
+        private static bool? researchInflationInstalledCached;
+
+        private static bool ResearchInflationInstalled
+        {
+            get
+            {
+                if (researchInflationInstalledCached == null)
+                    researchInflationInstalledCached = ModLister.GetActiveModWithIdentifier(ResearchInflationPackageId) != null;
+                return researchInflationInstalledCached.Value;
+            }
+        }
+
+        private static Mod FindModByPackageId(string packageId)
+        {
+            if (string.IsNullOrEmpty(packageId))
+                return null;
+
+            foreach (Mod mod in LoadedModManager.ModHandles)
+            {
+                if (mod?.Content == null)
+                    continue;
+
+                if (string.Equals(mod.Content.PackageId, packageId, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(mod.Content.PackageIdPlayerFacing, packageId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return mod;
+                }
+            }
+
+            return null;
         }
 
         private void SkipAnimation()

@@ -20,14 +20,10 @@ namespace CM_Semi_Random_Research
             if (selectedProject != null)
             {
                 float projectNameHeight = 50.0f;
-                float gapHeight = 10.0f;
-
-                float debugFinishResearchNowButtonHeight = 30.0f;
-                float debugButtonGap = Prefs.DevMode ? debugFinishResearchNowButtonHeight + gapHeight : 0f;
 
                 float currentY = 0f;
 
-                Rect outRect = new Rect(0f, 0f, position.width, position.height - debugButtonGap);
+                Rect outRect = new Rect(0f, 0f, position.width, position.height);
                 if (Event.current.type == EventType.Layout)
                     rightScrollHeightForFrame = rightScrollViewHeight;
                 Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(rightScrollHeightForFrame, 1f));
@@ -76,34 +72,6 @@ namespace CM_Semi_Random_Research
                 finally
                 {
                     Widgets.EndScrollView();
-                }
-
-                if (Prefs.DevMode && !selectedProject.IsFinished)
-                {
-                    string debugLabel = "Debug: Finish now";
-                    Text.Font = GameFont.Small;
-                    float debugButtonWidth = Text.CalcSize(debugLabel).x + 24f;
-
-                    Rect debugButtonRect = new Rect(
-                        0f,
-                        outRect.yMax + gapHeight,
-                        debugButtonWidth,
-                        debugFinishResearchNowButtonHeight
-                    );
-
-                    if (ColoredButtonText(debugButtonRect, debugLabel, FooterDebugButtonColor))
-                    {
-                        Find.ResearchManager.SetCurrentProject(selectedProject);
-                        Find.ResearchManager.FinishProject(selectedProject);
-
-                        ResearchTracker researchTracker = cachedTracker ?? Current.Game.World.GetComponent<ResearchTracker>();
-
-                        string categoryKey = ResearchTracker.GetCategoryKey(selectedProject);
-                        researchTracker.SetCurrentProjectByKey(selectedProject, categoryKey);
-
-                        researchTracker.ConsiderProjectFinished(selectedProject);
-                        researchTracker.GetCurrentlyAvailableProjects();
-                    }
                 }
             }
             }
