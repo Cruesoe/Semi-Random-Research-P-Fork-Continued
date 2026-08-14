@@ -156,7 +156,9 @@ namespace CM_Semi_Random_Research
             const float iconPadding = 8f;
             Rect prereqRect = new Rect(rect.xMin + 6f, rect.yMin, rect.width - 6f, itemHeight);
 
-            Color techColor = GetTechLevelColor(prereq.techLevel);
+            Color techColor = (SemiRandomResearchMod.settings == null || SemiRandomResearchMod.settings.colorAndGroupByTechLevel)
+                ? GetTechLevelColor(prereq.techLevel)
+                : TexUI.AvailResearchColor;
             Color bgColor = Color.Lerp(TexUI.AvailResearchColor, techColor, 0.3f);
             if (IsRepaint)
             {

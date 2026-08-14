@@ -63,6 +63,7 @@ namespace CM_Semi_Random_Research
         public bool usingNodeResearch = false;
         public PreferredResearchTree preferredResearchTree = PreferredResearchTree.NodeResearch;
         public bool suppressHandoverMessages = false;
+        public bool colorAndGroupByTechLevel = true;
 
         public bool AllowOneHigherTechProjectActive =>
             allowOneHigherTechProject && !ResearchTabWindowSwitcher.NodeResearchInstalled;
@@ -97,6 +98,7 @@ namespace CM_Semi_Random_Research
             Scribe_Values.Look(ref usingNodeResearch, "usingNodeResearch", false);
             Scribe_Values.Look(ref preferredResearchTree, "preferredResearchTree", PreferredResearchTree.NodeResearch);
             Scribe_Values.Look(ref suppressHandoverMessages, "suppressHandoverMessages", false);
+            Scribe_Values.Look(ref colorAndGroupByTechLevel, "colorAndGroupByTechLevel", true);
         }
 
         public void DoSettingsWindowContents(Rect inRect)
@@ -117,6 +119,7 @@ namespace CM_Semi_Random_Research
             listing.CheckboxLabeled("Auto pick next research", ref autoPickNextResearch, "Automatically chooses and starts researching the cheapest available project when a research finishes.");
             listing.CheckboxLabeled("Show research rate graph", ref showResearchRateGraph, "Toggles the visibility of the performance graph on the active research card.");
             listing.CheckboxLabeled("Show completion letter", ref showCompletionLetter, "Toggles the visibility of the completion letter when a research project is finished.");
+            listing.CheckboxLabeled("Color and group by tech level", ref colorAndGroupByTechLevel, "When enabled, standard research offers are colored and grouped under Neolithic/Medieval/Industrial era headers. When disabled, standard offers use a flat list with neutral colors. Anomaly and Gravship sections are unchanged.");
             listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Verbose_Logging_Label".Translate(), ref verboseLogging, "CM_Semi_Random_Research_Setting_Verbose_Logging_Description".Translate());
 
             if (ResearchTabWindowSwitcher.NodeResearchInstalled)
@@ -315,7 +318,8 @@ namespace CM_Semi_Random_Research
                 $"showCompletionLetter: {showCompletionLetter} " +
                 $"autoOpenOnCompletion: {autoOpenOnCompletion} " +
                 $"autoPickNextResearch: {autoPickNextResearch} " +
-                $"suppressHandoverMessages: {suppressHandoverMessages}");
+                $"suppressHandoverMessages: {suppressHandoverMessages} " +
+                $"colorAndGroupByTechLevel: {colorAndGroupByTechLevel}");
         }
     }
 }

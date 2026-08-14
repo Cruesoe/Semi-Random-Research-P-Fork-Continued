@@ -37,6 +37,7 @@ namespace CM_Semi_Random_Research
             Rect costRect = layout.CostRect;
 
             Color techColor = GetCategoryColor(project);
+            Color structureAccent = GetCardStructureAccent(project, techColor);
 
             Color backgroundColor = Color.Lerp(TexUI.AvailResearchColor, techColor, 0.3f);
             if (IsRepaint)
@@ -45,14 +46,14 @@ namespace CM_Semi_Random_Research
             }
 
             Rect progressRect = new Rect(headerRect.x, headerRect.y, headerRect.width * project.ProgressPercent, headerRect.height);
-            Color progressColor = techColor;
-            progressColor.a = 0.4f;
+            Color progressColor = GetProgressFillAccent(project, techColor);
+            progressColor.a = 0.55f;
             if (IsRepaint)
             {
                 Widgets.DrawBoxSolid(progressRect, progressColor);
             }
 
-            Color borderColor = Color.Lerp(techColor, Color.white, 0.5f);
+            Color borderColor = Color.Lerp(structureAccent, Color.white, 0.35f);
             if (IsRepaint)
             {
                 GUI.color = borderColor;

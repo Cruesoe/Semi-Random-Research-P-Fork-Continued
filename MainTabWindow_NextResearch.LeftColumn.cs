@@ -279,6 +279,7 @@ namespace CM_Semi_Random_Research
                 currentY += 34f;
             }
 
+            bool groupByTechLevel = SemiRandomResearchMod.settings == null || SemiRandomResearchMod.settings.colorAndGroupByTechLevel;
             bool isFirst = true;
             for (int g = 0; g < cachedStandardGroups.Count; g++)
             {
@@ -286,29 +287,30 @@ namespace CM_Semi_Random_Research
                 if (techGroup.Second == null || techGroup.Second.Count == 0)
                     continue;
 
-                if (!isFirst) currentY += gapHeight;
-                isFirst = false;
-
                 float headerAnimProgress = 1f;
                 if (techLevelHeaderProgress.TryGetValue(techGroup.First, out float progress))
                     headerAnimProgress = progress;
 
                 if (headerAnimProgress <= 0.01f) continue;
 
-                Color originalColor = GUI.color;
-                GUI.color = new Color(GUI.color.r, GUI.color.g, GUI.color.b, headerAnimProgress);
+                if (groupByTechLevel)
+                {
+                    if (!isFirst) currentY += gapHeight;
+                    isFirst = false;
 
-                Text.Font = GameFont.Small;
-                Color techColor = GetTechLevelColor(techGroup.First);
-                techColor.a *= headerAnimProgress;
-                GUI.color = techColor;
+                    Color originalColor = GUI.color;
+                    Text.Font = GameFont.Small;
+                    Color techColor = GetTechLevelColor(techGroup.First);
+                    techColor.a *= headerAnimProgress;
+                    GUI.color = techColor;
 
-                Rect headerRect = new Rect(0f, currentY, scrollViewRect.width, techLevelHeaderHeight);
-                Text.Anchor = TextAnchor.MiddleLeft;
-                Widgets.Label(headerRect, techGroup.First.ToStringHuman().CapitalizeFirst());
-                Text.Anchor = TextAnchor.UpperLeft;
-                GUI.color = originalColor;
-                currentY += techLevelHeaderHeight;
+                    Rect headerRect = new Rect(0f, currentY, scrollViewRect.width, techLevelHeaderHeight);
+                    Text.Anchor = TextAnchor.MiddleLeft;
+                    Widgets.Label(headerRect, techGroup.First.ToStringHuman().CapitalizeFirst());
+                    Text.Anchor = TextAnchor.UpperLeft;
+                    GUI.color = originalColor;
+                    currentY += techLevelHeaderHeight;
+                }
 
                 List<ResearchProjectDef> groupProjects = techGroup.Second;
                 for (int p = 0; p < groupProjects.Count; p++)
@@ -621,6 +623,7 @@ namespace CM_Semi_Random_Research
             Rect costRect = layout.CostRect;
 
             Color techColor = GetCategoryColor(projectDef);
+            Color structureAccent = GetCardStructureAccent(projectDef, techColor);
 
             Color backgroundColor = isMouseOver
                 ? Color.Lerp(TexUI.AvailResearchColor, techColor, 0.4f)
@@ -628,7 +631,7 @@ namespace CM_Semi_Random_Research
 
             Color borderColor = selectedProject == projectDef ?
                 TexUI.HighlightBorderResearchColor :
-                (isMouseOver ? Color.Lerp(techColor, Color.white, 0.2f) : techColor);
+                (isMouseOver ? Color.Lerp(structureAccent, Color.white, 0.2f) : structureAccent);
 
             Color textColor = new Color(0.95f, 0.95f, 0.95f);
 
@@ -673,7 +676,7 @@ namespace CM_Semi_Random_Research
 
                 if (isMouseOver)
                 {
-                    Color glowColor = techColor;
+                    Color glowColor = structureAccent;
                     glowColor.a = 0.1f * animProgress;
                     Widgets.DrawBoxSolid(drawRect.ExpandedBy(2f), glowColor);
                 }
@@ -698,24 +701,24 @@ namespace CM_Semi_Random_Research
             {
                 Rect progressRect = new Rect(drawRect.x, drawRect.y, drawRect.width * progressFraction, drawRect.height);
 
-                Color progressColor = Color.Lerp(techColor, Color.white, 0.15f);
+                Color progressColor = GetProgressFillAccent(projectDef, techColor);
                 progressColor.a = (isActive ? 0.6f : 0.45f) * animProgress;
 
                 Widgets.DrawBoxSolid(progressRect, progressColor);
             }
 
-            Color cardBorderColor = techColor;
+            Color cardBorderColor = structureAccent;
             if (isActive)
             {
-                cardBorderColor = Color.Lerp(techColor, Color.white, 0.5f); // Bright native color for active
+                cardBorderColor = Color.Lerp(structureAccent, Color.white, 0.5f); // Bright native color for active
             }
             else if (selectedProject == projectDef)
             {
-                cardBorderColor = Color.Lerp(techColor, Color.white, 0.3f); // Semi-bright for selected
+                cardBorderColor = Color.Lerp(structureAccent, Color.white, 0.3f); // Semi-bright for selected
             }
             else if (isMouseOver)
             {
-                cardBorderColor = Color.Lerp(techColor, Color.white, 0.2f);
+                cardBorderColor = Color.Lerp(structureAccent, Color.white, 0.2f);
             }
             cardBorderColor.a *= animProgress;
 
@@ -737,7 +740,7 @@ namespace CM_Semi_Random_Research
                     }
                 }
 
-                Color lineSeparatorColor = techColor;
+                Color lineSeparatorColor = structureAccent;
                 lineSeparatorColor.a *= animProgress;
                 Widgets.DrawLine(
                     new Vector2(firstSeparator.x, firstSeparator.y),
@@ -819,7 +822,7 @@ namespace CM_Semi_Random_Research
 
             if (selectedProject == projectDef && IsRepaint)
             {
-                Color highlightColor = Color.Lerp(techColor, Color.white, isActive ? 0.5f : 0.3f);
+                Color highlightColor = Color.Lerp(structureAccent, Color.white, isActive ? 0.5f : 0.3f);
                 highlightColor.a *= animProgress;
                 DrawTransparentBox(drawRect, highlightColor, 2f);
             }

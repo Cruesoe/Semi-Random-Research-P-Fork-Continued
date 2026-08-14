@@ -52,7 +52,41 @@ namespace CM_Semi_Random_Research
             if (projectDef.tab?.defName == "VGE_Gravtech" || projectDef.tab?.defName == "VGE_GravShip")
                 return GravshipColor;
 
+            if (SemiRandomResearchMod.settings != null && !SemiRandomResearchMod.settings.colorAndGroupByTechLevel)
+                return TexUI.AvailResearchColor;
+
             return GetTechLevelColor(projectDef.techLevel);
+        }
+
+        // Card fill accent for research progress. When standard cards use the flat neutral
+        // category color, a plain techColor fill matches the background and disappears —
+        // lift toward white so partial progress still reads.
+        private bool UsesFlatNeutralCardColor(ResearchProjectDef projectDef)
+        {
+            return SemiRandomResearchMod.settings != null
+                && !SemiRandomResearchMod.settings.colorAndGroupByTechLevel
+                && projectDef != null
+                && projectDef.knowledgeCategory == null
+                && projectDef.tab?.defName != "VGE_Gravtech"
+                && projectDef.tab?.defName != "VGE_GravShip";
+        }
+
+        // Separators / borders on flat neutral cards need a lifted accent or the
+        // icon | name | cost sections disappear into the dark background.
+        private Color GetCardStructureAccent(ResearchProjectDef projectDef, Color categoryColor)
+        {
+            if (UsesFlatNeutralCardColor(projectDef))
+                return Color.Lerp(TexUI.AvailResearchColor, Color.white, 0.45f);
+
+            return categoryColor;
+        }
+
+        private Color GetProgressFillAccent(ResearchProjectDef projectDef, Color categoryColor)
+        {
+            if (UsesFlatNeutralCardColor(projectDef))
+                return Color.Lerp(TexUI.AvailResearchColor, Color.white, 0.5f);
+
+            return Color.Lerp(categoryColor, Color.white, 0.15f);
         }
 
         private static string GetProjectCostText(ResearchProjectDef project)
