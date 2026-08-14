@@ -62,6 +62,13 @@ namespace CM_Semi_Random_Research
         public bool verboseLogging = false;
         public bool usingNodeResearch = false;
         public PreferredResearchTree preferredResearchTree = PreferredResearchTree.NodeResearch;
+        public bool suppressHandoverMessages = false;
+
+        public bool AllowOneHigherTechProjectActive =>
+            allowOneHigherTechProject && !ResearchTabWindowSwitcher.NodeResearchInstalled;
+
+        public bool RestrictToFactionTechLevelActive =>
+            restrictToFactionTechLevel || ResearchTabWindowSwitcher.NodeResearchInstalled;
 
         private bool loggedSettings = false;
 
@@ -89,6 +96,7 @@ namespace CM_Semi_Random_Research
             Scribe_Values.Look(ref autoPickNextResearch, "autoPickNextResearch", false);
             Scribe_Values.Look(ref usingNodeResearch, "usingNodeResearch", false);
             Scribe_Values.Look(ref preferredResearchTree, "preferredResearchTree", PreferredResearchTree.NodeResearch);
+            Scribe_Values.Look(ref suppressHandoverMessages, "suppressHandoverMessages", false);
         }
 
         public void DoSettingsWindowContents(Rect inRect)
@@ -131,14 +139,41 @@ namespace CM_Semi_Random_Research
                 }
                 string treeButtonLabel = preferredResearchTree == PreferredResearchTree.YART ? "YART" : "Node Research";
                 DoButtonOption(treeButtonOptionRect, treeButtonLabel, "Which research tree the Semi-Random footer button opens. Defaults to Node Research.", treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10);
+                listing.CheckboxLabeled("Suppress handover messages", ref suppressHandoverMessages, "Hide the messages shown when switching between Semi-Random Research, Node Research, and YART.");
             }
 
             listing.GapLine();
 
             listing.Label("--- Gameplay Mechanics ---".Colorize(Color.gray));
             listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Force_Lowest_Tech_Level_Label".Translate(), ref forceLowestTechLevel, "CM_Semi_Random_Research_Setting_Force_Lowest_Tech_Level_Description".Translate());
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Restrict_To_Faction_Tech_Level_Label".Translate(), ref restrictToFactionTechLevel, "CM_Semi_Random_Research_Setting_Restrict_To_Faction_Tech_Level_Description".Translate());
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Allow_One_Higher_Tech_Project_Label".Translate(), ref allowOneHigherTechProject, "CM_Semi_Random_Research_Setting_Allow_One_Higher_Tech_Project_Description".Translate());
+            bool restrictFaction = restrictToFactionTechLevel;
+            string restrictFactionTip = "CM_Semi_Random_Research_Setting_Restrict_To_Faction_Tech_Level_Description".Translate();
+            if (ResearchTabWindowSwitcher.NodeResearchInstalled)
+            {
+                restrictFaction = true;
+                restrictFactionTip = "Locked on while Node Research is installed. Node Research controls tech-level progression.";
+                GUI.enabled = false;
+            }
+            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Restrict_To_Faction_Tech_Level_Label".Translate(), ref restrictFaction, restrictFactionTip);
+            GUI.enabled = true;
+            if (!ResearchTabWindowSwitcher.NodeResearchInstalled)
+            {
+                restrictToFactionTechLevel = restrictFaction;
+            }
+            bool oneHigher = allowOneHigherTechProject;
+            string oneHigherTip = "CM_Semi_Random_Research_Setting_Allow_One_Higher_Tech_Project_Description".Translate();
+            if (ResearchTabWindowSwitcher.NodeResearchInstalled)
+            {
+                oneHigher = false;
+                oneHigherTip = "Disabled while Node Research is installed. Node Research controls tech-level progression.";
+                GUI.enabled = false;
+            }
+            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Allow_One_Higher_Tech_Project_Label".Translate(), ref oneHigher, oneHigherTip);
+            GUI.enabled = true;
+            if (!ResearchTabWindowSwitcher.NodeResearchInstalled)
+            {
+                allowOneHigherTechProject = oneHigher;
+            }
             listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Allow_Switching_Research_Label".Translate(), ref allowSwitchingResearch, "CM_Semi_Random_Research_Setting_Allow_Switching_Research_Description".Translate());
             listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Equalize_Cost_Label".Translate(), ref equalizeCost, "CM_Semi_Random_Research_Setting_Equalize_Cost_Description".Translate());
 
@@ -279,7 +314,8 @@ namespace CM_Semi_Random_Research
                 $"showResearchRateGraph: {showResearchRateGraph} " +
                 $"showCompletionLetter: {showCompletionLetter} " +
                 $"autoOpenOnCompletion: {autoOpenOnCompletion} " +
-                $"autoPickNextResearch: {autoPickNextResearch}");
+                $"autoPickNextResearch: {autoPickNextResearch} " +
+                $"suppressHandoverMessages: {suppressHandoverMessages}");
         }
     }
 }

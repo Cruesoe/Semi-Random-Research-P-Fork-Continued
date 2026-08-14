@@ -269,7 +269,7 @@ namespace CM_Semi_Random_Research
                 if (researchTracker != null &&
                     (proj.ProgressReal == 0 || SemiRandomResearchMod.settings.progressAddsChoice == ProgressAddsChoice.AddChoiceOnlyOnGain) &&
                     SemiRandomResearchMod.settings.progressAddsChoice != ProgressAddsChoice.Never &&
-                    !researchTracker.GetCurrentlyAvailableProjects().Contains(proj) &&
+                    !researchTracker.PeekAvailableProjects().Contains(proj) &&
                     proj.CanStartNow)
                 {
                     if (!researchTracker.CurrentProject.Any(x => x.knowledgeCategory == proj.knowledgeCategory) ||

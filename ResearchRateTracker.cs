@@ -114,7 +114,7 @@ namespace CM_Semi_Random_Research
             if (globalRatePerDay > 0)
             {
                 globalRateSamples.Add(globalRatePerDay);
-                // No trimming of global samples
+                TrimSamples(globalRateSamples);
             }
             
             // Also continue tracking previously researched projects
@@ -137,12 +137,7 @@ namespace CM_Semi_Random_Research
                         {
                             // Add a zero rate sample
                             projectData.rateSamples.Add(0f);
-                            
-                            // Trim excess samples
-                            if (projectData.rateSamples.Count > MAX_SAMPLES)
-                            {
-                                projectData.rateSamples.RemoveAt(0);
-                            }
+                            TrimSamples(projectData.rateSamples);
                         }
                     }
                 }
@@ -181,14 +176,13 @@ namespace CM_Semi_Random_Research
                 // Only record non-zero rates if progress was made
                 if (progressChange > 0)
                 {
-                    // Add the new rate sample - keep all samples (no trimming)
                     projectData.rateSamples.Add(ratePerDay);
+                    TrimSamples(projectData.rateSamples);
                 }
                 else if (progressChange == 0)
                 {
-                    // If no progress was made but this is the active project,
-                    // add a zero sample to show inactivity in the graph
                     projectData.rateSamples.Add(0f);
+                    TrimSamples(projectData.rateSamples);
                 }
                 else if (progressChange < 0)
                 {
@@ -215,7 +209,7 @@ namespace CM_Semi_Random_Research
                 // Return the most recent rate
                 if (projectData.rateSamples.Count > 0)
                 {
-                    return projectData.rateSamples.Last();
+                    return projectData.rateSamples[projectData.rateSamples.Count - 1];
                 }
             }
             
@@ -227,7 +221,7 @@ namespace CM_Semi_Random_Research
         {
             if (globalRateSamples.Count > 0)
             {
-                return globalRateSamples.Last();
+                return globalRateSamples[globalRateSamples.Count - 1];
             }
             return 0f;
         }
@@ -240,20 +234,8 @@ namespace CM_Semi_Random_Research
             if (projectDataCache.TryGetValue(project.defName, out ProjectRateData projectData))
             {
                 if (projectData.rateSamples.Count == 0) return GetGlobalAverageRate(days);
-                
-                // Calculate how many samples to average
-                int samplesToAverage = Math.Min(days * SAMPLES_PER_DAY, projectData.rateSamples.Count);
-                
-                // Get the most recent samples
-                List<float> recentSamples = projectData.rateSamples
-                    .Skip(projectData.rateSamples.Count - samplesToAverage)
-                    .ToList();
-                
-                // Return the true average including zero samples
-                if (recentSamples.Count > 0)
-                {
-                    return recentSamples.Average();
-                }
+
+                return AverageRecent(projectData.rateSamples, days);
             }
             
             return GetGlobalAverageRate(days);
@@ -263,22 +245,50 @@ namespace CM_Semi_Random_Research
         public float GetGlobalAverageRate(int days = DAYS_TO_TRACK)
         {
             if (globalRateSamples.Count == 0) return 0f;
-            
-            // Calculate how many samples to average
-            int samplesToAverage = Math.Min(days * SAMPLES_PER_DAY, globalRateSamples.Count);
-            
-            // Get the most recent samples
-            List<float> recentSamples = globalRateSamples
-                .Skip(globalRateSamples.Count - samplesToAverage)
-                .ToList();
-            
-            // Return the true average including zero samples
-            if (recentSamples.Count > 0)
+
+            return AverageRecent(globalRateSamples, days);
+        }
+
+        private static void TrimSamples(List<float> samples)
+        {
+            if (samples.Count > MAX_SAMPLES)
             {
-                return recentSamples.Average();
+                samples.RemoveRange(0, samples.Count - MAX_SAMPLES);
             }
-            
-            return 0f;
+        }
+
+        private static float AverageRecent(List<float> samples, int days)
+        {
+            int count = samples.Count;
+            if (count == 0)
+                return 0f;
+
+            int samplesToAverage = Math.Min(days * SAMPLES_PER_DAY, count);
+            float sum = 0f;
+            int start = count - samplesToAverage;
+            for (int i = start; i < count; i++)
+            {
+                sum += samples[i];
+            }
+
+            return sum / samplesToAverage;
+        }
+
+        private static List<float> CopyRecent(List<float> samples, int maxCount)
+        {
+            int count = samples.Count;
+            if (count == 0)
+                return new List<float>();
+
+            int samplesToGet = Math.Min(maxCount, count);
+            int start = count - samplesToGet;
+            var result = new List<float>(samplesToGet);
+            for (int i = start; i < count; i++)
+            {
+                result.Add(samples[i]);
+            }
+
+            return result;
         }
         
         // Get an estimate of days until research completion
@@ -316,19 +326,11 @@ namespace CM_Semi_Random_Research
         // Get rate samples for specific time period (for graphing)
         public List<float> GetRateSamplesPeriod(ResearchProjectDef project, int days)
         {
-            if (project == null) return globalRateSamples.Skip(Math.Max(0, globalRateSamples.Count - (days * SAMPLES_PER_DAY))).ToList();
+            if (project == null) return CopyRecent(globalRateSamples, days * SAMPLES_PER_DAY);
             
             if (projectDataCache.TryGetValue(project.defName, out ProjectRateData projectData))
             {
-                if (projectData.rateSamples.Count == 0) return new List<float>();
-                
-                // Calculate how many samples to retrieve
-                int samplesToGet = Math.Min(days * SAMPLES_PER_DAY, projectData.rateSamples.Count);
-                
-                // Get the most recent samples
-                return projectData.rateSamples
-                    .Skip(projectData.rateSamples.Count - samplesToGet)
-                    .ToList();
+                return CopyRecent(projectData.rateSamples, days * SAMPLES_PER_DAY);
             }
             
             return new List<float>();
@@ -337,11 +339,24 @@ namespace CM_Semi_Random_Research
         // Get the research data for display formatting
         public ResearchRateInfo GetResearchRateInfo(ResearchProjectDef project)
         {
+            float current = project != null ? GetCurrentRate(project) : GetGlobalCurrentRate();
+            float average = project != null ? GetAverageRate(project) : GetGlobalAverageRate();
+            float eta = -1f;
+            if (project != null)
+            {
+                float averageForEta = average > 0f ? average : GetGlobalAverageRate();
+                if (averageForEta > 0f)
+                {
+                    float remainingProgress = project.CostApparent - project.ProgressApparent;
+                    eta = remainingProgress <= 0f ? 0f : remainingProgress / averageForEta;
+                }
+            }
+
             ResearchRateInfo info = new ResearchRateInfo
             {
-                CurrentRate = project != null ? GetCurrentRate(project) : GetGlobalCurrentRate(),
-                AverageRate = project != null ? GetAverageRate(project) : GetGlobalAverageRate(),
-                EstimatedDaysToCompletion = project != null ? GetEstimatedDaysToCompletion(project) : -1f,
+                CurrentRate = current,
+                AverageRate = average,
+                EstimatedDaysToCompletion = eta,
                 PercentComplete = project != null ? project.ProgressPercent * 100f : 0f,
                 TotalSamples = project != null ? 
                     (projectDataCache.TryGetValue(project.defName, out ProjectRateData data) ? data.rateSamples.Count : 0) :
@@ -460,14 +475,8 @@ namespace CM_Semi_Random_Research
         public List<float> GetGlobalRateSamplesPeriod(int days)
         {
             if (globalRateSamples.Count == 0) return new List<float>();
-            
-            // Calculate how many samples to retrieve
-            int samplesToGet = Math.Min(days * SAMPLES_PER_DAY, globalRateSamples.Count);
-            
-            // Get the most recent samples
-            return globalRateSamples
-                .Skip(globalRateSamples.Count - samplesToGet)
-                .ToList();
+
+            return CopyRecent(globalRateSamples, days * SAMPLES_PER_DAY);
         }
     }
     

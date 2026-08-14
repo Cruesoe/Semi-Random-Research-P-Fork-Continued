@@ -10,6 +10,8 @@ namespace CM_Semi_Random_Research
     public class ResearchTracker : WorldComponent
     {
         private List<ResearchProjectDef> currentAvailableProjects = new List<ResearchProjectDef>();
+        private List<ResearchProjectDef> lastOfferedProjects;
+        private List<ResearchProjectDef> lastOfferedForRevision;
         private Dictionary<ResearchProjectDef, int> notChosenProjects = new Dictionary<ResearchProjectDef, int>();
         private Dictionary<string, int> currentRerollState = new Dictionary<string, int>();
         private List<ResearchProjectDef> currentProjects = new List<ResearchProjectDef>();
@@ -17,6 +19,61 @@ namespace CM_Semi_Random_Research
         private HashSet<KnowledgeCategoryDef> pendingResearchRerolls = new HashSet<KnowledgeCategoryDef>();
 
         public List<ResearchProjectDef> CurrentProject => currentProjects;
+
+        public int OffersRevision { get; private set; }
+
+        public List<ResearchProjectDef> PeekAvailableProjects() => lastOfferedProjects ?? currentAvailableProjects;
+
+        private void PublishOffers(List<ResearchProjectDef> offers)
+        {
+            if (offers == null)
+                offers = new List<ResearchProjectDef>();
+            lastOfferedProjects = offers;
+            if (!SameProjectList(lastOfferedForRevision, offers))
+            {
+                lastOfferedForRevision = new List<ResearchProjectDef>(offers);
+                OffersRevision++;
+            }
+        }
+
+        private bool HasRerollableOffers(string typeKey)
+        {
+            if (currentProjects != null)
+            {
+                for (int i = 0; i < currentProjects.Count; i++)
+                {
+                    ResearchProjectDef current = currentProjects[i];
+                    if (current != null && !current.IsFinished && GetCategoryKey(current) == typeKey)
+                        return false;
+                }
+            }
+
+            List<ResearchProjectDef> offers = PeekAvailableProjects();
+            if (offers == null)
+                return false;
+
+            for (int i = 0; i < offers.Count; i++)
+            {
+                ResearchProjectDef project = offers[i];
+                if (project != null && !project.IsFinished && GetCategoryKey(project) == typeKey)
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool SameProjectList(List<ResearchProjectDef> a, List<ResearchProjectDef> b)
+        {
+            if (ReferenceEquals(a, b))
+                return true;
+            if (a == null || b == null || a.Count != b.Count)
+                return false;
+            for (int i = 0; i < a.Count; i++)
+            {
+                if (a[i] != b[i])
+                    return false;
+            }
+            return true;
+        }
 
         public bool IsSelectableProject(ResearchProjectDef proj)
         {
@@ -54,8 +111,26 @@ namespace CM_Semi_Random_Research
         {
             all_typeKeys = DefDatabase<KnowledgeCategoryDef>.AllDefsListForReading.Select(x => x.defName).ToList();
             all_typeKeys.Add("Standard");
-            all_typeKeys.Add("Gravship");
-            all_typeKeys.Add("Divinitech");
+
+            bool hasGravship = false;
+            bool hasDivinitech = false;
+            List<ResearchProjectDef> allDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading;
+            for (int i = 0; i < allDefs.Count; i++)
+            {
+                ResearchProjectDef def = allDefs[i];
+                if (!hasGravship && (def.tab?.defName == "VGE_Gravtech" || def.tab?.defName == "VGE_GravShip"))
+                    hasGravship = true;
+                if (!hasDivinitech && def.knowledgeCategory?.defName == "Information")
+                    hasDivinitech = true;
+                if (hasGravship && hasDivinitech)
+                    break;
+            }
+
+            if (hasGravship)
+                all_typeKeys.Add("Gravship");
+            if (hasDivinitech)
+                all_typeKeys.Add("Divinitech");
+
             all_typeKeys = all_typeKeys.Distinct().ToList();
         }
 
@@ -139,6 +214,8 @@ namespace CM_Semi_Random_Research
             {
                 if (all_typeKeys == null) RefreshTypeKeys();
 
+                List<ResearchProjectDef> availableSnapshot = null;
+
                 foreach (string typeKey in all_typeKeys)
                 {
                     if (!currentProjectDefsCacheByType.ContainsKey(typeKey))
@@ -162,7 +239,13 @@ namespace CM_Semi_Random_Research
                     {
                         if (SemiRandomResearchMod.settings.autoPickNextResearch && (finished || (tickCounter % tickOffset) == 0))
                         {
-                            List<ResearchProjectDef> possibleProjectsOfType = GetCurrentlyAvailableProjects().Where(x => GetCategoryKey(x) == typeKey).ToList();
+                            List<ResearchProjectDef> possibleProjectsOfType = currentAvailableProjects.Where(x => GetCategoryKey(x) == typeKey).ToList();
+                            if (possibleProjectsOfType.Empty())
+                            {
+                                if (availableSnapshot == null)
+                                    availableSnapshot = GetCurrentlyAvailableProjects();
+                                possibleProjectsOfType = availableSnapshot.Where(x => GetCategoryKey(x) == typeKey).ToList();
+                            }
 
                             if (!possibleProjectsOfType.Empty())
                             {
@@ -250,13 +333,19 @@ namespace CM_Semi_Random_Research
             List<ResearchProjectDef> result = new List<ResearchProjectDef>();
             SemiRandomResearchMod.settings.DumpSettingToLog();
 
+            currentAvailableProjects = currentAvailableProjects.Where(projectDef => projectDef != null &&
+                !projectDef.IsFinished &&
+                !Compatibility.IsHiddenResearch(projectDef) &&
+                Compatibility.SatisfiesAlienRaceRestriction(projectDef)).ToList();
+
+            int additionalProjects = SemiRandomResearchMod.settings.amountSelection == ChoiceAmountSelection.PerColonist ?
+                PawnsFinder.AllMapsCaravansAndTravellingTransporters_AliveSpawned_FreeColonists_NoSuspended.
+                Where(collonist => !collonist.GetDisabledWorkTypes().Any(workType => workType.defName == "Research")).Count()
+                / SemiRandomResearchMod.settings.additionalProjectPerXColonists
+                : 0;
+
             foreach (string typeKey in all_typeKeys)
             {
-                currentAvailableProjects = currentAvailableProjects.Where(projectDef => projectDef != null &&
-                    !projectDef.IsFinished &&
-                    !Compatibility.IsHiddenResearch(projectDef) &&
-                    Compatibility.SatisfiesAlienRaceRestriction(projectDef)).ToList();
-
                 List<ResearchProjectDef> currentAvailableValidProjectsOfType = currentAvailableProjects.Where(x => GetCategoryKey(x) == typeKey && x.CanStartNow).ToList();
                 List<ResearchProjectDef> currentProjectOfType = currentProjects.Where(x => GetCategoryKey(x) == typeKey).ToList();
 
@@ -265,12 +354,6 @@ namespace CM_Semi_Random_Research
                     currentProjectOfType.Empty() ||
                     currentProjectOfType.Any(x => x.IsFinished || !Compatibility.SatisfiesAlienRaceRestriction(x)))
                 {
-
-                    int additionalProjects = SemiRandomResearchMod.settings.amountSelection == ChoiceAmountSelection.PerColonist ?
-                        PawnsFinder.AllMapsCaravansAndTravellingTransporters_AliveSpawned_FreeColonists_NoSuspended.
-                        Where(collonist => !collonist.GetDisabledWorkTypes().Any(workType => workType.defName == "Research")).Count()
-                        / SemiRandomResearchMod.settings.additionalProjectPerXColonists
-                        : 0;
 
                     bool handledProjects = false;
                     int numberOfMissingProjects = Math.Min((SemiRandomResearchMod.settings.availableProjectCount + additionalProjects), SemiRandomResearchMod.settings.maxProjectCount) - currentAvailableValidProjectsOfType.Count;
@@ -336,13 +419,21 @@ namespace CM_Semi_Random_Research
                     result.AddRange(currentProjectOfType);
                 }
             }
+            PublishOffers(result);
             return result;
         }
 
         private List<ResearchProjectDef> GetResearchableProjects(int count, string typeKey)
         {
-            if (completedTypes.Contains(typeKey) &&
-                previousDefCount == DefDatabase<ResearchProjectDef>.AllDefsListForReading.Count)
+            int defCount = DefDatabase<ResearchProjectDef>.AllDefsListForReading.Count;
+            if (defCount != previousDefCount)
+            {
+                projectDefsCacheByType.Clear();
+                completedTypes.Clear();
+                previousDefCount = defCount;
+            }
+
+            if (completedTypes.Contains(typeKey))
             {
                 if (SemiRandomResearchMod.settings.verboseLogging)
                 {
@@ -359,8 +450,7 @@ namespace CM_Semi_Random_Research
             if (currentAvailableProjects.Count > 0)
                 minCurrentProjectTechlevel = currentAvailableProjects.Select(projectDef => projectDef.techLevel).Min();
 
-            if (!projectDefsCacheByType.ContainsKey(typeKey) ||
-                previousDefCount == DefDatabase<ResearchProjectDef>.AllDefsListForReading.Count)
+            if (!projectDefsCacheByType.ContainsKey(typeKey))
             {
                 projectDefsCacheByType[typeKey] = DefDatabase<ResearchProjectDef>.AllDefsListForReading
                     .Where((ResearchProjectDef projectDef) => !projectDef.IsFinished &&
@@ -395,14 +485,14 @@ namespace CM_Semi_Random_Research
             }
 
             ResearchProjectDef randomProject = null;
-            if (allAvailableProjects.Any() && SemiRandomResearchMod.settings.allowOneHigherTechProject &&
-                (!SemiRandomResearchMod.settings.restrictToFactionTechLevel || maxCurrentProjectTechlevel <= Faction.OfPlayer.def.techLevel) &&
+            if (allAvailableProjects.Any() && SemiRandomResearchMod.settings.AllowOneHigherTechProjectActive &&
+                (!SemiRandomResearchMod.settings.RestrictToFactionTechLevelActive || maxCurrentProjectTechlevel <= Faction.OfPlayer.def.techLevel) &&
                 (!SemiRandomResearchMod.settings.forceLowestTechLevel || maxCurrentProjectTechlevel == minCurrentProjectTechlevel))
             {
                 randomProject = allAvailableProjects.RandomElement();
             }
 
-            if (SemiRandomResearchMod.settings.restrictToFactionTechLevel)
+            if (SemiRandomResearchMod.settings.RestrictToFactionTechLevelActive)
             {
                 TechLevel maxTechLevel = Faction.OfPlayer.def.techLevel;
                 allAvailableProjects = allAvailableProjects.Where(projectDef => projectDef.techLevel <= maxTechLevel).ToList();
@@ -496,7 +586,7 @@ namespace CM_Semi_Random_Research
 
                 List<ResearchProjectDef> selectedProjectsFirstHalf = allAvailableProjects.Take(amountToRandomlyGenerate).ToList();
 
-                if (SemiRandomResearchMod.settings.allowOneHigherTechProject && randomProject != null && !selectedProjectsFirstHalf.Contains(randomProject) && amountToRandomlyGenerate > 0)
+                if (SemiRandomResearchMod.settings.AllowOneHigherTechProjectActive && randomProject != null && !selectedProjectsFirstHalf.Contains(randomProject) && amountToRandomlyGenerate > 0)
                 {
                     selectedProjectsFirstHalf[0] = randomProject;
                 }
@@ -551,7 +641,7 @@ namespace CM_Semi_Random_Research
                     LogIfNewMessage("selectCount" + typeKey, $"There were {selectedProjects.Count} projects selected randomly");
                 }
 
-                if (SemiRandomResearchMod.settings.allowOneHigherTechProject && randomProject != null && !selectedProjects.Contains(randomProject))
+                if (SemiRandomResearchMod.settings.AllowOneHigherTechProjectActive && randomProject != null && !selectedProjects.Contains(randomProject))
                 {
                     if (selectedProjects.Count < count || selectedProjects.Count < 1)
                     {
@@ -612,6 +702,7 @@ namespace CM_Semi_Random_Research
                 if (active != null) Find.ResearchManager.StopProject(active);
             }
             currentProjectDefsCacheByType[typeKey] = currentProjects.Where(x => GetCategoryKey(x) == typeKey).ToList();
+            PublishOffers(new List<ResearchProjectDef>(currentAvailableProjects));
         }
 
         public void ManageNotChosenByKey(string typeKey)
@@ -662,12 +753,10 @@ namespace CM_Semi_Random_Research
 
         public void RerollByKey(string typeKey)
         {
-            SetRerolledByKey(typeKey, true);
-  
-            if (currentProjects.Any(x => GetCategoryKey(x) == typeKey))
-            {
+            if (!CanRerollByKey(typeKey) || !HasRerollableOffers(typeKey))
                 return;
-            }
+
+            SetRerolledByKey(typeKey, true);
 
             if (GetCurrentlyAvailableProjects().Any(x => GetCategoryKey(x) == typeKey))
             {
@@ -712,25 +801,32 @@ namespace CM_Semi_Random_Research
 
         public bool CanReroll(KnowledgeCategoryDef type)
         {
+            if (SemiRandomResearchMod.settings.allowManualReroll == ManualReroll.None)
+                return false;
+            if (all_typeKeys == null) RefreshTypeKeys();
+
             if (type == null)
             {
-                // Dynamically check all categories (including Anomaly) instead of hardcoding
-                if (all_typeKeys == null) RefreshTypeKeys();
-                return all_typeKeys.Any(key => CanRerollByKey(key));
+                for (int i = 0; i < all_typeKeys.Count; i++)
+                {
+                    string key = all_typeKeys[i];
+                    if (CanRerollByKey(key) && HasRerollableOffers(key))
+                        return true;
+                }
+                return false;
             }
-            return CanRerollByKey(type.defName);
+
+            string typeKey = type.defName;
+            return CanRerollByKey(typeKey) && HasRerollableOffers(typeKey);
         }
 
         public void Reroll(KnowledgeCategoryDef type)
         {
             if (type == null)
             {
-                // Dynamically reroll all eligible categories (including Anomaly)
                 if (all_typeKeys == null) RefreshTypeKeys();
-                foreach (string key in all_typeKeys)
-                {
-                    RerollByKey(key);
-                }
+                for (int i = 0; i < all_typeKeys.Count; i++)
+                    RerollByKey(all_typeKeys[i]);
             }
             else
             {

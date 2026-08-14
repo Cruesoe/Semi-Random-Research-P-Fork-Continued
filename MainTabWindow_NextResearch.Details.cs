@@ -15,6 +15,8 @@ namespace CM_Semi_Random_Research
         {
             Rect position = rightRect;
             GUI.BeginGroup(position);
+            try
+            {
             if (selectedProject != null)
             {
                 float projectNameHeight = 50.0f;
@@ -26,20 +28,25 @@ namespace CM_Semi_Random_Research
                 float currentY = 0f;
 
                 Rect outRect = new Rect(0f, 0f, position.width, position.height - debugButtonGap);
-                Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, rightScrollViewHeight);
+                if (Event.current.type == EventType.Layout)
+                    rightScrollHeightForFrame = rightScrollViewHeight;
+                Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(rightScrollHeightForFrame, 1f));
+                rightViewportHeight = outRect.height;
 
                 Widgets.BeginScrollView(outRect, ref rightScrollPosition, viewRect);
+                try
+                {
 
                 Text.Font = GameFont.Medium;
                 GenUI.SetLabelAlign(TextAnchor.MiddleLeft);
                 Rect projectNameRect = new Rect(0f, currentY, viewRect.width, projectNameHeight);
-                Widgets.LabelCacheHeight(ref projectNameRect, selectedProject.LabelCap);
+                Widgets.LabelCacheHeight(ref projectNameRect, SafeLabel(selectedProject));
                 GenUI.ResetLabelAlign();
                 currentY += projectNameRect.height;
 
                 Text.Font = GameFont.Small;
                 Rect projectDescriptionRect = new Rect(0f, currentY, viewRect.width, 0f);
-                Widgets.LabelCacheHeight(ref projectDescriptionRect, selectedProject.description);
+                Widgets.LabelCacheHeight(ref projectDescriptionRect, SafeDescription(selectedProject));
                 currentY += projectDescriptionRect.height;
 
                 if ((int)selectedProject.techLevel > (int)Faction.OfPlayer.def.techLevel)
@@ -51,7 +58,7 @@ namespace CM_Semi_Random_Research
                     {
                         text += " " + "ResearchCostComparison".Translate(selectedProject.baseCost.ToString("F0"), selectedProject.CostApparent.ToString("F0"));
                     }
-                    Widgets.LabelCacheHeight(ref techLevelMultilplierDescriptionRect, text);
+                    Widgets.LabelCacheHeight(ref techLevelMultilplierDescriptionRect, text ?? string.Empty);
                     currentY += techLevelMultilplierDescriptionRect.height;
                 }
 
@@ -62,9 +69,14 @@ namespace CM_Semi_Random_Research
                 Rect projectUnlockablesRect = new Rect(0f, currentY, viewRect.width, outRect.height);
                 currentY += DrawUnlockableHyperlinks(projectUnlockablesRect, selectedProject);
                 currentY += DrawContentSource(rect: new Rect(0f, currentY, viewRect.width, outRect.height), selectedProject);
-                currentY = (rightScrollViewHeight = currentY + 3f);
-
-                Widgets.EndScrollView();
+                currentY += 3f;
+                if (Event.current.type == EventType.Layout)
+                    rightScrollViewHeight = currentY;
+                }
+                finally
+                {
+                    Widgets.EndScrollView();
+                }
 
                 if (Prefs.DevMode && !selectedProject.IsFinished)
                 {
@@ -84,7 +96,7 @@ namespace CM_Semi_Random_Research
                         Find.ResearchManager.SetCurrentProject(selectedProject);
                         Find.ResearchManager.FinishProject(selectedProject);
 
-                        ResearchTracker researchTracker = Current.Game.World.GetComponent<ResearchTracker>();
+                        ResearchTracker researchTracker = cachedTracker ?? Current.Game.World.GetComponent<ResearchTracker>();
 
                         string categoryKey = ResearchTracker.GetCategoryKey(selectedProject);
                         researchTracker.SetCurrentProjectByKey(selectedProject, categoryKey);
@@ -94,8 +106,11 @@ namespace CM_Semi_Random_Research
                     }
                 }
             }
-
-            GUI.EndGroup();
+            }
+            finally
+            {
+                GUI.EndGroup();
+            }
         }
 
         private float DrawResearchPrereqs(ResearchProjectDef project, Rect rect)
@@ -109,81 +124,86 @@ namespace CM_Semi_Random_Research
 
             Text.Font = GameFont.Medium;
             Widgets.LabelCacheHeight(ref rect, "Prerequisites".Translate() + ":");
-            rect.yMin += rect.height + 6f; // Add extra padding after header
+            rect.yMin += rect.height + 6f;
 
             Text.Font = GameFont.Small;
 
-            List<ResearchProjectDef> allPrereqs = new List<ResearchProjectDef>();
-
             if (project.prerequisites != null)
-                allPrereqs.AddRange(project.prerequisites);
+            {
+                for (int i = 0; i < project.prerequisites.Count; i++)
+                    DrawPrereqRow(project.prerequisites[i], ref rect);
+            }
 
             if (project.hiddenPrerequisites != null)
-                allPrereqs.AddRange(project.hiddenPrerequisites);
-
-            float itemHeight = 42f;  // Taller rows for prerequisites
-            float iconSize = 28f;    // Icon size
-            float iconPadding = 8f;  // Padding after icon
-
-            foreach (ResearchProjectDef prereq in allPrereqs)
             {
-                Rect prereqRect = new Rect(rect.xMin + 6f, rect.yMin, rect.width - 6f, itemHeight);
-
-                Color techColor = GetTechLevelColor(prereq.techLevel);
-                Color bgColor = Color.Lerp(TexUI.AvailResearchColor, techColor, 0.3f);
-                Color borderColor = techColor;
-
-                Widgets.DrawBoxSolid(prereqRect, bgColor);
-                DrawTransparentBox(prereqRect, borderColor, 1f);
-
-                Rect iconRect = new Rect(
-                    prereqRect.x + 6f,
-                    prereqRect.y + (itemHeight - iconSize) / 2,
-                    iconSize,
-                    iconSize
-                );
-
-                Rect labelRect = new Rect(
-                    iconRect.xMax + iconPadding,
-                    prereqRect.y,
-                    prereqRect.width - iconRect.width - (iconPadding * 2) - 6f,
-                    itemHeight
-                );
-
-                Def firstUnlockable = null;
-                try
-                {
-                    var unlockables = UnlockedDefsGroupedByPrerequisites(prereq);
-                    if (!unlockables.NullOrEmpty() && !unlockables[0].Second.NullOrEmpty())
-                    {
-                        firstUnlockable = unlockables[0].Second[0];
-                        Widgets.DefIcon(iconRect, firstUnlockable);
-                    }
-                }
-                catch (Exception)
-                {
-                }
-
-                Text.Anchor = TextAnchor.MiddleLeft;
-                GUI.color = Color.white; // Clear white text
-                Widgets.Label(labelRect, prereq.LabelCap);
-                Text.Anchor = TextAnchor.UpperLeft;
-
-                if (Widgets.ButtonInvisible(prereqRect))
-                {
-                    SoundDefOf.Click.PlayOneShotOnCamera();
-                    selectedProject = prereq;
-                }
-
-                rect.yMin += itemHeight + 4f; // Add spacing between prerequisites
+                for (int i = 0; i < project.hiddenPrerequisites.Count; i++)
+                    DrawPrereqRow(project.hiddenPrerequisites[i], ref rect);
             }
 
             GUI.color = Color.white;
             rect.xMin = xMin;
-
             rect.yMin += 6f;
-
             return rect.yMin - yMin;
+        }
+
+        private void DrawPrereqRow(ResearchProjectDef prereq, ref Rect rect)
+        {
+            if (prereq == null)
+                return;
+
+            const float itemHeight = 42f;
+            const float iconSize = 28f;
+            const float iconPadding = 8f;
+            Rect prereqRect = new Rect(rect.xMin + 6f, rect.yMin, rect.width - 6f, itemHeight);
+
+            Color techColor = GetTechLevelColor(prereq.techLevel);
+            Color bgColor = Color.Lerp(TexUI.AvailResearchColor, techColor, 0.3f);
+            if (IsRepaint)
+            {
+                Widgets.DrawBoxSolid(prereqRect, bgColor);
+                DrawTransparentBox(prereqRect, techColor, 1f);
+            }
+
+            Rect iconRect = new Rect(
+                prereqRect.x + 6f,
+                prereqRect.y + (itemHeight - iconSize) / 2f,
+                iconSize,
+                iconSize
+            );
+            Rect labelRect = new Rect(
+                iconRect.xMax + iconPadding,
+                prereqRect.y,
+                prereqRect.width - iconRect.width - (iconPadding * 2f) - 6f,
+                itemHeight
+            );
+
+            if (IsRepaint)
+            {
+                Def firstUnlockable = GetFirstUnlockable(prereq);
+                if (firstUnlockable != null)
+                {
+                    try
+                    {
+                        Widgets.DefIcon(iconRect, firstUnlockable);
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
+            }
+
+            Text.Anchor = TextAnchor.MiddleLeft;
+            GUI.color = Color.white;
+            Widgets.Label(labelRect, SafeLabel(prereq));
+            Text.Anchor = TextAnchor.UpperLeft;
+
+            if (Clicked(prereqRect))
+            {
+                SoundDefOf.Click.PlayOneShotOnCamera();
+                selectedProject = prereq;
+            }
+
+            rect.yMin += itemHeight + 4f;
         }
 
         private float DrawResearchBenchRequirements(ResearchProjectDef project, Rect rect)
@@ -192,13 +212,12 @@ namespace CM_Semi_Random_Research
             float yMin = rect.yMin;
             if (project.requiredResearchBuilding != null)
             {
-                List<Map> maps = Find.Maps;
                 Widgets.LabelCacheHeight(ref rect, "RequiredResearchBench".Translate() + ":");
                 rect.xMin += 6f;
                 rect.yMin += rect.height;
                 GUI.color = FulfilledPrerequisiteColor;
-                rect.height = Text.CalcHeight(project.requiredResearchBuilding.LabelCap, rect.width - 24f - 6f);
-                Widgets.HyperlinkWithIcon(rect, new Dialog_InfoCard.Hyperlink(project.requiredResearchBuilding));
+                rect.height = Text.CalcHeight(SafeDefLabel(project.requiredResearchBuilding), rect.width);
+                DrawDefLink(rect, project.requiredResearchBuilding, SafeDefLabel(project.requiredResearchBuilding));
                 rect.yMin += rect.height + 4f;
                 GUI.color = Color.white;
                 rect.xMin = xMin;
@@ -207,7 +226,7 @@ namespace CM_Semi_Random_Research
             {
                 Widgets.LabelCacheHeight(ref rect, "RequiredResearchBenchFacilities".Translate() + ":");
                 rect.yMin += rect.height;
-                Building_ResearchBench building_ResearchBench = FindBenchFulfillingMostRequirements(project.requiredResearchBuilding, project.requiredResearchFacilities);
+                Building_ResearchBench building_ResearchBench = cachedMatchingBench;
                 CompAffectedByFacilities bestMatchingBench = null;
                 if (building_ResearchBench != null)
                 {
@@ -237,40 +256,103 @@ namespace CM_Semi_Random_Research
                 foreach (ThingDef item in project.requiredAnalyzed)
                 {
                     Rect rect2 = new Rect(rect.x, rect.yMin, rect.width, 24f);
-                    Color? color = null;
-                    Dialog_InfoCard.Hyperlink hyperlink = new Dialog_InfoCard.Hyperlink(item);
-                    Widgets.HyperlinkWithIcon(rect2, hyperlink, null, 2f, 6f, color, truncateLabel: false);
+                    DrawDefLink(rect2, item, SafeDefLabel(item));
                     rect.yMin += 24f;
                 }
             }
             return rect.yMin - yMin;
         }
 
-        private Building_ResearchBench FindBenchFulfillingMostRequirements(ThingDef requiredResearchBench, List<ThingDef> requiredFacilities)
+        private Def GetFirstUnlockable(ResearchProjectDef project)
         {
-            tmpAllBuildings.Clear();
-            List<Map> maps = Find.Maps;
-            for (int i = 0; i < maps.Count; i++)
+            if (project == null)
+                return null;
+
+            cachedFirstUnlockable.TryGetValue(project, out Def cached);
+            return cached;
+        }
+
+        private float DrawUnlockableHyperlinks(Rect rect, ResearchProjectDef project)
+        {
+            List<Def> unlocked = project == cachedUnlocksProject ? cachedSelectedUnlocks : null;
+            if (unlocked.NullOrEmpty())
             {
-                tmpAllBuildings.AddRange(maps[i].listerBuildings.allBuildingsColonist);
+                return 0f;
             }
-            float num = 0f;
-            Building_ResearchBench building_ResearchBench = null;
-            for (int j = 0; j < tmpAllBuildings.Count; j++)
+
+            float yMin = rect.yMin;
+            float x = rect.x;
+
+            Text.Font = GameFont.Small;
+            Widgets.LabelCacheHeight(ref rect, "Unlocks".Translate() + ":");
+            rect.yMin += rect.height + 6f;
+
+            int visibleDrawn = 0;
+            const int maxVisibleIcons = 20;
+            const float itemHeight = 48f;
+            for (int i = 0; i < unlocked.Count; i++)
             {
-                Building_ResearchBench building_ResearchBench2 = tmpAllBuildings[j] as Building_ResearchBench;
-                if (building_ResearchBench2 != null && (requiredResearchBench == null || building_ResearchBench2.def == requiredResearchBench))
+                Def def = unlocked[i];
+                if (def == null)
+                    continue;
+
+                Rect itemRect = new Rect(rect.x, rect.yMin, rect.width, itemHeight);
+                bool isMouseOver = Mouse.IsOver(itemRect);
+                if (IsRepaint)
                 {
-                    float researchBenchRequirementsScore = GetResearchBenchRequirementsScore(building_ResearchBench2, requiredFacilities);
-                    if (building_ResearchBench == null || researchBenchRequirementsScore > num)
-                    {
-                        num = researchBenchRequirementsScore;
-                        building_ResearchBench = building_ResearchBench2;
-                    }
+                    Widgets.DrawBoxSolid(itemRect, isMouseOver
+                        ? new Color(0.3f, 0.3f, 0.3f, 0.3f)
+                        : new Color(0.1f, 0.1f, 0.1f, 0.1f));
+                    DrawTransparentBox(itemRect, isMouseOver
+                        ? new Color(0.8f, 0.8f, 0.8f, 0.5f)
+                        : new Color(0.4f, 0.4f, 0.4f, 0.3f), isMouseOver ? 1.5f : 1f);
+                }
+
+                DrawDefLink(itemRect, def, SafeDefLabel(def), 32f);
+                visibleDrawn++;
+                if (visibleDrawn >= maxVisibleIcons)
+                {
+                    rect.yMin += itemHeight + 8f;
+                    Widgets.Label(new Rect(rect.x, rect.yMin, rect.width, 24f), "+" + (unlocked.Count - i - 1) + " more");
+                    rect.yMin += 26f;
+                    break;
+                }
+
+                rect.yMin += itemHeight + 8f;
+            }
+
+            rect.x = x;
+            GUI.color = Color.white;
+            return rect.yMin - yMin;
+        }
+
+        private void DrawDefLink(Rect rect, Def def, string text, float iconSize = 24f)
+        {
+            Rect iconRect = new Rect(rect.x + 6f, rect.y + (rect.height - iconSize) / 2f, iconSize, iconSize);
+            Rect labelRect = new Rect(iconRect.xMax + 12f, rect.y, rect.width - iconRect.width - 24f, rect.height);
+
+            if (IsRepaint && def != null)
+            {
+                try
+                {
+                    GUI.color = Mouse.IsOver(rect) ? Color.white : new Color(0.9f, 0.9f, 0.9f);
+                    Widgets.DefIcon(iconRect, def);
+                }
+                catch (Exception)
+                {
                 }
             }
-            tmpAllBuildings.Clear();
-            return building_ResearchBench;
+
+            Text.Anchor = TextAnchor.MiddleLeft;
+            GUI.color = Mouse.IsOver(rect) ? Color.white : new Color(0.85f, 0.85f, 0.85f);
+            Widgets.Label(labelRect, text ?? string.Empty);
+            Text.Anchor = TextAnchor.UpperLeft;
+            GUI.color = Color.white;
+
+            if (Clicked(rect) && def != null)
+            {
+                Find.WindowStack.Add(new Dialog_InfoCard(def));
+            }
         }
 
         private void DrawResearchBenchFacilityRequirement(ThingDef requiredFacility, CompAffectedByFacilities bestMatchingBench, ResearchProjectDef project, ref Rect rect)
@@ -283,13 +365,13 @@ namespace CM_Semi_Random_Research
                 thing2 = bestMatchingBench.LinkedFacilitiesListForReading.Find((Thing x) => x.def == requiredFacility && bestMatchingBench.IsFacilityActive(x));
             }
             GUI.color = FulfilledPrerequisiteColor;
-            string text = requiredFacility.LabelCap;
+            string text = SafeDefLabel(requiredFacility);
             if (thing != null && thing2 == null)
             {
                 text += " (" + "InactiveFacility".Translate() + ")";
             }
-            rect.height = Text.CalcHeight(text, rect.width - 24f - 6f);
-            Widgets.HyperlinkWithIcon(rect, new Dialog_InfoCard.Hyperlink(requiredFacility), text);
+            rect.height = Text.CalcHeight(text, rect.width);
+            DrawDefLink(rect, requiredFacility, text);
         }
 
         private float GetResearchBenchRequirementsScore(Building_ResearchBench bench, List<ThingDef> requiredFacilities)
@@ -314,148 +396,6 @@ namespace CM_Semi_Random_Research
             return num;
         }
 
-        private Def GetFirstUnlockable(ResearchProjectDef project)
-        {
-            List<Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>>> list = UnlockedDefsGroupedByPrerequisites(project);
-
-            if (list.NullOrEmpty())
-                return null;
-
-            List<Def> defList = list.First().Second;
-            if (defList.NullOrEmpty())
-                return null;
-
-            int randomIndex = Rand.RangeInclusiveSeeded(0, defList.Count - 1, currentRandomSeed);
-
-            return defList[randomIndex];
-        }
-
-        private float DrawUnlockableHyperlinks(Rect rect, ResearchProjectDef project)
-        {
-            List<Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>>> list = UnlockedDefsGroupedByPrerequisites(project);
-
-            if (list.NullOrEmpty())
-            {
-                if (errorDetected)
-                {
-                    GUI.color = Color.red;
-                    Widgets.LabelCacheHeight(ref rect, "ERROR DETECTED: Check devlog for more information");
-                    GUI.color = Color.white;
-                    return rect.height;
-                }
-                return 0f;
-            }
-            float yMin = rect.yMin;
-            float x = rect.x;
-
-            Text.Font = GameFont.Medium;
-
-            foreach (Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>> item in list)
-            {
-                ResearchPrerequisitesUtility.UnlockedHeader first = item.First;
-                rect.x = x;
-
-                if (!first.unlockedBy.Any())
-                {
-                    Widgets.LabelCacheHeight(ref rect, "Unlocks".Translate() + ":");
-                }
-                else
-                {
-                    Widgets.LabelCacheHeight(ref rect, string.Concat("UnlockedWith".Translate(), " ", HeaderLabel(first), ":"));
-                }
-
-                rect.x += 6f;
-                rect.yMin += rect.height + 8f; // More padding after header
-
-                Text.Font = GameFont.Small;
-
-                bool useDoubleColumns = item.Second.Count > 8;
-                float originalWidth = rect.width - 12f;
-                float columnWidth = useDoubleColumns ? (originalWidth / 2) - 6f : originalWidth;
-                float columnSpacing = useDoubleColumns ? 12f : 0f;
-                float originalX = rect.x;
-                float startingY = rect.yMin; // Store the starting Y position after the header
-                float maxYColumn = rect.yMin;
-                int columnCount = 0;
-
-                foreach (Def item2 in item.Second)
-                {
-                    float itemHeight = 48f; // Much bigger than the original 24f
-
-                    if (useDoubleColumns && columnCount >= (int)Math.Ceiling(item.Second.Count / 2.0f))
-                    {
-                        if (columnCount == (int)Math.Ceiling(item.Second.Count / 2.0f))
-                        {
-                            rect.x = originalX + columnWidth + columnSpacing;
-                            rect.yMin = startingY; // Reset Y to starting position of the first item
-                        }
-                    }
-
-                    Rect itemRect = new Rect(rect.x, rect.yMin, columnWidth, itemHeight);
-
-                    bool isMouseOver = Mouse.IsOver(itemRect);
-
-                    Color bgColor = isMouseOver
-                        ? new Color(0.3f, 0.3f, 0.3f, 0.3f)
-                        : new Color(0.1f, 0.1f, 0.1f, 0.1f);
-                    Widgets.DrawBoxSolid(itemRect, bgColor);
-
-                    Color borderColor = isMouseOver
-                        ? new Color(0.8f, 0.8f, 0.8f, 0.5f)
-                        : new Color(0.4f, 0.4f, 0.4f, 0.3f);
-                    DrawTransparentBox(itemRect, borderColor, isMouseOver ? 1.5f : 1f);
-
-                    Dialog_InfoCard.Hyperlink hyperlink = new Dialog_InfoCard.Hyperlink(item2);
-
-                    Rect iconRect = new Rect(itemRect.x + 6f, itemRect.y + (itemHeight - 32f) / 2, 32f, 32f);
-                    Rect labelRect = new Rect(iconRect.xMax + 12f, itemRect.y, itemRect.width - iconRect.width - 24f, itemHeight);
-
-                    try
-                    {
-                        GUI.color = isMouseOver ? Color.white : new Color(0.9f, 0.9f, 0.9f);
-                        Widgets.DefIcon(iconRect, item2);
-
-                        Text.Anchor = TextAnchor.MiddleLeft;
-                        GUI.color = isMouseOver ? Color.white : new Color(0.85f, 0.85f, 0.85f);
-                        string label = item2.LabelCap;
-                        Widgets.Label(labelRect, label);
-                        Text.Anchor = TextAnchor.UpperLeft;
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Warning("[CM_Semi_Random_Research] Error rendering icon for " + item2.defName + ": " + ex);
-
-                        Widgets.HyperlinkWithIcon(itemRect, hyperlink);
-                    }
-
-                    if (Widgets.ButtonInvisible(itemRect))
-                    {
-                        hyperlink.ActivateHyperlink();
-                    }
-
-                    rect.yMin += itemHeight + 8f;
-
-                    if (rect.yMin > maxYColumn)
-                        maxYColumn = rect.yMin;
-
-                    columnCount++;
-                }
-
-                if (useDoubleColumns)
-                {
-                    rect.yMin = maxYColumn;
-                    rect.x = originalX;
-                }
-
-                rect.yMin += 16f;
-            }
-
-            Text.Font = GameFont.Small;
-            GUI.color = Color.white;
-
-            return rect.yMin - yMin;
-        }
-
         private float DrawContentSource(Rect rect, ResearchProjectDef project)
         {
             if (project.modContentPack == null || project.modContentPack.IsCoreMod)
@@ -471,62 +411,6 @@ namespace CM_Semi_Random_Research
                 GUI.DrawTexture(new Rect(Text.CalcSize(taggedString).x + 4f, rect.y, 20f, 20f), expansionDef.IconFromStatus);
             }
             return rect.yMax - yMin;
-        }
-
-        private string HeaderLabel(ResearchPrerequisitesUtility.UnlockedHeader headerProject)
-        {
-            StringBuilder stringBuilder = new StringBuilder();
-            string value = "";
-            for (int i = 0; i < headerProject.unlockedBy.Count; i++)
-            {
-                ResearchProjectDef researchProjectDef = headerProject.unlockedBy[i];
-                string text = researchProjectDef.LabelCap;
-                stringBuilder.Append(text).Append(value);
-                value = ", ";
-            }
-            return stringBuilder.ToString();
-        }
-
-        private List<Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>>> UnlockedDefsGroupedByPrerequisites(ResearchProjectDef project)
-        {
-            if (cachedUnlockedDefsGroupedByPrerequisites == null)
-            {
-                cachedUnlockedDefsGroupedByPrerequisites = new Dictionary<ResearchProjectDef, List<Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>>>>();
-            }
-            List<Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>>> value = new List<Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>>>();
-            if (project != null && !cachedUnlockedDefsGroupedByPrerequisites.TryGetValue(project, out value))
-            {
-                // Seems that this function call can throw a NullReferenceException. This is not the problem of this mod, but the reports by people seeing SemiRandomResearch is in the stack trace is.
-                try
-                {
-                    value = ResearchPrerequisitesUtility.UnlockedDefsGroupedByPrerequisites(project);
-                }
-                catch (NullReferenceException nullex)
-                {
-                    errorDetected = true;
-
-                    Log.Error("[CM_Semi_Random_Research] Error while gathering information which research unlocks which items. " + (project == null ? " Function was called with null as parameter. This is a bug." : "This can indicate issues with your modpack. Do not report to Semi Random Research until you have confirmed that there is no error when opening the research screen without semi random research installed!"));
-                    var erroringRecepies = DefDatabase<RecipeDef>.AllDefs.Where(x => x?.products == null || x.products.Any(y => y?.thingDef == null));
-                    if (erroringRecepies.Any())
-                    {
-                        RecipeDef broken = erroringRecepies.RandomElement();
-                        string errorRecipeInformation = (broken?.modContentPack?.Name != null ? (" Most likely from mod : " + broken?.modContentPack?.Name) : "") + (broken?.modContentPack?.PackageId != null ? " Suspected id of the mod that added the broken recipe: " + broken?.modContentPack?.PackageId : "");
-                        Log.Error("[CM_Semi_Random_Research] Detected broken recepies! One of the broken recipes has the lable: " + broken?.label + " with DefName " + broken?.defName + errorRecipeInformation);
-                    }
-                    if (DefDatabase<ThingDef>.AllDefs.Any(x => x == null))
-                    {
-                        Log.Error("[CM_Semi_Random_Research] Detected null Thingdefs");
-                    }
-                    if (DefDatabase<TerrainDef>.AllDefs.Any(x => x == null))
-                    {
-                        Log.Error("[CM_Semi_Random_Research] Detected null TerrainDef");
-                    }
-                    value = new List<Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>>>();
-                    Log.Error(nullex.StackTrace);
-                }
-                cachedUnlockedDefsGroupedByPrerequisites.Add(project, value);
-            }
-            return value;
         }
     }
 }

@@ -11,12 +11,180 @@ namespace CM_Semi_Random_Research
 {
     public partial class MainTabWindow_NextResearch
     {
+        private void InvalidateLeftColumnCache()
+        {
+            cachedLeftListsRevision = -1;
+            cachedLeftCurrentHash = int.MinValue;
+        }
+
+        private static int CurrentProjectsHash(List<ResearchProjectDef> projects)
+        {
+            if (projects == null)
+                return 0;
+
+            int hash = 17;
+            for (int i = 0; i < projects.Count; i++)
+            {
+                ResearchProjectDef project = projects[i];
+                hash = hash * 31 + (project != null ? project.shortHash : 0);
+            }
+            return hash;
+        }
+
+        private void RebuildLeftColumnLists(ResearchTracker researchTracker)
+        {
+            int revision = researchTracker != null ? researchTracker.OffersRevision : -1;
+            int currentHash = CurrentProjectsHash(researchTracker?.CurrentProject);
+
+            if (revision == cachedLeftListsRevision && currentHash == cachedLeftCurrentHash)
+            {
+                return;
+            }
+
+            cachedLeftListsRevision = revision;
+            cachedLeftCurrentHash = currentHash;
+
+            ResearchProjectDef activeNonAnomalyProject = null;
+            ResearchProjectDef activeAnomalyProjectBasic = null;
+            ResearchProjectDef activeAnomalyProjectAdvanced = null;
+            ResearchProjectDef activeGravshipProject = null;
+
+            if (researchTracker != null && researchTracker.CurrentProject != null)
+            {
+                for (int i = 0; i < researchTracker.CurrentProject.Count; i++)
+                {
+                    ResearchProjectDef p = researchTracker.CurrentProject[i];
+                    if (p == null)
+                        continue;
+
+                    string key = ResearchTracker.GetCategoryKey(p);
+                    if (key == "Standard" && activeNonAnomalyProject == null)
+                        activeNonAnomalyProject = p;
+                    else if (key == "Gravship" && activeGravshipProject == null)
+                        activeGravshipProject = p;
+                    else if (AnomalyContentEnabled() && p.knowledgeCategory == KnowledgeCategoryDefOf.Basic && activeAnomalyProjectBasic == null)
+                        activeAnomalyProjectBasic = p;
+                    else if (AnomalyContentEnabled() && p.knowledgeCategory == KnowledgeCategoryDefOf.Advanced && activeAnomalyProjectAdvanced == null)
+                        activeAnomalyProjectAdvanced = p;
+                }
+            }
+
+            if (activeNonAnomalyProject == null)
+            {
+                ResearchProjectDef vanilla = Find.ResearchManager.GetProject();
+                if (vanilla != null && ResearchTracker.GetCategoryKey(vanilla) == "Standard")
+                    activeNonAnomalyProject = vanilla;
+            }
+
+            cachedActiveProjects.Clear();
+            if (activeNonAnomalyProject != null) cachedActiveProjects.Add(activeNonAnomalyProject);
+            if (activeAnomalyProjectBasic != null && !cachedActiveProjects.Contains(activeAnomalyProjectBasic))
+                cachedActiveProjects.Add(activeAnomalyProjectBasic);
+            if (activeAnomalyProjectAdvanced != null && !cachedActiveProjects.Contains(activeAnomalyProjectAdvanced))
+                cachedActiveProjects.Add(activeAnomalyProjectAdvanced);
+            if (activeGravshipProject != null && !cachedActiveProjects.Contains(activeGravshipProject))
+                cachedActiveProjects.Add(activeGravshipProject);
+
+            cachedFoundationProjects.Clear();
+            cachedEmergenceProjects.Clear();
+
+            cachedAnomalyBasic.Clear();
+            cachedAnomalyAdvanced.Clear();
+            cachedGravshipProjects.Clear();
+            cachedStandardGroups.Clear();
+
+            var standardByLevel = new Dictionary<TechLevel, List<ResearchProjectDef>>();
+            bool anomalyOn = AnomalyContentEnabled();
+            for (int i = 0; i < currentAvailableProjects.Count; i++)
+            {
+                ResearchProjectDef p = currentAvailableProjects[i];
+                if (p == null)
+                    continue;
+
+                if (NodeResearch.IsFoundationTech(p))
+                    cachedFoundationProjects.Add(p);
+                if (NodeResearch.IsEmergenceTech(p))
+                    cachedEmergenceProjects.Add(p);
+
+                string key = ResearchTracker.GetCategoryKey(p);
+                if (key == "Gravship")
+                {
+                    if (p != activeGravshipProject)
+                        cachedGravshipProjects.Add(p);
+                    continue;
+                }
+
+                if (anomalyOn && p.knowledgeCategory == KnowledgeCategoryDefOf.Basic)
+                {
+                    if (p != activeAnomalyProjectBasic)
+                        cachedAnomalyBasic.Add(p);
+                    continue;
+                }
+
+                if (anomalyOn && p.knowledgeCategory == KnowledgeCategoryDefOf.Advanced)
+                {
+                    if (p != activeAnomalyProjectAdvanced)
+                        cachedAnomalyAdvanced.Add(p);
+                    continue;
+                }
+
+                if (key == "Standard" && p != activeNonAnomalyProject)
+                {
+                    if (!standardByLevel.TryGetValue(p.techLevel, out List<ResearchProjectDef> list))
+                    {
+                        list = new List<ResearchProjectDef>();
+                        standardByLevel[p.techLevel] = list;
+                    }
+                    list.Add(p);
+                }
+            }
+
+            cachedAnomalyBasic.Sort((a, b) => a.CostApparent.CompareTo(b.CostApparent));
+            cachedAnomalyAdvanced.Sort((a, b) => a.CostApparent.CompareTo(b.CostApparent));
+            cachedGravshipProjects.Sort((a, b) => a.CostApparent.CompareTo(b.CostApparent));
+
+            var levels = new List<TechLevel>(standardByLevel.Keys);
+            levels.Sort();
+            for (int i = 0; i < levels.Count; i++)
+            {
+                List<ResearchProjectDef> list = standardByLevel[levels[i]];
+                list.Sort((a, b) => a.CostApparent.CompareTo(b.CostApparent));
+                cachedStandardGroups.Add(new Pair<TechLevel, List<ResearchProjectDef>>(levels[i], list));
+            }
+
+            cachedSharedCostWidth = Mathf.Max(
+                MeasureCostColumnWidth(currentAvailableProjects),
+                MeasureCostColumnWidth(cachedActiveProjects));
+
+            for (int i = 0; i < cachedActiveProjects.Count; i++)
+            {
+                ResearchProjectDef p = cachedActiveProjects[i];
+                if (p == null)
+                    continue;
+                if (NodeResearch.IsFoundationTech(p))
+                    cachedFoundationProjects.Add(p);
+                if (NodeResearch.IsEmergenceTech(p))
+                    cachedEmergenceProjects.Add(p);
+            }
+        }
+
         private void DrawLeftColumn(Rect leftRect)
         {
-            ResearchTracker researchTracker = Current.Game.World.GetComponent<ResearchTracker>();
+            ResearchTracker researchTracker = drawTracker;
+            RebuildLeftColumnLists(researchTracker);
 
             Rect position = leftRect;
+            float footerPaddingTop = 12f;
+            float footerHeight = 40f;
+            float footerPaddingBottom = 12f;
+            float totalFooterHeight = footerPaddingTop + footerHeight + footerPaddingBottom;
+            float footerButtonWidth = 120f;
+            float buttonSpacing = 20f;
+
             GUI.BeginGroup(position);
+            bool startedScroll = false;
+            try
+            {
 
             float currentY = 0f;
             float mainLabelHeight = 40.0f;
@@ -25,78 +193,20 @@ namespace CM_Semi_Random_Research
             float buttonHeight = 48f;
             float techLevelHeaderHeight = 28f;
 
-            float footerPaddingTop = 12f;
-            float footerHeight = 40f;
-            float footerPaddingBottom = 12f;
-            float totalFooterHeight = footerPaddingTop + footerHeight + footerPaddingBottom;
-            float footerButtonWidth = 120f;
-            float buttonSpacing = 20f;
-
-            bool hasActiveNonAnomalyResearch = false;
-            bool hasActiveAnomalyResearchBasic = false;
-            bool hasActiveAnomalyResearchAdvanced = false;
-            bool hasActiveGravshipResearch = false;
-
-            ResearchProjectDef activeNonAnomalyProject = null;
-            ResearchProjectDef activeAnomalyProjectBasic = null;
-            ResearchProjectDef activeAnomalyProjectAdvanced = null;
-            ResearchProjectDef activeGravshipProject = null;
-
-            if (researchTracker != null && researchTracker.CurrentProject != null && researchTracker.CurrentProject.Count > 0)
-            {
-                activeNonAnomalyProject = researchTracker.CurrentProject.FirstOrDefault(p => ResearchTracker.GetCategoryKey(p) == "Standard");
-                hasActiveNonAnomalyResearch = activeNonAnomalyProject != null;
-
-                activeAnomalyProjectBasic = researchTracker.CurrentProject.FirstOrDefault(p => p.knowledgeCategory == KnowledgeCategoryDefOf.Basic);
-                hasActiveAnomalyResearchBasic = activeAnomalyProjectBasic != null;
-
-                activeAnomalyProjectAdvanced = researchTracker.CurrentProject.FirstOrDefault(p => p.knowledgeCategory == KnowledgeCategoryDefOf.Advanced);
-                hasActiveAnomalyResearchAdvanced = activeAnomalyProjectAdvanced != null;
-
-                activeGravshipProject = researchTracker.CurrentProject.FirstOrDefault(p => p.tab?.defName == "VGE_Gravtech" || p.tab?.defName == "VGE_GravShip");
-                hasActiveGravshipResearch = activeGravshipProject != null;
-            }
-
-            if (!hasActiveNonAnomalyResearch && Find.ResearchManager.GetProject() != null &&
-                ResearchTracker.GetCategoryKey(Find.ResearchManager.GetProject()) == "Standard")
-            {
-                activeNonAnomalyProject = Find.ResearchManager.GetProject();
-                hasActiveNonAnomalyResearch = true;
-            }
-
-            var anomalyProjectsBasic = AnomalyContentEnabled() ?
-                currentAvailableProjects.Where(p => p.knowledgeCategory == KnowledgeCategoryDefOf.Basic).ToList() :
-                new List<ResearchProjectDef>();
-
-            var anomalyProjectsAdvanced = AnomalyContentEnabled() ?
-                currentAvailableProjects.Where(p => p.knowledgeCategory == KnowledgeCategoryDefOf.Advanced).ToList() :
-                new List<ResearchProjectDef>();
-
-            var gravshipProjects = currentAvailableProjects.Where(p => p.tab?.defName == "VGE_Gravtech" || p.tab?.defName == "VGE_GravShip").ToList();
-
-            // REMOVE active projects from available lists so they don't draw twice
-            if (hasActiveAnomalyResearchBasic) anomalyProjectsBasic.Remove(activeAnomalyProjectBasic);
-            if (hasActiveAnomalyResearchAdvanced) anomalyProjectsAdvanced.Remove(activeAnomalyProjectAdvanced);
-            if (hasActiveGravshipResearch) gravshipProjects.Remove(activeGravshipProject);
-
-            bool hasAnomalyToShowBasic = anomalyProjectsBasic.Any();
-            bool hasAnomalyToShowAdvanced = anomalyProjectsAdvanced.Any();
-            bool hasGravshipToShow = gravshipProjects.Any();
-
-            float sharedCostColumnWidth = MeasureCostColumnWidth(
-                currentAvailableProjects
-                    .Concat(new[] { activeNonAnomalyProject, activeAnomalyProjectBasic, activeAnomalyProjectAdvanced, activeGravshipProject }));
+            bool hasAnomalyToShowBasic = cachedAnomalyBasic.Count > 0;
+            bool hasAnomalyToShowAdvanced = cachedAnomalyAdvanced.Count > 0;
+            bool hasGravshipToShow = cachedGravshipProjects.Count > 0;
+            float sharedCostColumnWidth = cachedSharedCostWidth;
 
             Text.Font = GameFont.Medium;
             GenUI.SetLabelAlign(TextAnchor.MiddleLeft);
 
-            // Increased from 0.4f to 0.5f to prevent text wrapping
             float labelWidth = position.width * 0.5f;
             Rect mainLabelRect = new Rect(0f, currentY, labelWidth, mainLabelHeight);
-            Widgets.LabelCacheHeight(ref mainLabelRect, "Currently researching");
+            Widgets.Label(mainLabelRect, "Currently researching");
 
             Text.Font = GameFont.Small;
-            float techInfoX = labelWidth + 10f; // Tucked slightly closer to make room
+            float techInfoX = labelWidth + 10f;
             float techInfoWidth = position.width - techInfoX;
 
             TechLevel colonyTech = Faction.OfPlayer.def.techLevel;
@@ -104,38 +214,36 @@ namespace CM_Semi_Random_Research
 
             DrawTechLevelText(colonyTechRect, "Faction: ", colonyTech);
 
-            TechLevel worldTech = Find.World.worldObjects.Settlements
-                .Where(s => s.Faction != null && !s.Faction.IsPlayer)
-                .Select(s => s.Faction.def.techLevel)
-                .DefaultIfEmpty(TechLevel.Undefined)
-                .Max();
             Rect worldTechRect = new Rect(techInfoX + techInfoWidth * 0.5f, currentY, techInfoWidth * 0.5f, mainLabelHeight);
-            DrawTechLevelText(worldTechRect, "World: ", worldTech);
+            DrawTechLevelText(worldTechRect, "World: ", cachedWorldTech);
 
             GenUI.ResetLabelAlign();
             currentY += mainLabelHeight + 4f;
 
-            // ==========================================
-            // START SCROLL VIEW
-            // ==========================================
             Rect scrollOutRect = new Rect(0f, currentY, position.width, position.height - (totalFooterHeight + currentY));
-            Rect scrollViewRect = new Rect(0f, 0f, scrollOutRect.width - 20f, leftScrollViewHeight);
-            Widgets.BeginScrollView(scrollOutRect, ref leftScrollPosition, scrollViewRect);
+            if (Event.current.type == EventType.Layout)
+                leftScrollHeightForFrame = leftScrollViewHeight;
+            float viewHeight = Mathf.Max(leftScrollHeightForFrame, 1f);
+            Rect scrollViewRect = new Rect(0f, 0f, scrollOutRect.width - 16f, viewHeight);
+            bool useScroll = viewHeight > scrollOutRect.height + 1f;
+            if (useScroll)
+            {
+                Widgets.BeginScrollView(scrollOutRect, ref leftScrollPosition, scrollViewRect);
+                startedScroll = true;
+            }
+            else
+            {
+                GUI.BeginGroup(scrollOutRect);
+            }
+            try
+            {
             currentY = 0f;
 
-            // ==========================================
-            // THE DASHBOARD (All Active Projects)
-            // ==========================================
-            List<ResearchProjectDef> activeProjects = new List<ResearchProjectDef>();
-            if (hasActiveNonAnomalyResearch) activeProjects.Add(activeNonAnomalyProject);
-            if (hasActiveAnomalyResearchBasic) activeProjects.Add(activeAnomalyProjectBasic);
-            if (hasActiveAnomalyResearchAdvanced) activeProjects.Add(activeAnomalyProjectAdvanced);
-            if (hasActiveGravshipResearch) activeProjects.Add(activeGravshipProject);
-
-            if (activeProjects.Count > 0)
+            if (cachedActiveProjects.Count > 0)
             {
-                foreach (var activeProj in activeProjects)
+                for (int i = 0; i < cachedActiveProjects.Count; i++)
                 {
+                    ResearchProjectDef activeProj = cachedActiveProjects[i];
                     // Only the Main/Standard project gets the expanded height
                     bool isMainProject = ResearchTracker.GetCategoryKey(activeProj) == "Standard";
 
@@ -160,13 +268,7 @@ namespace CM_Semi_Random_Research
             GUI.color = Color.white;
             currentY += 16f;
 
-            // ==========================================
-            // AVAILABLE STANDARD PROJECTS
-            // ==========================================
-            var groupedProjects = GroupByTechLevel(
-                currentAvailableProjects.Where(p => ResearchTracker.GetCategoryKey(p) == "Standard" && p != activeNonAnomalyProject));
-
-            bool hasStandardToShow = groupedProjects.Any(g => g.Any());
+            bool hasStandardToShow = cachedStandardGroups.Count > 0;
 
             if (hasStandardToShow || hasAnomalyToShowBasic || hasAnomalyToShowAdvanced || hasGravshipToShow)
             {
@@ -178,15 +280,17 @@ namespace CM_Semi_Random_Research
             }
 
             bool isFirst = true;
-            foreach (var techGroup in groupedProjects)
+            for (int g = 0; g < cachedStandardGroups.Count; g++)
             {
-                if (!techGroup.Any()) continue;
+                Pair<TechLevel, List<ResearchProjectDef>> techGroup = cachedStandardGroups[g];
+                if (techGroup.Second == null || techGroup.Second.Count == 0)
+                    continue;
 
                 if (!isFirst) currentY += gapHeight;
                 isFirst = false;
 
                 float headerAnimProgress = 1f;
-                if (techLevelHeaderProgress.TryGetValue(techGroup.Key, out float progress))
+                if (techLevelHeaderProgress.TryGetValue(techGroup.First, out float progress))
                     headerAnimProgress = progress;
 
                 if (headerAnimProgress <= 0.01f) continue;
@@ -195,21 +299,22 @@ namespace CM_Semi_Random_Research
                 GUI.color = new Color(GUI.color.r, GUI.color.g, GUI.color.b, headerAnimProgress);
 
                 Text.Font = GameFont.Small;
-                Color techColor = GetTechLevelColor(techGroup.Key);
+                Color techColor = GetTechLevelColor(techGroup.First);
                 techColor.a *= headerAnimProgress;
                 GUI.color = techColor;
 
                 Rect headerRect = new Rect(0f, currentY, scrollViewRect.width, techLevelHeaderHeight);
                 Text.Anchor = TextAnchor.MiddleLeft;
-                Widgets.Label(headerRect, techGroup.Key.ToStringHuman().CapitalizeFirst());
+                Widgets.Label(headerRect, techGroup.First.ToStringHuman().CapitalizeFirst());
                 Text.Anchor = TextAnchor.UpperLeft;
                 GUI.color = originalColor;
                 currentY += techLevelHeaderHeight;
 
-                foreach (ResearchProjectDef projectDef in techGroup.OrderBy(p => p.CostApparent))
+                List<ResearchProjectDef> groupProjects = techGroup.Second;
+                for (int p = 0; p < groupProjects.Count; p++)
                 {
                     Rect buttonRect = new Rect(0f, currentY, scrollViewRect.width, buttonHeight);
-                    DrawResearchButton(ref buttonRect, projectDef, sharedCostColumnWidth);
+                    DrawResearchButton(ref buttonRect, groupProjects[p], sharedCostColumnWidth);
                     currentY += buttonHeight + researchProjectGapHeight;
                 }
             }
@@ -240,10 +345,10 @@ namespace CM_Semi_Random_Research
                 GUI.color = Color.white;
                 currentY += techLevelHeaderHeight;
 
-                foreach (ResearchProjectDef projectDef in anomalyProjectsBasic.OrderBy(p => p.CostApparent))
+                for (int i = 0; i < cachedAnomalyBasic.Count; i++)
                 {
                     Rect buttonRect = new Rect(0f, currentY, scrollViewRect.width, buttonHeight);
-                    DrawResearchButton(ref buttonRect, projectDef, sharedCostColumnWidth);
+                    DrawResearchButton(ref buttonRect, cachedAnomalyBasic[i], sharedCostColumnWidth);
                     currentY += buttonHeight + researchProjectGapHeight;
                 }
             }
@@ -261,10 +366,10 @@ namespace CM_Semi_Random_Research
                 GUI.color = Color.white;
                 currentY += techLevelHeaderHeight;
 
-                foreach (ResearchProjectDef projectDef in anomalyProjectsAdvanced.OrderBy(p => p.CostApparent))
+                for (int i = 0; i < cachedAnomalyAdvanced.Count; i++)
                 {
                     Rect buttonRect = new Rect(0f, currentY, scrollViewRect.width, buttonHeight);
-                    DrawResearchButton(ref buttonRect, projectDef, sharedCostColumnWidth);
+                    DrawResearchButton(ref buttonRect, cachedAnomalyAdvanced[i], sharedCostColumnWidth);
                     currentY += buttonHeight + researchProjectGapHeight;
                 }
             }
@@ -282,135 +387,115 @@ namespace CM_Semi_Random_Research
                 GUI.color = Color.white;
                 currentY += techLevelHeaderHeight;
 
-                foreach (ResearchProjectDef projectDef in gravshipProjects.OrderBy(p => p.CostApparent))
+                for (int i = 0; i < cachedGravshipProjects.Count; i++)
                 {
                     Rect buttonRect = new Rect(0f, currentY, scrollViewRect.width, buttonHeight);
-                    DrawResearchButton(ref buttonRect, projectDef, sharedCostColumnWidth);
+                    DrawResearchButton(ref buttonRect, cachedGravshipProjects[i], sharedCostColumnWidth);
                     currentY += buttonHeight + researchProjectGapHeight;
                 }
             }
 
-            leftScrollViewHeight = currentY;
-            Widgets.EndScrollView();
+            if (Event.current.type == EventType.Layout)
+                leftScrollViewHeight = currentY;
+            }
+            finally
+            {
+                if (startedScroll)
+                    Widgets.EndScrollView();
+                else
+                    GUI.EndGroup();
+            }
 
-            // ==========================================
-            // FOOTER CONTROLS
-            // ==========================================
+            }
+            finally
+            {
+                GUI.EndGroup();
+            }
+
             if (researchTracker != null)
             {
+                DrawLeftColumnFooter(leftRect, researchTracker, totalFooterHeight, footerPaddingTop, footerHeight, footerButtonWidth, buttonSpacing);
+            }
+        }
 
-                // FIX: Force font back to small to prevent text size leakage from the animation skips
-                Text.Font = GameFont.Small;
+        private void DrawLeftColumnFooter(Rect leftRect, ResearchTracker researchTracker, float totalFooterHeight, float footerPaddingTop, float footerHeight, float footerButtonWidth, float buttonSpacing)
+        {
+            Text.Font = GameFont.Small;
 
-                Rect footerContainerRect = new Rect(0f, position.height - totalFooterHeight, position.width, totalFooterHeight);
+            Rect footerContainerRect = new Rect(leftRect.x, leftRect.yMax - totalFooterHeight, leftRect.width, totalFooterHeight);
 
+            if (IsRepaint)
+            {
                 GUI.color = new Color(0.4f, 0.4f, 0.4f, 0.6f);
                 Widgets.DrawLineHorizontal(footerContainerRect.x, footerContainerRect.y, footerContainerRect.width);
                 GUI.color = Color.white;
+            }
 
-                bool showRerollButton = SemiRandomResearchMod.settings.allowManualReroll != ManualReroll.None;
-                int buttonCount = showRerollButton ? 3 : 2;
-                float totalButtonsWidth = (footerButtonWidth * buttonCount) + (buttonSpacing * (buttonCount - 1));
-                float startX = (footerContainerRect.width - totalButtonsWidth) / 2;
-                float footerButtonY = footerContainerRect.y + footerPaddingTop;
+            bool showRerollButton = SemiRandomResearchMod.settings.allowManualReroll != ManualReroll.None;
+            int buttonCount = showRerollButton ? 3 : 2;
+            float totalButtonsWidth = (footerButtonWidth * buttonCount) + (buttonSpacing * (buttonCount - 1));
+            float startX = (footerContainerRect.width - totalButtonsWidth) / 2;
+            float footerButtonY = footerContainerRect.y + footerPaddingTop;
 
-                Rect researchTreeButtonRect = new Rect(footerContainerRect.x + startX, footerButtonY, footerButtonWidth, footerHeight);
-                Rect rerollButtonRect = default;
-                Rect researchButtonRect;
-                if (showRerollButton)
+            Rect researchTreeButtonRect = new Rect(footerContainerRect.x + startX, footerButtonY, footerButtonWidth, footerHeight);
+            Rect rerollButtonRect = default;
+            Rect researchButtonRect;
+            if (showRerollButton)
+            {
+                rerollButtonRect = new Rect(researchTreeButtonRect.xMax + buttonSpacing, footerButtonY, footerButtonWidth, footerHeight);
+                researchButtonRect = new Rect(rerollButtonRect.xMax + buttonSpacing, footerButtonY, footerButtonWidth, footerHeight);
+            }
+            else
+            {
+                researchButtonRect = new Rect(researchTreeButtonRect.xMax + buttonSpacing, footerButtonY, footerButtonWidth, footerHeight);
+            }
+
+            if (ColoredButtonText(researchTreeButtonRect, cachedTreeButtonText, FooterTreeButtonColor))
+            {
+                SoundDefOf.Click.PlayOneShotOnCamera();
+                ResearchTabWindowSwitcher.SwitchToPreferredTree(this);
+                Event.current.Use();
+            }
+
+            if (IsRepaint && Mouse.IsOver(researchTreeButtonRect))
+                TooltipHandler.TipRegion(researchTreeButtonRect, cachedTreeButtonTip);
+
+            if (showRerollButton)
+            {
+                if (cachedCanReroll)
                 {
-                    rerollButtonRect = new Rect(researchTreeButtonRect.xMax + buttonSpacing, footerButtonY, footerButtonWidth, footerHeight);
-                    researchButtonRect = new Rect(rerollButtonRect.xMax + buttonSpacing, footerButtonY, footerButtonWidth, footerHeight);
+                    if (ColoredButtonText(rerollButtonRect, "Reroll", FooterRerollButtonColor))
+                    {
+                        SoundDefOf.Click.PlayOneShotOnCamera();
+                        SoundDefOf.TabOpen.PlayOneShotOnCamera();
+                        researchTracker.Reroll(rerollButtonType);
+                        lastRerollTime = Time.realtimeSinceStartup;
+                        cachedCanReroll = researchTracker.CanReroll(rerollButtonType);
+                        CopyAvailableProjects(researchTracker.PeekAvailableProjects());
+                        InvalidateLeftColumnCache();
+                    }
                 }
                 else
                 {
-                    researchButtonRect = new Rect(researchTreeButtonRect.xMax + buttonSpacing, footerButtonY, footerButtonWidth, footerHeight);
+                    DrawInactiveFooterButton(rerollButtonRect, "No rerolls", Color.grey);
                 }
+            }
 
-                Type preferredTreeType = ResearchTabWindowSwitcher.ResolvePreferredTreeWindowType();
-                string treeButtonText = "Research Tree";
-                string treeButtonTip = "View the standard Research Tree (View only).";
-                if (preferredTreeType == ResearchTabWindowSwitcher.NodeResearchWindowType)
-                {
-                    treeButtonText = "Node Research";
-                    treeButtonTip = "Switch to Node Research. Prohibit normal project selection still applies if it is enabled.";
-                }
-                else if (preferredTreeType == ResearchTabWindowSwitcher.YartWindowType)
-                {
-                    treeButtonText = "YART";
-                    treeButtonTip = "Switch to YART. Prohibit normal project selection still applies if it is enabled.";
-                }
-
-                if (ColoredButtonText(researchTreeButtonRect, treeButtonText, FooterTreeButtonColor))
-                {
-                    SoundDefOf.Click.PlayOneShotOnCamera();
-                    ResearchTabWindowSwitcher.SwitchToPreferredTree(this);
-                    Event.current.Use();
-                }
-
-                TooltipHandler.TipRegion(researchTreeButtonRect, treeButtonTip);
-
-                if (showRerollButton)
-                {
-                    bool canReroll = researchTracker.CanReroll(rerollButtonType);
-                    string rerollText = canReroll ? "Reroll" : "No rerolls";
-
-                    if (canReroll)
-                    {
-                        if (ColoredButtonText(rerollButtonRect, rerollText, FooterRerollButtonColor))
-                        {
-                            SoundDefOf.Click.PlayOneShotOnCamera();
-                            SoundDefOf.TabOpen.PlayOneShotOnCamera();
-                            researchTracker.Reroll(rerollButtonType);
-                            lastRerollTime = Time.realtimeSinceStartup;
-                        }
-                    }
-                    else
-                    {
-                        GUI.color = Color.grey;
-                        Widgets.DrawAtlas(rerollButtonRect, Widgets.ButtonSubtleAtlas);
-                        Text.Anchor = TextAnchor.MiddleCenter;
-                        Widgets.Label(rerollButtonRect, rerollText);
-                        Text.Anchor = TextAnchor.UpperLeft;
-                        GUI.color = Color.white;
-                    }
-                }
-
-                string researchButtonText = "Start Research";
-
-                if (selectedProject == null)
-                {
-                    GUI.color = Color.grey;
-                    Widgets.DrawAtlas(researchButtonRect, Widgets.ButtonSubtleAtlas);
-                    Text.Anchor = TextAnchor.MiddleCenter;
-                    Widgets.Label(researchButtonRect, researchButtonText);
-                }
-                else if (selectedProject.IsFinished)
-                {
-                    GUI.color = Color.grey;
-                    Widgets.DrawAtlas(researchButtonRect, Widgets.ButtonSubtleAtlas);
-                    Text.Anchor = TextAnchor.MiddleCenter;
-                    Widgets.Label(researchButtonRect, "Finished");
-                }
-                else if (researchTracker != null && researchTracker.CurrentProject.Contains(selectedProject))
-                {
-                    GUI.color = ActiveProjectLabelColor;
-                    Widgets.DrawAtlas(researchButtonRect, Widgets.ButtonSubtleAtlas);
-                    Text.Anchor = TextAnchor.MiddleCenter;
-                    Widgets.Label(researchButtonRect, "In Progress");
-                }
-                else if (selectedProject.CanStartNow &&
-                                         (Find.ResearchManager.GetProject(selectedProject?.knowledgeCategory) == null ||
-                                         ResearchTracker.GetCategoryKey(selectedProject) == "Gravship" ||
-                                         SemiRandomResearchMod.settings.allowSwitchingResearch))
-                {
-                    if (ColoredButtonText(researchButtonRect, researchButtonText, FooterStartButtonColor))
+            switch (cachedFooterStartMode)
+            {
+                case FooterStartMode.CanStart:
+                    if (ColoredButtonText(researchButtonRect, "Start Research", FooterStartButtonColor))
                     {
                         SoundDefOf.ResearchStart.PlayOneShotOnCamera();
                         Find.ResearchManager.SetCurrentProject(selectedProject);
 
                         string categoryKey = ResearchTracker.GetCategoryKey(selectedProject);
                         Current.Game.World.GetComponent<ResearchTracker>()?.SetCurrentProjectByKey(selectedProject, categoryKey);
+                        InvalidateLeftColumnCache();
+                        if (cachedTracker != null)
+                            CopyAvailableProjects(cachedTracker.PeekAvailableProjects());
+                        cachedCanStartNowTick = -1;
+                        RefreshCanStartNow(Find.TickManager.TicksGame);
 
                         TutorSystem.Notify_Event("StartResearchProject");
                         if (!ColonistsHaveResearchBench)
@@ -418,19 +503,40 @@ namespace CM_Semi_Random_Research
                             Messages.Message("MessageResearchMenuWithoutBench".Translate(), MessageTypeDefOf.CautionInput);
                         }
                     }
-                }
-                else
-                {
-                    GUI.color = Color.grey;
-                    Widgets.DrawAtlas(researchButtonRect, Widgets.ButtonSubtleAtlas);
-                    Text.Anchor = TextAnchor.MiddleCenter;
-                    Widgets.Label(researchButtonRect, "Locked");
-                }
+                    break;
+                case FooterStartMode.Finished:
+                    DrawInactiveFooterButton(researchButtonRect, "Finished", Color.grey);
+                    break;
+                case FooterStartMode.InProgress:
+                    DrawInactiveFooterButton(researchButtonRect, "In Progress", Color.grey);
+                    break;
+                case FooterStartMode.Locked:
+                    DrawInactiveFooterButton(researchButtonRect, "Locked", Color.grey);
+                    break;
+                default:
+                    DrawInactiveFooterButton(researchButtonRect, "Start Research", Color.grey);
+                    break;
+            }
 
-                Text.Anchor = TextAnchor.UpperLeft;
+            Text.Anchor = TextAnchor.UpperLeft;
+            GUI.color = Color.white;
+        }
+
+        private static void DrawInactiveFooterButton(Rect rect, string label, Color fill)
+        {
+            if (IsRepaint)
+            {
+                Widgets.DrawBoxSolid(rect, fill);
+                GUI.color = Color.Lerp(fill, Color.black, 0.4f);
+                Widgets.DrawBox(rect);
                 GUI.color = Color.white;
             }
-            GUI.EndGroup();
+
+            Text.Anchor = TextAnchor.MiddleCenter;
+            GUI.color = Color.white;
+            Widgets.Label(rect, label);
+            Text.Anchor = TextAnchor.UpperLeft;
+            GUI.color = Color.white;
         }
 
         private static bool ColoredButtonText(Rect rect, string label, Color fill)
@@ -438,25 +544,29 @@ namespace CM_Semi_Random_Research
             bool mouseOver = Mouse.IsOver(rect);
             bool held = mouseOver && Input.GetMouseButton(0);
 
-            Color bg = fill;
-            if (held)
-                bg = fill * 0.75f;
-            else if (mouseOver)
-                bg = Color.Lerp(fill, Color.white, 0.16f);
+            if (IsRepaint)
+            {
+                Color bg = fill;
+                if (held)
+                    bg = fill * 0.75f;
+                else if (mouseOver)
+                    bg = Color.Lerp(fill, Color.white, 0.16f);
 
-            Widgets.DrawBoxSolid(rect, bg);
+                Widgets.DrawBoxSolid(rect, bg);
 
-            Color old = GUI.color;
-            GUI.color = Color.Lerp(fill, Color.black, 0.4f);
-            Widgets.DrawBox(rect);
+                Color old = GUI.color;
+                GUI.color = Color.Lerp(fill, Color.black, 0.4f);
+                Widgets.DrawBox(rect);
+                GUI.color = old;
+            }
 
             GUI.color = Color.white;
             Text.Anchor = TextAnchor.MiddleCenter;
             Widgets.Label(rect, label);
             Text.Anchor = TextAnchor.UpperLeft;
-            GUI.color = old;
+            GUI.color = Color.white;
 
-            return Widgets.ButtonInvisible(rect);
+            return Clicked(rect);
         }
 
         private void DrawTechLevelText(Rect rect, string prefix, TechLevel techLevel)
@@ -493,11 +603,6 @@ namespace CM_Semi_Random_Research
             float rightMargin = 8f;
             float buttonHeight = 48f;
             float separatorWidth = 1f;
-            float borderWidth = isMouseOver ? 1.5f : 1f;
-
-            ResearchRateTracker rateTracker = Current.Game.World.GetComponent<ResearchRateTracker>();
-            float globalAverageRate = rateTracker != null ? rateTracker.GetGlobalAverageRate() : 0f;
-            bool hasGlobalRateData = globalAverageRate > 0f;
 
             TextAnchor startingTextAnchor = Text.Anchor;
             Text.Font = GameFont.Small;
@@ -527,8 +632,7 @@ namespace CM_Semi_Random_Research
 
             Color textColor = new Color(0.95f, 0.95f, 0.95f);
 
-            ResearchTracker tracker = Current.Game.World.GetComponent<ResearchTracker>();
-            bool isActive = tracker != null && tracker.CurrentProject.Contains(projectDef);
+            bool isActive = cachedActiveProjects.Contains(projectDef);
 
             bool canCancel = SemiRandomResearchMod.settings.allowSwitchingResearch && isActive;
 
@@ -542,42 +646,37 @@ namespace CM_Semi_Random_Research
                     cancelButtonSize
                 );
 
-                if (isMouseOver || Mouse.IsOver(cancelRect))
+                if (IsRepaint && (isMouseOver || Mouse.IsOver(cancelRect)))
+                    Widgets.DrawBoxSolid(cancelRect, new Color(0.9f, 0.3f, 0.3f, animProgress * 0.8f));
+
+                if (Clicked(cancelRect))
                 {
-                    GUI.color = new Color(0.9f, 0.3f, 0.3f, animProgress * 0.8f);
-                    Widgets.DrawBoxSolid(cancelRect, GUI.color);
+                    SoundDefOf.Click.PlayOneShotOnCamera();
 
-                    GUI.color = new Color(1f, 1f, 1f, animProgress);
-                    Text.Anchor = TextAnchor.MiddleCenter;
-                    Text.Font = GameFont.Small;
-                    Widgets.Label(cancelRect, "Ã—");
-                    Text.Anchor = TextAnchor.UpperLeft;
-
-                    if (Widgets.ButtonInvisible(cancelRect))
+                    ResearchTracker cancelTracker = cachedTracker ?? Current.Game.World.GetComponent<ResearchTracker>();
+                    if (cancelTracker != null)
                     {
-                        SoundDefOf.Click.PlayOneShotOnCamera();
+                        string categoryKey = ResearchTracker.GetCategoryKey(projectDef);
+                        cancelTracker.SetCurrentProjectByKey(null, categoryKey);
 
-                        ResearchTracker cancelTracker = Current.Game.World.GetComponent<ResearchTracker>();
-                        if (cancelTracker != null)
-                        {
-                            string categoryKey = ResearchTracker.GetCategoryKey(projectDef);
-                            cancelTracker.SetCurrentProjectByKey(null, categoryKey);
-
-                            cancelTracker.ForceAutoReseachCheckNextTick();
-                            Event.current.Use();
-                        }
+                        cancelTracker.ForceAutoReseachCheckNextTick();
+                        InvalidateLeftColumnCache();
+                        Event.current.Use();
                     }
                 }
             }
 
             backgroundColor.a *= animProgress;
-            Widgets.DrawBoxSolid(drawRect, backgroundColor);
-
-            if (isMouseOver)
+            if (IsRepaint)
             {
-                Color glowColor = techColor;
-                glowColor.a = 0.1f * animProgress;
-                Widgets.DrawBoxSolid(drawRect.ExpandedBy(2f), glowColor);
+                Widgets.DrawBoxSolid(drawRect, backgroundColor);
+
+                if (isMouseOver)
+                {
+                    Color glowColor = techColor;
+                    glowColor.a = 0.1f * animProgress;
+                    Widgets.DrawBoxSolid(drawRect.ExpandedBy(2f), glowColor);
+                }
             }
 
             float progressFraction = 0f;
@@ -595,7 +694,7 @@ namespace CM_Semi_Random_Research
                 }
             }
 
-            if (progressFraction > 0f)
+            if (progressFraction > 0f && IsRepaint)
             {
                 Rect progressRect = new Rect(drawRect.x, drawRect.y, drawRect.width * progressFraction, drawRect.height);
 
@@ -620,40 +719,40 @@ namespace CM_Semi_Random_Research
             }
             cardBorderColor.a *= animProgress;
 
-            Widgets.DrawLine(new Vector2(drawRect.x, drawRect.y), new Vector2(drawRect.xMax, drawRect.y), cardBorderColor, borderWidth);
-            Widgets.DrawLine(new Vector2(drawRect.x, drawRect.yMax), new Vector2(drawRect.xMax, drawRect.yMax), cardBorderColor, borderWidth);
-            Widgets.DrawLine(new Vector2(drawRect.x, drawRect.y), new Vector2(drawRect.x, drawRect.yMax), cardBorderColor, borderWidth);
-            Widgets.DrawLine(new Vector2(drawRect.xMax, drawRect.y), new Vector2(drawRect.xMax, drawRect.yMax), cardBorderColor, borderWidth);
-
-            Def firstUnlockable = GetFirstUnlockable(projectDef);
-            try
+            if (IsRepaint)
             {
+                GUI.color = cardBorderColor;
+                Widgets.DrawBox(drawRect);
+                GUI.color = Color.white;
+
+                Def firstUnlockable = GetFirstUnlockable(projectDef);
                 if (firstUnlockable != null)
-                    Widgets.DefIcon(iconRect, firstUnlockable);
+                {
+                    try
+                    {
+                        Widgets.DefIcon(iconRect, firstUnlockable);
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
+
+                Color lineSeparatorColor = techColor;
+                lineSeparatorColor.a *= animProgress;
+                Widgets.DrawLine(
+                    new Vector2(firstSeparator.x, firstSeparator.y),
+                    new Vector2(firstSeparator.x, firstSeparator.yMax),
+                    lineSeparatorColor,
+                    separatorWidth
+                );
+
+                Widgets.DrawLine(
+                    new Vector2(secondSeparator.x, secondSeparator.y),
+                    new Vector2(secondSeparator.x, secondSeparator.yMax),
+                    lineSeparatorColor,
+                    separatorWidth
+                );
             }
-            catch (Exception ex)
-            {
-                Log.Message("[CM_Semi_Random_Research] Error rendering icon for " +
-                    (firstUnlockable != null ? firstUnlockable.defName : " null"));
-                Log.Message(ex);
-            }
-
-            Color lineSeparatorColor = techColor;
-            lineSeparatorColor.a *= animProgress;
-
-            Widgets.DrawLine(
-                new Vector2(firstSeparator.x, firstSeparator.y),
-                new Vector2(firstSeparator.x, firstSeparator.yMax),
-                lineSeparatorColor,
-                separatorWidth
-            );
-
-            Widgets.DrawLine(
-                new Vector2(secondSeparator.x, secondSeparator.y),
-                new Vector2(secondSeparator.x, secondSeparator.yMax),
-                lineSeparatorColor,
-                separatorWidth
-            );
 
             Color usedTextColor = isActive ? ActiveProjectLabelColor : textColor;
 
@@ -664,8 +763,8 @@ namespace CM_Semi_Random_Research
             }
 
             // --- NODE RESEARCH TECH INJECTIONS ---
-            bool isFoundation = NodeResearch.IsFoundationTech(projectDef);
-            bool isEmergence = NodeResearch.IsEmergenceTech(projectDef);
+            bool isFoundation = cachedFoundationProjects.Contains(projectDef);
+            bool isEmergence = cachedEmergenceProjects.Contains(projectDef);
 
             if (isFoundation || isEmergence)
             {
@@ -675,7 +774,7 @@ namespace CM_Semi_Random_Research
 
                 Text.Anchor = TextAnchor.LowerLeft;
                 GUI.color = usedTextColor;
-                Widgets.Label(topTextRect, projectDef.LabelCap);
+                Widgets.Label(topTextRect, SafeLabel(projectDef));
 
                 Text.Anchor = TextAnchor.UpperLeft;
                 Text.Font = GameFont.Tiny;
@@ -699,7 +798,7 @@ namespace CM_Semi_Random_Research
             {
                 GUI.color = usedTextColor;
                 Text.Anchor = TextAnchor.MiddleLeft;
-                Widgets.Label(nameRect, projectDef.LabelCap);
+                Widgets.Label(nameRect, SafeLabel(projectDef));
             }
 
             GUI.color = originalColor;
@@ -710,55 +809,23 @@ namespace CM_Semi_Random_Research
             Widgets.Label(costRect, costText);
             Text.WordWrap = wordWrap;
 
-            if (animProgress >= 0.7f && Widgets.ButtonInvisible(drawRect))
+            if (animProgress >= 0.7f && Clicked(drawRect))
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 selectedProject = projectDef;
+                cachedCanStartNowTick = -1;
+                RefreshCanStartNow(Find.TickManager.TicksGame);
             }
 
-            if (selectedProject == projectDef)
+            if (selectedProject == projectDef && IsRepaint)
             {
                 Color highlightColor = Color.Lerp(techColor, Color.white, isActive ? 0.5f : 0.3f);
                 highlightColor.a *= animProgress;
-                DrawTransparentBox(drawRect, highlightColor, 10, true);
+                DrawTransparentBox(drawRect, highlightColor, 2f);
             }
 
             if (isMouseOver)
-            {
-                StringBuilder tooltipText = new StringBuilder();
-
-                tooltipText.AppendLine(projectDef.LabelCap);
-                tooltipText.AppendLine("Cost: " + projectDef.CostApparent);
-                tooltipText.AppendLine("Tech Level: " + projectDef.techLevel.ToStringHuman());
-
-                if (hasGlobalRateData)
-                {
-                    float remainingWork = projectDef.CostApparent - projectDef.ProgressApparent;
-                    float estimatedDays = remainingWork / globalAverageRate;
-                    tooltipText.AppendLine("Estimated time: " + ResearchRateTracker.FormatETA(estimatedDays));
-                }
-
-                var unlocks = UnlockedDefsGroupedByPrerequisites(projectDef);
-                int unlockCount = 0;
-
-                if (!unlocks.NullOrEmpty())
-                {
-                    foreach (var unlockGroup in unlocks)
-                    {
-                        unlockCount += unlockGroup.Second.Count;
-                    }
-
-                    tooltipText.AppendLine("Unlocks: " + unlockCount + " items");
-                }
-
-                if (isActive)
-                {
-                    tooltipText.AppendLine();
-                    tooltipText.AppendLine("Currently researching");
-                }
-
-                TooltipHandler.TipRegion(drawRect, tooltipText.ToString());
-            }
+                TooltipHandler.TipRegion(drawRect, SafeLabel(projectDef));
 
             GUI.color = originalColor;
             Text.Anchor = startingTextAnchor;

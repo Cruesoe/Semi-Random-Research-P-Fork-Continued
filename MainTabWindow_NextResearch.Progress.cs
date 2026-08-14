@@ -11,31 +11,69 @@ namespace CM_Semi_Random_Research
 {
     public partial class MainTabWindow_NextResearch
     {
+        private static bool? progressionCoreActiveCached;
+
+        private static bool ProgressionCoreActive
+        {
+            get
+            {
+                if (progressionCoreActiveCached == null)
+                    progressionCoreActiveCached = GenTypes.GetTypeInAnyAssembly("ProgressionCore.ProgressionCoreMod") != null;
+                return progressionCoreActiveCached.Value;
+            }
+        }
+
+        private void RefreshWorldTech()
+        {
+            cachedWorldTech = Find.World.worldObjects.Settlements
+                .Where(s => s.Faction != null && !s.Faction.IsPlayer)
+                .Select(s => s.Faction.def.techLevel)
+                .DefaultIfEmpty(TechLevel.Undefined)
+                .Max();
+        }
+
+        private void RebuildTechLevelStats()
+        {
+            cachedTechLevelStats = new Dictionary<TechLevel, (int, int)>
+            {
+                { TechLevel.Neolithic, (0, 0) },
+                { TechLevel.Medieval, (0, 0) },
+                { TechLevel.Industrial, (0, 0) },
+                { TechLevel.Spacer, (0, 0) },
+                { TechLevel.Ultra, (0, 0) },
+                { TechLevel.Archotech, (0, 0) }
+            };
+            List<ResearchProjectDef> allDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading;
+            for (int i = 0; i < allDefs.Count; i++)
+            {
+                ResearchProjectDef def = allDefs[i];
+                if (!cachedTechLevelStats.TryGetValue(def.techLevel, out var stats))
+                    stats = (0, 0);
+                stats.total++;
+                if (def.IsFinished)
+                    stats.completed++;
+                cachedTechLevelStats[def.techLevel] = stats;
+            }
+        }
+
+        private static readonly TechLevel[] ProgressTechLevels =
+        {
+            TechLevel.Neolithic,
+            TechLevel.Medieval,
+            TechLevel.Industrial,
+            TechLevel.Spacer,
+            TechLevel.Ultra,
+            TechLevel.Archotech
+        };
+
         private void DrawTechLevelProgress(Rect rect)
         {
-            TechLevel[] techLevels = new[]
-            {
-                TechLevel.Neolithic,
-                TechLevel.Medieval,
-                TechLevel.Industrial,
-                TechLevel.Spacer,
-                TechLevel.Ultra,
-                TechLevel.Archotech
-            };
+            if (cachedTechLevelStats == null)
+                return;
 
-            bool progressionCoreActive = GenTypes.GetTypeInAnyAssembly("ProgressionCore.ProgressionCoreMod") != null;
-            float requiredProgress = progressionCoreActive ? GetRequiredProgressionPercent() : 1.0f;
-
-            Dictionary<TechLevel, (int completed, int total)> techLevelStats = new Dictionary<TechLevel, (int, int)>();
-            foreach (TechLevel techLevel in techLevels)
-            {
-                int completed = DefDatabase<ResearchProjectDef>.AllDefsListForReading
-                    .Count(def => def.techLevel == techLevel && def.IsFinished);
-                int total = DefDatabase<ResearchProjectDef>.AllDefsListForReading
-                    .Count(def => def.techLevel == techLevel);
-
-                techLevelStats[techLevel] = (completed, total);
-            }
+            TechLevel[] techLevels = ProgressTechLevels;
+            bool progressionCoreActive = ProgressionCoreActive;
+            float requiredProgress = cachedRequiredProgress;
 
             // Two rows for labels with staggered positioning - more brick wall like
             float topLabelY = rect.y - 49f;   // Further row - moved even further away
@@ -48,39 +86,54 @@ namespace CM_Semi_Random_Research
             float currentBarX = barRect.x;
             float barWidth = barRect.width;
 
-            GUI.color = new Color(0.1f, 0.1f, 0.1f);
-            Widgets.DrawBoxSolid(barRect, GUI.color);
-            GUI.color = Color.white;
+            if (IsRepaint)
+            {
+                Widgets.DrawBoxSolid(barRect, new Color(0.1f, 0.1f, 0.1f));
+            }
 
-            float totalTechs = techLevelStats.Sum(kvp => kvp.Value.total);
+            Dictionary<TechLevel, (int completed, int total)> techLevelStats = cachedTechLevelStats;
+            float totalTechs = 0f;
+            for (int i = 0; i < techLevels.Length; i++)
+            {
+                if (techLevelStats.TryGetValue(techLevels[i], out var levelStats))
+                    totalTechs += levelStats.total;
+            }
+
+            if (totalTechs <= 0f)
+            {
+                Text.Anchor = TextAnchor.UpperLeft;
+                GUI.color = Color.white;
+                return;
+            }
 
             float advancementThresholdX = 0f;
             bool thresholdFound = false;
 
-            int techLevelIndex = 0; // To track which row to place the label
+            int techLevelIndex = 0;
 
             foreach (TechLevel techLevel in techLevels)
             {
                 var stats = techLevelStats[techLevel];
-                if (stats.total == 0) continue; // Skip if no technologies in this level
+                if (stats.total == 0) continue;
 
                 float segmentWidth = (float)stats.total / totalTechs * barWidth;
                 float progress = stats.total > 0 ? (float)stats.completed / stats.total : 0f;
 
                 Rect segmentRect = new Rect(currentBarX, barRect.y, segmentWidth, barRect.height);
 
-                GUI.color = GetTechLevelColor(techLevel);
-                Widgets.DrawBoxSolid(new Rect(segmentRect.x, segmentRect.y, segmentWidth * progress, segmentRect.height), GUI.color);
+                if (IsRepaint)
+                {
+                    GUI.color = GetTechLevelColor(techLevel);
+                    Widgets.DrawBoxSolid(new Rect(segmentRect.x, segmentRect.y, segmentWidth * progress, segmentRect.height), GUI.color);
+                    GUI.color = Color.grey;
+                    Widgets.DrawBox(segmentRect);
+                }
 
-                // If this is the player's current tech level and ProgressionCore is active, store threshold position
                 if (progressionCoreActive && techLevel == Faction.OfPlayer.def.techLevel)
                 {
                     advancementThresholdX = segmentRect.x + (segmentWidth * requiredProgress);
                     thresholdFound = true;
                 }
-
-                GUI.color = Color.grey;
-                Widgets.DrawBox(segmentRect);
 
                 bool isTopRow = (techLevelIndex % 2 == 0);
                 float labelY = isTopRow ? topLabelY : bottomLabelY;
@@ -102,13 +155,14 @@ namespace CM_Semi_Random_Research
                     labelHeight
                 );
 
-                GUI.color = new Color(0.6f, 0.6f, 0.6f, 0.8f); // Semi-transparent gray
-
-                Vector2 lineStart = new Vector2(centerX, labelY + labelHeight);
-                Vector2 lineEnd = new Vector2(centerX, barRect.y - 1);
-                Widgets.DrawLine(lineStart, lineEnd, GUI.color, 1f);
-
-                Widgets.DrawBoxSolid(labelRect.ExpandedBy(3f), new Color(0.1f, 0.1f, 0.1f, 0.7f));
+                if (IsRepaint)
+                {
+                    Color lineColor = new Color(0.6f, 0.6f, 0.6f, 0.8f);
+                    Vector2 lineStart = new Vector2(centerX, labelY + labelHeight);
+                    Vector2 lineEnd = new Vector2(centerX, barRect.y - 1);
+                    Widgets.DrawLine(lineStart, lineEnd, lineColor, 1f);
+                    Widgets.DrawBoxSolid(labelRect.ExpandedBy(3f), new Color(0.1f, 0.1f, 0.1f, 0.7f));
+                }
 
                 GUI.color = GetTechLevelColor(techLevel);
                 Rect techNameRect = new Rect(labelRect);
@@ -153,22 +207,24 @@ namespace CM_Semi_Random_Research
 
             if (thresholdFound)
             {
-                float lineExtension = 20f; // Increased extension for the line
-                float arrowSize = 5f;      // Increased arrow size
+                float lineExtension = 20f;
+                float arrowSize = 5f;
                 Color thresholdColor = Color.white;
-                GUI.color = thresholdColor;
 
-                Widgets.DrawLine(
-                    new Vector2(advancementThresholdX, barRect.y - 2f),
-                    new Vector2(advancementThresholdX, barRect.yMax + lineExtension),
-                    thresholdColor,
-                    2f);
+                if (IsRepaint)
+                {
+                    Widgets.DrawLine(
+                        new Vector2(advancementThresholdX, barRect.y - 2f),
+                        new Vector2(advancementThresholdX, barRect.yMax + lineExtension),
+                        thresholdColor,
+                        2f);
 
-                Vector2 arrowBase = new Vector2(advancementThresholdX, barRect.yMax + lineExtension);
-                Vector2 arrowLeft = new Vector2(advancementThresholdX - arrowSize, barRect.yMax + lineExtension - arrowSize);
-                Vector2 arrowRight = new Vector2(advancementThresholdX + arrowSize, barRect.yMax + lineExtension - arrowSize);
-                Widgets.DrawLine(arrowBase, arrowLeft, thresholdColor, 2f);
-                Widgets.DrawLine(arrowBase, arrowRight, thresholdColor, 2f);
+                    Vector2 arrowBase = new Vector2(advancementThresholdX, barRect.yMax + lineExtension);
+                    Vector2 arrowLeft = new Vector2(advancementThresholdX - arrowSize, barRect.yMax + lineExtension - arrowSize);
+                    Vector2 arrowRight = new Vector2(advancementThresholdX + arrowSize, barRect.yMax + lineExtension - arrowSize);
+                    Widgets.DrawLine(arrowBase, arrowLeft, thresholdColor, 2f);
+                    Widgets.DrawLine(arrowBase, arrowRight, thresholdColor, 2f);
+                }
 
                 Text.Font = GameFont.Tiny;
                 Text.Anchor = TextAnchor.UpperCenter;

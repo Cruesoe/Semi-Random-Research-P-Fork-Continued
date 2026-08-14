@@ -45,9 +45,9 @@ namespace CM_Semi_Random_Research
         // so all UI elements (list cards, section headers, dashboard cards) stay in sync.
         private Color GetCategoryColor(ResearchProjectDef projectDef)
         {
-            if (projectDef.knowledgeCategory == KnowledgeCategoryDefOf.Basic)
+            if (projectDef.knowledgeCategory != null && projectDef.knowledgeCategory == KnowledgeCategoryDefOf.Basic)
                 return AnomalyBasicColor;
-            if (projectDef.knowledgeCategory == KnowledgeCategoryDefOf.Advanced)
+            if (projectDef.knowledgeCategory != null && projectDef.knowledgeCategory == KnowledgeCategoryDefOf.Advanced)
                 return AnomalyAdvancedColor;
             if (projectDef.tab?.defName == "VGE_Gravtech" || projectDef.tab?.defName == "VGE_GravShip")
                 return GravshipColor;
@@ -149,24 +149,9 @@ namespace CM_Semi_Random_Research
         private void DrawTransparentBox(Rect rect, Color borderColor, float borderThickness = 1f, bool cutOutside = false)
         {
             Color saveColor = GUI.color;
-            Widgets.DrawLine(new Vector2(rect.x, rect.y), new Vector2(rect.xMax, rect.y), borderColor, borderThickness);
-            Widgets.DrawLine(new Vector2(rect.x, rect.yMax), new Vector2(rect.xMax, rect.yMax), borderColor, borderThickness);
-
-            Widgets.DrawLine(new Vector2(rect.x, rect.y + borderThickness),
-                             new Vector2(rect.x, rect.yMax + 2 * borderThickness), borderColor, borderThickness);
-            Widgets.DrawLine(new Vector2(rect.xMax, rect.y + borderThickness),
-                             new Vector2(rect.xMax, rect.yMax + 2 * borderThickness), borderColor, borderThickness);
-
-            if (cutOutside)
-            {
-                Widgets.DrawBoxSolid(new Rect(rect.x - borderThickness, rect.y - borderThickness, rect.width + (borderThickness * 2), borderThickness), Widgets.WindowBGFillColor);
-                Widgets.DrawBoxSolid(new Rect(rect.x - borderThickness, rect.yMax, rect.width + (borderThickness * 2), borderThickness), Widgets.WindowBGFillColor);
-
-                Widgets.DrawBoxSolid(new Rect(rect.x - borderThickness, rect.y - borderThickness, borderThickness, rect.height + (borderThickness * 2)), Widgets.WindowBGFillColor);
-                Widgets.DrawBoxSolid(new Rect(rect.xMax, rect.y - borderThickness, borderThickness, rect.height + (borderThickness * 2)), Widgets.WindowBGFillColor);
-            }
+            GUI.color = borderColor;
+            Widgets.DrawBox(rect, Mathf.Max(1, Mathf.RoundToInt(Mathf.Min(borderThickness, 3f))));
             GUI.color = saveColor;
-
         }
     }
 }

@@ -19,10 +19,12 @@ namespace CM_Semi_Random_Research
         private Vector2 leftScrollPosition = Vector2.zero;
 
         private float leftScrollViewHeight;
+        private float leftScrollHeightForFrame;
 
         private Vector2 rightScrollPosition = Vector2.zero;
 
         private float rightScrollViewHeight;
+        private float rightScrollHeightForFrame;
 
         private static readonly Color FulfilledPrerequisiteColor = Color.green;
 
@@ -34,13 +36,7 @@ namespace CM_Semi_Random_Research
         private static readonly Color FooterStartButtonColor = new Color(0.22f, 0.48f, 0.28f);
         private static readonly Color FooterDebugButtonColor = new Color(0.55f, 0.22f, 0.22f);
 
-        private Dictionary<ResearchProjectDef, List<Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>>>> cachedUnlockedDefsGroupedByPrerequisites;
-
-        private static List<Building> tmpAllBuildings = new List<Building>();
-
         private int currentRandomSeed = 0;
-
-        bool errorDetected = false;
 
         private KnowledgeCategoryDef rerollButtonType = null;
 
@@ -51,8 +47,396 @@ namespace CM_Semi_Random_Research
         private List<string> animationOrder = new List<string>();
 
         private Dictionary<TechLevel, float> techLevelHeaderProgress = new Dictionary<TechLevel, float>();
+        private Dictionary<TechLevel, (int completed, int total)> cachedTechLevelStats;
+        private TechLevel cachedWorldTech = TechLevel.Undefined;
+        private int cachedOffersRevision = -1;
+        private Dictionary<ResearchProjectDef, Def> cachedFirstUnlockable = new Dictionary<ResearchProjectDef, Def>();
+        private Building_ResearchBench cachedMatchingBench;
+        private ResearchProjectDef cachedMatchingBenchProject;
+        private float rightViewportHeight;
+        private ResearchTracker cachedTracker;
+        private ResearchRateTracker cachedRateTracker;
+        private ResearchTracker drawTracker;
+        private ResearchRateTracker drawRateTracker;
+        private ResearchRateInfo cachedRateInfo;
+        private ResearchProjectDef cachedRateInfoProject;
+        private int cachedRateInfoTick = -1;
+        private string cachedCurrentRateText = "—";
+        private string cachedAvgRateText = "—";
+        private string cachedEtaText = "Unknown";
+        private Color cachedEtaColor = new Color(0.7f, 0.7f, 0.7f);
+        private List<ResearchProjectDef> cachedActiveProjects = new List<ResearchProjectDef>();
+        private readonly List<Pair<TechLevel, List<ResearchProjectDef>>> cachedStandardGroups = new List<Pair<TechLevel, List<ResearchProjectDef>>>();
+        private List<ResearchProjectDef> cachedAnomalyBasic = new List<ResearchProjectDef>();
+        private List<ResearchProjectDef> cachedAnomalyAdvanced = new List<ResearchProjectDef>();
+        private List<ResearchProjectDef> cachedGravshipProjects = new List<ResearchProjectDef>();
+        private readonly HashSet<ResearchProjectDef> cachedFoundationProjects = new HashSet<ResearchProjectDef>();
+        private readonly HashSet<ResearchProjectDef> cachedEmergenceProjects = new HashSet<ResearchProjectDef>();
+        private float cachedSharedCostWidth;
+        private int cachedLeftListsRevision = -1;
+        private int cachedLeftCurrentHash = int.MinValue;
+        private bool cachedSelectedCanStartNow;
+        private ResearchProjectDef cachedCanStartNowProject;
+        private int cachedCanStartNowTick = -1;
+        private bool cachedCanReroll;
+        private FooterStartMode cachedFooterStartMode;
+        private string cachedTreeButtonText = "Research Tree";
+        private string cachedTreeButtonTip = "View the standard Research Tree (View only).";
 
-        private Func<bool> AnomalyContentEnabled = () => (KnowledgeCategoryDefOf.Basic != null);
+        private enum FooterStartMode
+        {
+            Empty,
+            Finished,
+            InProgress,
+            CanStart,
+            Locked
+        }
+        private List<Def> cachedSelectedUnlocks;
+        private int cachedSelectedUnlockCount;
+        private ResearchProjectDef cachedUnlocksProject;
+        private float cachedRequiredProgress = 1f;
+        private Type cachedPreferredTreeType;
+        private bool loggedDrawError;
+
+        private static bool IsRepaint => Event.current.type == EventType.Repaint;
+
+        private static bool AnomalyContentEnabled()
+        {
+            return ModsConfig.AnomalyActive && KnowledgeCategoryDefOf.Basic != null;
+        }
+
+        private static string SafeLabel(ResearchProjectDef project)
+        {
+            if (project == null)
+                return string.Empty;
+            if (project.label.NullOrEmpty())
+                return project.defName;
+            return project.LabelCap.ToString();
+        }
+
+        private static string SafeDefLabel(Def def)
+        {
+            if (def == null)
+                return string.Empty;
+            if (def.label.NullOrEmpty())
+                return def.defName;
+            return def.LabelCap.ToString();
+        }
+
+        private static string SafeDescription(ResearchProjectDef project)
+        {
+            return project?.description ?? string.Empty;
+        }
+
+        // MouseDown hit-test only. GUI.Button/ButtonInvisible/ButtonImage change control IDs
+        // when the number of calls differs between Layout and Repaint, which makes Unity
+        // retry OnGUI until FPS/TPS collapse.
+        private static bool Clicked(Rect rect)
+        {
+            if (Event.current.type != EventType.MouseDown || Event.current.button != 0)
+                return false;
+            if (!Mouse.IsOver(rect))
+                return false;
+            Event.current.Use();
+            return true;
+        }
+
+        private bool SelectedProjectCanStartNow()
+        {
+            return selectedProject != null && cachedSelectedCanStartNow;
+        }
+
+        private void RefreshCanStartNow(int tick)
+        {
+            if (selectedProject != cachedCanStartNowProject || tick - cachedCanStartNowTick >= 30)
+            {
+                cachedCanStartNowProject = selectedProject;
+                cachedCanStartNowTick = tick;
+                cachedSelectedCanStartNow = selectedProject != null && selectedProject.CanStartNow;
+            }
+
+            cachedCanReroll = cachedTracker != null && cachedTracker.CanReroll(rerollButtonType);
+            RefreshFooterStartMode();
+        }
+
+        private void RefreshFooterStartMode()
+        {
+            if (selectedProject == null)
+            {
+                cachedFooterStartMode = FooterStartMode.Empty;
+                return;
+            }
+            if (selectedProject.IsFinished)
+            {
+                cachedFooterStartMode = FooterStartMode.Finished;
+                return;
+            }
+            if (cachedTracker != null && cachedTracker.CurrentProject.Contains(selectedProject))
+            {
+                cachedFooterStartMode = FooterStartMode.InProgress;
+                return;
+            }
+            bool categoryFree = selectedProject.knowledgeCategory == null
+                ? Find.ResearchManager.GetProject() == null
+                : Find.ResearchManager.GetProject(selectedProject.knowledgeCategory) == null;
+            bool canStart = cachedSelectedCanStartNow &&
+                (categoryFree ||
+                 ResearchTracker.GetCategoryKey(selectedProject) == "Gravship" ||
+                 SemiRandomResearchMod.settings.allowSwitchingResearch);
+            cachedFooterStartMode = canStart ? FooterStartMode.CanStart : FooterStartMode.Locked;
+        }
+
+        private void SelectDefaultProject()
+        {
+            ResearchProjectDef mainProject = null;
+            if (cachedTracker != null)
+            {
+                List<ResearchProjectDef> current = cachedTracker.CurrentProject;
+                for (int i = 0; i < current.Count; i++)
+                {
+                    ResearchProjectDef p = current[i];
+                    if (p != null && !p.IsFinished && ResearchTracker.GetCategoryKey(p) == "Standard")
+                    {
+                        mainProject = p;
+                        break;
+                    }
+                }
+
+                if (mainProject == null)
+                {
+                    ResearchProjectDef vanillaProject = Find.ResearchManager.GetProject();
+                    if (vanillaProject != null && !vanillaProject.IsFinished &&
+                        ResearchTracker.GetCategoryKey(vanillaProject) == "Standard")
+                    {
+                        mainProject = vanillaProject;
+                    }
+                }
+
+                selectedProject = mainProject;
+                if (selectedProject == null)
+                {
+                    for (int i = 0; i < current.Count; i++)
+                    {
+                        ResearchProjectDef p = current[i];
+                        if (p != null && !p.IsFinished)
+                        {
+                            selectedProject = p;
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                selectedProject = null;
+            }
+
+            if (selectedProject == null && currentAvailableProjects != null)
+            {
+                for (int i = 0; i < currentAvailableProjects.Count; i++)
+                {
+                    ResearchProjectDef p = currentAvailableProjects[i];
+                    if (p != null && !p.IsFinished)
+                    {
+                        selectedProject = p;
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void RefreshTreeButtonLabels()
+        {
+            cachedTreeButtonText = "Research Tree";
+            cachedTreeButtonTip = "View the standard Research Tree (View only).";
+            Type preferredTreeType = cachedPreferredTreeType;
+            if (preferredTreeType != null && preferredTreeType == ResearchTabWindowSwitcher.NodeResearchWindowType)
+            {
+                cachedTreeButtonText = "Node Research";
+                cachedTreeButtonTip = "Switch to Node Research. Prohibit normal project selection still applies if it is enabled.";
+            }
+            else if (preferredTreeType != null && preferredTreeType == ResearchTabWindowSwitcher.YartWindowType)
+            {
+                cachedTreeButtonText = "YART";
+                cachedTreeButtonTip = "Switch to YART. Prohibit normal project selection still applies if it is enabled.";
+            }
+        }
+
+        private void CacheFirstUnlockable(ResearchProjectDef project)
+        {
+            if (project == null || cachedFirstUnlockable.ContainsKey(project))
+                return;
+
+            Def result = null;
+            try
+            {
+                List<Def> unlocked = project.UnlockedDefs;
+                if (!unlocked.NullOrEmpty())
+                {
+                    int randomIndex = Rand.RangeInclusiveSeeded(0, unlocked.Count - 1, currentRandomSeed);
+                    result = unlocked[randomIndex];
+                }
+            }
+            catch (Exception)
+            {
+            }
+
+            cachedFirstUnlockable[project] = result;
+        }
+
+        private void WarmUnlockCaches()
+        {
+            if (currentAvailableProjects != null)
+            {
+                for (int i = 0; i < currentAvailableProjects.Count; i++)
+                    CacheFirstUnlockable(currentAvailableProjects[i]);
+            }
+
+            if (cachedTracker != null && cachedTracker.CurrentProject != null)
+            {
+                List<ResearchProjectDef> current = cachedTracker.CurrentProject;
+                for (int i = 0; i < current.Count; i++)
+                    CacheFirstUnlockable(current[i]);
+            }
+
+            WarmSelectedUnlocks();
+        }
+
+        private void WarmSelectedUnlocks()
+        {
+            if (selectedProject == cachedUnlocksProject)
+                return;
+
+            cachedUnlocksProject = selectedProject;
+            cachedSelectedUnlocks = null;
+            cachedSelectedUnlockCount = 0;
+            if (selectedProject == null)
+                return;
+
+            CacheFirstUnlockable(selectedProject);
+            try
+            {
+                List<Def> unlocked = selectedProject.UnlockedDefs;
+                cachedSelectedUnlocks = unlocked;
+                cachedSelectedUnlockCount = unlocked != null ? unlocked.Count : 0;
+            }
+            catch (Exception)
+            {
+            }
+
+            if (selectedProject.prerequisites != null)
+            {
+                for (int i = 0; i < selectedProject.prerequisites.Count; i++)
+                    CacheFirstUnlockable(selectedProject.prerequisites[i]);
+            }
+            if (selectedProject.hiddenPrerequisites != null)
+            {
+                for (int i = 0; i < selectedProject.hiddenPrerequisites.Count; i++)
+                    CacheFirstUnlockable(selectedProject.hiddenPrerequisites[i]);
+            }
+        }
+
+        private void RecacheMatchingBenchIfNeeded()
+        {
+            if (selectedProject == cachedMatchingBenchProject)
+                return;
+
+            cachedMatchingBenchProject = selectedProject;
+            cachedMatchingBench = null;
+            if (selectedProject == null || selectedProject.requiredResearchFacilities.NullOrEmpty())
+                return;
+
+            ThingDef requiredBench = selectedProject.requiredResearchBuilding;
+            List<ThingDef> requiredFacilities = selectedProject.requiredResearchFacilities;
+            float bestScore = 0f;
+            Building_ResearchBench best = null;
+            List<Map> maps = Find.Maps;
+            for (int i = 0; i < maps.Count; i++)
+            {
+                foreach (Building_ResearchBench bench in maps[i].listerBuildings.AllBuildingsColonistOfClass<Building_ResearchBench>())
+                {
+                    if (requiredBench != null && bench.def != requiredBench)
+                        continue;
+
+                    float score = GetResearchBenchRequirementsScore(bench, requiredFacilities);
+                    if (best == null || score > bestScore)
+                    {
+                        bestScore = score;
+                        best = bench;
+                    }
+                }
+            }
+            cachedMatchingBench = best;
+        }
+
+        private void RefreshRateTexts(int tick)
+        {
+            ResearchProjectDef mainProject = null;
+            for (int i = 0; i < cachedActiveProjects.Count; i++)
+            {
+                ResearchProjectDef project = cachedActiveProjects[i];
+                if (project != null && ResearchTracker.GetCategoryKey(project) == "Standard")
+                {
+                    mainProject = project;
+                    break;
+                }
+            }
+
+            if (mainProject == null || cachedRateTracker == null)
+            {
+                cachedCurrentRateText = "—";
+                cachedAvgRateText = "0/d";
+                cachedEtaText = "Unknown";
+                cachedEtaColor = new Color(0.7f, 0.7f, 0.7f);
+                cachedRateInfo = null;
+                cachedRateInfoProject = mainProject;
+                return;
+            }
+
+            if (mainProject == cachedRateInfoProject && cachedRateInfo != null && tick - cachedRateInfoTick < 30)
+                return;
+
+            cachedRateInfo = cachedRateTracker.GetResearchRateInfo(mainProject);
+            cachedRateInfoProject = mainProject;
+            cachedRateInfoTick = tick;
+
+            bool hasRateData = cachedRateInfo != null && cachedRateInfo.TotalSamples > 0;
+            float globalAverageRate = cachedRateInfo != null ? cachedRateInfo.AverageRate : 0f;
+            cachedCurrentRateText = hasRateData
+                ? cachedRateInfo.CurrentRateFormatted.Replace(" research/day", "/d")
+                : "Calculating...";
+            if (hasRateData)
+                cachedAvgRateText = cachedRateInfo.AverageRateFormatted.Replace(" research/day", "/d");
+            else if (globalAverageRate > 0f)
+                cachedAvgRateText = ResearchRateTracker.FormatRate(globalAverageRate).Replace(" research/day", "/d");
+            else
+                cachedAvgRateText = "0/d";
+
+            float estimatedDays = -1f;
+            if (hasRateData && cachedRateInfo.EstimatedDaysToCompletion >= 0)
+            {
+                cachedEtaText = cachedRateInfo.ETAFormatted;
+                estimatedDays = cachedRateInfo.EstimatedDaysToCompletion;
+            }
+            else if (globalAverageRate > 0f)
+            {
+                float remainingProgress = mainProject.CostApparent - mainProject.ProgressApparent;
+                estimatedDays = remainingProgress / globalAverageRate;
+                cachedEtaText = ResearchRateTracker.FormatETA(estimatedDays);
+            }
+            else
+            {
+                cachedEtaText = "Unknown";
+            }
+
+            cachedEtaColor = new Color(0.7f, 0.7f, 0.7f);
+            if (estimatedDays >= 0)
+            {
+                if (estimatedDays < 1f) cachedEtaColor = new Color(0.0f, 0.7f, 0.0f);
+                else if (estimatedDays < 3f) cachedEtaColor = new Color(0.7f, 0.7f, 0.0f);
+                else if (estimatedDays > 10f) cachedEtaColor = new Color(0.75f, 0.5f, 0.3f);
+            }
+        }
 
         private bool ColonistsHaveResearchBench
         {
@@ -74,12 +458,14 @@ namespace CM_Semi_Random_Research
 
         public override Vector2 InitialSize => new Vector2(UI.screenWidth * 0.585f, UI.screenHeight * 0.7f);
 
+        public override Vector2 RequestedTabSize => InitialSize;
+
         public List<ResearchProjectDef> currentAvailableProjects = new List<ResearchProjectDef>();
 
         public MainTabWindow_NextResearch()
         {
             this.def = MainButtonDefOf.Research;
-            this.doCloseX = true;
+            this.doCloseX = false;
             this.doCloseButton = false;
             this.closeOnClickedOutside = false;
             this.absorbInputAroundWindow = false;
@@ -91,189 +477,223 @@ namespace CM_Semi_Random_Research
             base.PreOpen();
 
             currentRandomSeed = Rand.Int;
+            cachedTracker = Current.Game.World.GetComponent<ResearchTracker>();
+            cachedRateTracker = Current.Game.World.GetComponent<ResearchRateTracker>();
+            cachedPreferredTreeType = ResearchTabWindowSwitcher.ResolvePreferredTreeWindowType();
+            RefreshTreeButtonLabels();
+            cachedRequiredProgress = ProgressionCoreActive ? GetRequiredProgressionPercent() : 1f;
 
-            ResearchTracker researchTracker = Current.Game.World.GetComponent<ResearchTracker>();
-
-            if (researchTracker != null)
+            if (cachedTracker != null)
             {
-                researchTracker.WorldComponentTick();
+                CopyAvailableProjects(cachedTracker.GetCurrentlyAvailableProjects());
 
-                currentAvailableProjects = researchTracker.GetCurrentlyAvailableProjects();
-
-                foreach (ResearchProjectDef def in researchTracker.CurrentProject.ToList())
+                List<ResearchProjectDef> current = cachedTracker.CurrentProject;
+                for (int i = current.Count - 1; i >= 0; i--)
                 {
+                    ResearchProjectDef def = current[i];
                     if (!Compatibility.SatisfiesAlienRaceRestriction(def))
                     {
-                        // Fix applied here to prevent wiping standard research on race restriction failure
                         string categoryKey = ResearchTracker.GetCategoryKey(def);
-                        researchTracker.SetCurrentProjectByKey(null, categoryKey);
+                        cachedTracker.SetCurrentProjectByKey(null, categoryKey);
                     }
                 }
 
-                ResearchProjectDef mainProject = researchTracker.CurrentProject.FirstOrDefault(p => ResearchTracker.GetCategoryKey(p) == "Standard");
+                SelectDefaultProject();
 
-                if (mainProject == null)
-                {
-                    ResearchProjectDef vanillaProject = Find.ResearchManager.GetProject();
-                    if (vanillaProject != null && ResearchTracker.GetCategoryKey(vanillaProject) == "Standard")
-                    {
-                        mainProject = vanillaProject;
-                    }
-                }
-
-                selectedProject = mainProject
-                                  ?? researchTracker.CurrentProject.FirstOrDefault()
-                                  ?? currentAvailableProjects.FirstOrDefault();
-
-                // Use the same sorting logic as the reroll animation.
-                // Items should be fully visible immediately (no animation) on first open.
                 RebuildAnimationOrder(currentAvailableProjects, 1f);
 
-                foreach (TechLevel techLevel in Enum.GetValues(typeof(TechLevel)))
-                {
-                    techLevelHeaderProgress[techLevel] = 1f;
-                }
+                techLevelHeaderProgress[TechLevel.Neolithic] = 1f;
+                techLevelHeaderProgress[TechLevel.Medieval] = 1f;
+                techLevelHeaderProgress[TechLevel.Industrial] = 1f;
+                techLevelHeaderProgress[TechLevel.Spacer] = 1f;
+                techLevelHeaderProgress[TechLevel.Ultra] = 1f;
+                techLevelHeaderProgress[TechLevel.Archotech] = 1f;
+
+                RebuildTechLevelStats();
+                RefreshWorldTech();
+                cachedOffersRevision = cachedTracker.OffersRevision;
             }
 
-            cachedUnlockedDefsGroupedByPrerequisites = null;
+            cachedFirstUnlockable.Clear();
+            cachedMatchingBench = null;
+            cachedMatchingBenchProject = null;
+            cachedLeftListsRevision = -1;
+            cachedLeftCurrentHash = int.MinValue;
+            cachedRateInfo = null;
+            cachedRateInfoProject = null;
+            cachedRateInfoTick = -1;
+            cachedCanStartNowProject = null;
+            cachedCanStartNowTick = -1;
+            cachedUnlocksProject = null;
+            cachedSelectedUnlocks = null;
+            cachedSelectedUnlockCount = 0;
+            InvalidateLeftColumnCache();
+            RebuildLeftColumnLists(cachedTracker);
+            WarmUnlockCaches();
+            RecacheMatchingBenchIfNeeded();
+            int tick = Find.TickManager.TicksGame;
+            RefreshCanStartNow(tick);
+            RefreshRateTexts(tick);
         }
 
         public override void WindowUpdate()
         {
             base.WindowUpdate();
 
-            ResearchTracker researchTracker = Current.Game.World.GetComponent<ResearchTracker>();
-
-            if (researchTracker != null)
+            try
             {
-                bool shouldUpdateProjects = false;
-                List<ResearchProjectDef> newProjects = researchTracker.GetCurrentlyAvailableProjects();
-
-                if (newProjects.Count != currentAvailableProjects.Count)
+                UpdateWindowState();
+            }
+            catch (Exception ex)
+            {
+                if (!loggedDrawError)
                 {
-                    shouldUpdateProjects = true;
+                    loggedDrawError = true;
+                    Log.Error("[Semi Random Research] WindowUpdate failed: " + ex);
                 }
-                else
-                {
-                    foreach (var project in newProjects)
-                    {
-                        if (!currentAvailableProjects.Contains(project))
-                        {
-                            shouldUpdateProjects = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (shouldUpdateProjects)
-                {
-                    currentAvailableProjects = newProjects;
-
-                    // Items should start hidden and animate in.
-                    RebuildAnimationOrder(currentAvailableProjects, 0f);
-
-                    lastRerollTime = Time.realtimeSinceStartup;
-
-                    foreach (TechLevel techLevel in Enum.GetValues(typeof(TechLevel)))
-                    {
-                        techLevelHeaderProgress[techLevel] = 0f;
-                    }
-                }
-
-                if (lastRerollTime > 0f)
-                {
-                    float timeSinceReroll = Time.realtimeSinceStartup - lastRerollTime;
-                    bool allComplete = true;
-
-                    for (int i = 0; i < animationOrder.Count; i++)
-                    {
-                        string defName = animationOrder[i];
-
-                        float startTime = i * ITEM_DELAY;
-                        float endTime = startTime + ANIMATION_DURATION;
-
-                        if (timeSinceReroll >= startTime && timeSinceReroll <= endTime)
-                        {
-                            float itemProgress = (timeSinceReroll - startTime) / ANIMATION_DURATION;
-                            animationProgress[defName] = itemProgress;
-                            allComplete = false;
-                        }
-                        else if (timeSinceReroll < startTime)
-                        {
-                            animationProgress[defName] = 0f;
-                            allComplete = false;
-                        }
-                        else
-                        {
-                            animationProgress[defName] = 1f;
-                        }
-                    }
-
-                    var groupedByTechLevel = currentAvailableProjects
-                        .GroupBy(p => p.techLevel)
-                        .ToDictionary(g => g.Key, g => g.ToList());
-
-                    foreach (var techGroup in groupedByTechLevel)
-                    {
-                        TechLevel techLevel = techGroup.Key;
-                        List<ResearchProjectDef> projects = techGroup.Value;
-
-                        string firstProjectDefName = projects
-                            .OrderBy(p => animationOrder.IndexOf(p.defName))
-                            .Select(p => p.defName)
-                            .FirstOrDefault();
-
-                        if (firstProjectDefName != null)
-                        {
-                            // Header animation should be slightly ahead of the first project
-                            float projectProgress = animationProgress.TryGetValue(firstProjectDefName, out float progress) ? progress : 0f;
-
-                            // But never go backward (only increase)
-                            float currentHeaderProgress = techLevelHeaderProgress.TryGetValue(techLevel, out float hp) ? hp : 0f;
-                            float newHeaderProgress = Mathf.Max(currentHeaderProgress, projectProgress * 1.2f);
-                            techLevelHeaderProgress[techLevel] = Mathf.Min(newHeaderProgress, 1f);
-                        }
-                    }
-
-                    if (allComplete)
-                    {
-                        lastRerollTime = -1f;
-                    }
-                }
-
-                if (!currentAvailableProjects.Contains(selectedProject))
-                    selectedProject = researchTracker.CurrentProject.FirstOrFallback(null);
             }
         }
 
-        // Shared "group by tech level, lowest tech first" query - used everywhere projects
-        // need to be displayed/animated in tech-level order.
-        private static IOrderedEnumerable<IGrouping<TechLevel, ResearchProjectDef>> GroupByTechLevel(IEnumerable<ResearchProjectDef> projects)
+        private void UpdateWindowState()
         {
-            return projects
-                .GroupBy(proj => proj.techLevel)
-                .OrderBy(group => (int)group.Key);
+            ResearchTracker researchTracker = cachedTracker;
+            if (researchTracker == null)
+                return;
+
+            int tick = Find.TickManager.TicksGame;
+
+            if (researchTracker.OffersRevision != cachedOffersRevision)
+            {
+                cachedOffersRevision = researchTracker.OffersRevision;
+                CopyAvailableProjects(researchTracker.PeekAvailableProjects());
+
+                RebuildAnimationOrder(currentAvailableProjects, 0f);
+                lastRerollTime = Time.realtimeSinceStartup;
+                InvalidateLeftColumnCache();
+                RebuildLeftColumnLists(researchTracker);
+                WarmUnlockCaches();
+            }
+
+            if (selectedProject == null || selectedProject.IsFinished ||
+                (currentAvailableProjects != null && !currentAvailableProjects.Contains(selectedProject) &&
+                 (cachedTracker == null || !cachedTracker.CurrentProject.Contains(selectedProject))))
+            {
+                SelectDefaultProject();
+            }
+
+            if (lastRerollTime > 0f)
+            {
+                float timeSinceReroll = Time.realtimeSinceStartup - lastRerollTime;
+                bool allComplete = true;
+
+                for (int i = 0; i < animationOrder.Count; i++)
+                {
+                    string defName = animationOrder[i];
+                    float startTime = i * ITEM_DELAY;
+                    float endTime = startTime + ANIMATION_DURATION;
+
+                    if (timeSinceReroll >= startTime && timeSinceReroll <= endTime)
+                    {
+                        animationProgress[defName] = (timeSinceReroll - startTime) / ANIMATION_DURATION;
+                        allComplete = false;
+                    }
+                    else if (timeSinceReroll < startTime)
+                    {
+                        animationProgress[defName] = 0f;
+                        allComplete = false;
+                    }
+                    else
+                    {
+                        animationProgress[defName] = 1f;
+                    }
+                }
+
+                float headerProgress = Mathf.Clamp01(timeSinceReroll / ANIMATION_DURATION * 1.2f);
+                techLevelHeaderProgress[TechLevel.Neolithic] = headerProgress;
+                techLevelHeaderProgress[TechLevel.Medieval] = headerProgress;
+                techLevelHeaderProgress[TechLevel.Industrial] = headerProgress;
+                techLevelHeaderProgress[TechLevel.Spacer] = headerProgress;
+                techLevelHeaderProgress[TechLevel.Ultra] = headerProgress;
+                techLevelHeaderProgress[TechLevel.Archotech] = headerProgress;
+
+                if (allComplete)
+                    lastRerollTime = -1f;
+            }
+
+            WarmSelectedUnlocks();
+            RecacheMatchingBenchIfNeeded();
+            RefreshCanStartNow(tick);
+            RefreshRateTexts(tick);
         }
 
-        // Rebuilds animationOrder (and the matching animationProgress entries) from a project
-        // list, using the same tech-level-then-cost ordering the list is displayed in.
-        // initialProgress should be 1f when the items should appear fully visible immediately
-        // (e.g. on first window open) or 0f when they should animate in (e.g. after a reroll).
+        private void CopyAvailableProjects(List<ResearchProjectDef> source)
+        {
+            if (currentAvailableProjects == null || ReferenceEquals(currentAvailableProjects, source))
+                currentAvailableProjects = new List<ResearchProjectDef>();
+            else
+                currentAvailableProjects.Clear();
+
+            if (source == null)
+                return;
+
+            for (int i = 0; i < source.Count; i++)
+                currentAvailableProjects.Add(source[i]);
+        }
+
         private void RebuildAnimationOrder(IEnumerable<ResearchProjectDef> projects, float initialProgress)
         {
             animationOrder.Clear();
-            foreach (var techGroup in GroupByTechLevel(projects))
+            if (projects == null)
+                return;
+
+            List<ResearchProjectDef> sorted = new List<ResearchProjectDef>();
+            foreach (ResearchProjectDef projectDef in projects)
             {
-                foreach (ResearchProjectDef projectDef in techGroup.OrderBy(p => p.CostApparent))
-                {
-                    animationOrder.Add(projectDef.defName);
-                    animationProgress[projectDef.defName] = initialProgress;
-                }
+                if (projectDef != null)
+                    sorted.Add(projectDef);
+            }
+
+            sorted.Sort((a, b) =>
+            {
+                int tech = ((int)a.techLevel).CompareTo((int)b.techLevel);
+                if (tech != 0)
+                    return tech;
+                return a.CostApparent.CompareTo(b.CostApparent);
+            });
+
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                string defName = sorted[i].defName;
+                animationOrder.Add(defName);
+                animationProgress[defName] = initialProgress;
             }
         }
 
         public override void DoWindowContents(Rect canvas)
         {
+            EventType eventType = Event.current.type;
+            if (eventType == EventType.Ignore || eventType == EventType.MouseMove)
+                return;
+
+            try
+            {
+                DrawWindowBody(canvas);
+            }
+            catch (Exception ex)
+            {
+                if (!loggedDrawError)
+                {
+                    loggedDrawError = true;
+                    Log.Error("[Semi Random Research] DoWindowContents failed: " + ex);
+                }
+            }
+        }
+
+        private void DrawWindowBody(Rect canvas)
+        {
+            drawTracker = cachedTracker;
+            drawRateTracker = cachedRateTracker;
+
             if (lastRerollTime > 0f && Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Space)
             {
                 Event.current.Use();
@@ -282,26 +702,25 @@ namespace CM_Semi_Random_Research
             }
 
             float progressBarHeight = 70f;
-            float progressLabelHeight = 55f;  // Increased from 20f to 40f to provide more space for staggered labels
+            float progressLabelHeight = 55f;
             float totalProgressHeight = progressBarHeight + progressLabelHeight;
-            float horizontalMargin = 40f;  // Increased horizontal margin for progress bar
-            float topMargin = 6f;  // Increased from 6f to 20f to provide more space at the top
-            float arrowBottomPadding = 24f; // Extra space for the arrow and label
+            float horizontalMargin = 40f;
+            float topMargin = 6f;
+            float arrowBottomPadding = 24f;
 
             Rect progressRect = new Rect(
-                horizontalMargin,  // Left margin
+                horizontalMargin,
                 topMargin + progressLabelHeight,
-                canvas.width - (horizontalMargin * 2),  // Account for both margins
-                progressBarHeight + arrowBottomPadding  // Add padding for arrow
+                canvas.width - (horizontalMargin * 2),
+                progressBarHeight + arrowBottomPadding
             );
             DrawTechLevelProgress(progressRect);
 
             float mainContentY = topMargin + totalProgressHeight + arrowBottomPadding + 6f;
             float availableHeight = canvas.height - mainContentY;
 
-            float leftWidth = canvas.width * 0.55f;    // 55% for random list
-            float rightWidth = canvas.width * 0.45f;   // 45% for details
-
+            float leftWidth = canvas.width * 0.55f;
+            float rightWidth = canvas.width * 0.45f;
             float columnMargin = 16f;
 
             Rect leftRect = new Rect(columnMargin, mainContentY, leftWidth - columnMargin, availableHeight);
@@ -311,17 +730,15 @@ namespace CM_Semi_Random_Research
             DrawRightColumn(rightRect);
 
             float iconSize = 24f;
-
             Rect settingsBtnRect = new Rect(canvas.width - iconSize, canvas.height - iconSize, iconSize, iconSize);
-
-            if (Widgets.ButtonImage(settingsBtnRect, SettingsIcon))
+            if (IsRepaint && SettingsIcon != null)
+                GUI.DrawTexture(settingsBtnRect, SettingsIcon);
+            if (Clicked(settingsBtnRect))
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 Mod ourMod = LoadedModManager.GetMod<SemiRandomResearchMod>();
-                Dialog_ModSettings dialog = new Dialog_ModSettings(ourMod);
-                Find.WindowStack.Add(dialog);
+                Find.WindowStack.Add(new Dialog_ModSettings(ourMod));
             }
-
             TooltipHandler.TipRegion(settingsBtnRect, "Open Semi-Random Research Settings");
         }
 

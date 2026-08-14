@@ -15,6 +15,7 @@ namespace CM_Semi_Random_Research
     // (window class name, DrawGraphControls layout, foundation/emergence extensions)
     // can be reviewed in one file.
 
+    [StaticConstructorOnStartup]
     public static class ResearchTabWindowSwitcher
     {
         public const string PackageId = "ferny.noderesearch";
@@ -27,6 +28,14 @@ namespace CM_Semi_Random_Research
 
         private static readonly FieldInfo TabWindowIntField =
             AccessTools.Field(typeof(MainButtonDef), "tabWindowInt");
+
+        static ResearchTabWindowSwitcher()
+        {
+            Apply();
+        }
+
+        private static MainButtonDef ResearchMainButton =>
+            DefDatabase<MainButtonDef>.GetNamedSilentFail("Research");
 
         public static Type NodeResearchWindowType =>
             cachedNodeResearchWindowType
@@ -58,7 +67,8 @@ namespace CM_Semi_Random_Research
 
         public static void Apply()
         {
-            if (MainButtonDefOf.Research == null || SemiRandomResearchMod.settings == null)
+            MainButtonDef researchTab = ResearchMainButton;
+            if (researchTab == null || SemiRandomResearchMod.settings == null)
             {
                 return;
             }
@@ -77,33 +87,66 @@ namespace CM_Semi_Random_Research
                 windowType = typeof(MainTabWindow_Research);
             }
 
-            SetResearchWindowClass(windowType);
+            SetResearchWindowClass(researchTab, windowType);
         }
 
-        private static void SetResearchWindowClass(Type windowType)
+        private static void SetResearchWindowClass(MainButtonDef researchTab, Type windowType)
         {
-            MainTabWindow cached = TabWindowIntField?.GetValue(MainButtonDefOf.Research) as MainTabWindow;
-            if (MainButtonDefOf.Research.tabWindowClass == windowType &&
+            if (researchTab == null)
+            {
+                return;
+            }
+
+            MainTabWindow cached = TabWindowIntField?.GetValue(researchTab) as MainTabWindow;
+            if (researchTab.tabWindowClass == windowType &&
                 cached != null &&
                 windowType.IsInstanceOfType(cached))
             {
                 return;
             }
 
-            MainButtonDefOf.Research.tabWindowClass = windowType;
-            TabWindowIntField?.SetValue(MainButtonDefOf.Research, null);
-            MainButtonDefOf.Research.ClearCachedData();
+            researchTab.tabWindowClass = windowType;
+            TabWindowIntField?.SetValue(researchTab, null);
+            researchTab.ClearCachedData();
         }
 
         public static void OpenResearchWindow(Type windowType, Window windowToClose)
         {
-            windowToClose?.Close();
+            MainButtonDef researchTab = ResearchMainButton;
+            if (researchTab == null)
+            {
+                return;
+            }
 
-            MainTabWindow newWindow = (MainTabWindow)Activator.CreateInstance(windowType);
-            newWindow.def = MainButtonDefOf.Research;
-            SetResearchWindowClass(windowType);
-            TabWindowIntField?.SetValue(MainButtonDefOf.Research, newWindow);
-            Find.WindowStack.Add(newWindow);
+            windowToClose?.Close();
+            SetResearchWindowClass(researchTab, windowType);
+
+            MainTabWindow newWindow = researchTab.TabWindow;
+            if (newWindow == null)
+            {
+                return;
+            }
+
+            WindowStack stack = Find.WindowStack;
+            IList<Window> windows = stack.Windows;
+            for (int i = windows.Count - 1; i >= 0; i--)
+            {
+                Window existing = windows[i];
+                if (existing != newWindow && windowType.IsInstanceOfType(existing))
+                    existing.Close(doCloseSound: false);
+            }
+
+            if (!stack.IsOpen(newWindow) && !stack.Windows.Contains(newWindow))
+            {
+                stack.Add(newWindow);
+            }
+        }
+
+        private static void ShowHandoverMessage(string text)
+        {
+            if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.suppressHandoverMessages)
+                return;
+            Messages.Message(text, MessageTypeDefOf.NeutralEvent, false);
         }
 
         public static void SwitchToNodeResearch(Window windowToClose)
@@ -116,11 +159,11 @@ namespace CM_Semi_Random_Research
             SetUsingNodeResearch(true);
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
             {
-                Messages.Message("Switched to Node Research. Prohibit normal project selection is still on.", MessageTypeDefOf.NeutralEvent, false);
+                ShowHandoverMessage("Switched to Node Research. Prohibit normal project selection is still on.");
             }
             else
             {
-                Messages.Message("Switched to Node Research. Free selection enabled.", MessageTypeDefOf.NeutralEvent, false);
+                ShowHandoverMessage("Switched to Node Research. Free selection enabled.");
             }
 
             OpenResearchWindow(NodeResearchWindowType, windowToClose);
@@ -134,11 +177,11 @@ namespace CM_Semi_Random_Research
             {
                 if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
                 {
-                    Messages.Message("Switched to Semi-Random Research. Selection restricted.", MessageTypeDefOf.NeutralEvent, false);
+                    ShowHandoverMessage("Switched to Semi-Random Research. Selection restricted.");
                 }
                 else
                 {
-                    Messages.Message("Switched to Semi-Random Research.", MessageTypeDefOf.NeutralEvent, false);
+                    ShowHandoverMessage("Switched to Semi-Random Research.");
                 }
             }
 
@@ -163,11 +206,11 @@ namespace CM_Semi_Random_Research
             SetUsingNodeResearch(false);
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
             {
-                Messages.Message("Switched to YART. Prohibit normal project selection is still on.", MessageTypeDefOf.NeutralEvent, false);
+                ShowHandoverMessage("Switched to YART. Prohibit normal project selection is still on.");
             }
             else
             {
-                Messages.Message("Switched to YART.", MessageTypeDefOf.NeutralEvent, false);
+                ShowHandoverMessage("Switched to YART.");
             }
 
             OpenResearchWindow(YartWindowType, windowToClose);

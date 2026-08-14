@@ -19,7 +19,6 @@ namespace CM_Semi_Random_Research
 
             _instance = this;
             settings = GetSettings<SemiRandomResearchSettings>();
-            ResearchTabWindowSwitcher.Apply();
             string versionFromManifest = VersionFromManifest.GetVersionFromModMetaData(content.ModMetaData);
 
             if (!versionFromManifest.NullOrEmpty())
