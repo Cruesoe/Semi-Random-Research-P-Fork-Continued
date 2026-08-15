@@ -203,7 +203,7 @@ namespace CM_Semi_Random_Research
 
             float labelWidth = position.width * 0.5f;
             Rect mainLabelRect = new Rect(0f, currentY, labelWidth, mainLabelHeight);
-            Widgets.Label(mainLabelRect, "Currently researching");
+            Widgets.Label(mainLabelRect, "CM_Semi_Random_Research_CurrentlyResearching".Translate());
 
             Text.Font = GameFont.Small;
             float techInfoX = labelWidth + 10f;
@@ -212,10 +212,10 @@ namespace CM_Semi_Random_Research
             TechLevel colonyTech = Faction.OfPlayer.def.techLevel;
             Rect colonyTechRect = new Rect(techInfoX, currentY, techInfoWidth * 0.5f, mainLabelHeight);
 
-            DrawTechLevelText(colonyTechRect, "Faction: ", colonyTech);
+            DrawTechLevelText(colonyTechRect, "CM_Semi_Random_Research_FactionPrefix".Translate(), colonyTech);
 
             Rect worldTechRect = new Rect(techInfoX + techInfoWidth * 0.5f, currentY, techInfoWidth * 0.5f, mainLabelHeight);
-            DrawTechLevelText(worldTechRect, "World: ", cachedWorldTech);
+            DrawTechLevelText(worldTechRect, "CM_Semi_Random_Research_WorldPrefix".Translate(), cachedWorldTech);
 
             GenUI.ResetLabelAlign();
             currentY += mainLabelHeight + 4f;
@@ -343,7 +343,7 @@ namespace CM_Semi_Random_Research
                 Rect anomalyHeaderRect = new Rect(0f, currentY, scrollViewRect.width, techLevelHeaderHeight);
 
                 GUI.color = AnomalyBasicColor;
-                Widgets.Label(anomalyHeaderRect, "Available Dark research");
+                Widgets.Label(anomalyHeaderRect, "CM_Semi_Random_Research_AvailableDark".Translate());
                 GUI.color = Color.white;
                 currentY += techLevelHeaderHeight;
 
@@ -364,7 +364,7 @@ namespace CM_Semi_Random_Research
                 Rect anomalyHeaderRect = new Rect(0f, currentY, scrollViewRect.width, techLevelHeaderHeight);
 
                 GUI.color = AnomalyAdvancedColor;
-                Widgets.Label(anomalyHeaderRect, "Available Advanced dark research");
+                Widgets.Label(anomalyHeaderRect, "CM_Semi_Random_Research_AvailableAdvancedDark".Translate());
                 GUI.color = Color.white;
                 currentY += techLevelHeaderHeight;
 
@@ -385,7 +385,7 @@ namespace CM_Semi_Random_Research
                 Rect gravshipHeaderRect = new Rect(0f, currentY, scrollViewRect.width, techLevelHeaderHeight);
 
                 GUI.color = GravshipColor;
-                Widgets.Label(gravshipHeaderRect, "Available Gravtech research");
+                Widgets.Label(gravshipHeaderRect, "CM_Semi_Random_Research_AvailableGravtech".Translate());
                 GUI.color = Color.white;
                 currentY += techLevelHeaderHeight;
 
@@ -452,7 +452,7 @@ namespace CM_Semi_Random_Research
                 researchButtonRect = new Rect(researchTreeButtonRect.xMax + buttonSpacing, footerButtonY, footerButtonWidth, footerHeight);
             }
 
-            if (ColoredButtonText(researchTreeButtonRect, cachedTreeButtonText, FooterTreeButtonColor))
+            if (ColoredButtonText(researchTreeButtonRect, "CM_Semi_Random_Research_TreeButton".Translate(), FooterTreeButtonColor))
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 ResearchTabWindowSwitcher.SwitchToPreferredTree(this);
@@ -460,13 +460,13 @@ namespace CM_Semi_Random_Research
             }
 
             if (IsRepaint && Mouse.IsOver(researchTreeButtonRect))
-                TooltipHandler.TipRegion(researchTreeButtonRect, cachedTreeButtonTip);
+                TooltipHandler.TipRegion(researchTreeButtonRect, "CM_Semi_Random_Research_TreeButtonTip".Translate());
 
             if (showRerollButton)
             {
                 if (cachedCanReroll)
                 {
-                    if (ColoredButtonText(rerollButtonRect, "Reroll", FooterRerollButtonColor))
+                    if (ColoredButtonText(rerollButtonRect, "CM_Semi_Random_Research_Reroll_Label".Translate(), FooterRerollButtonColor))
                     {
                         SoundDefOf.Click.PlayOneShotOnCamera();
                         SoundDefOf.TabOpen.PlayOneShotOnCamera();
@@ -479,14 +479,14 @@ namespace CM_Semi_Random_Research
                 }
                 else
                 {
-                    DrawInactiveFooterButton(rerollButtonRect, "No rerolls", Color.grey);
+                    DrawInactiveFooterButton(rerollButtonRect, "CM_Semi_Random_Research_NoRerolls".Translate(), Color.grey);
                 }
             }
 
             switch (cachedFooterStartMode)
             {
                 case FooterStartMode.CanStart:
-                    if (ColoredButtonText(researchButtonRect, "Start Research", FooterStartButtonColor))
+                    if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_StartResearch".Translate(), FooterStartButtonColor))
                     {
                         SoundDefOf.ResearchStart.PlayOneShotOnCamera();
                         Find.ResearchManager.SetCurrentProject(selectedProject);
@@ -507,16 +507,16 @@ namespace CM_Semi_Random_Research
                     }
                     break;
                 case FooterStartMode.Finished:
-                    DrawInactiveFooterButton(researchButtonRect, "Finished", Color.grey);
+                    DrawInactiveFooterButton(researchButtonRect, "CM_Semi_Random_Research_Finished".Translate(), Color.grey);
                     break;
                 case FooterStartMode.InProgress:
-                    DrawInactiveFooterButton(researchButtonRect, "In Progress", Color.grey);
+                    DrawInactiveFooterButton(researchButtonRect, "CM_Semi_Random_Research_InProgress".Translate(), Color.grey);
                     break;
                 case FooterStartMode.Locked:
-                    DrawInactiveFooterButton(researchButtonRect, "Locked", Color.grey);
+                    DrawInactiveFooterButton(researchButtonRect, "CM_Semi_Random_Research_Locked".Translate(), Color.grey);
                     break;
                 default:
-                    DrawInactiveFooterButton(researchButtonRect, "Start Research", Color.grey);
+                    DrawInactiveFooterButton(researchButtonRect, "CM_Semi_Random_Research_StartResearch".Translate(), Color.grey);
                     break;
             }
 
@@ -788,11 +788,11 @@ namespace CM_Semi_Random_Research
 
                 if (isFoundation)
                 {
-                    Widgets.Label(bottomTextRect, "Foundation");
+                    Widgets.Label(bottomTextRect, "CM_Semi_Random_Research_Foundation".Translate());
                 }
                 else if (isEmergence)
                 {
-                    Widgets.Label(bottomTextRect, "Emergence");
+                    Widgets.Label(bottomTextRect, "CM_Semi_Random_Research_Emergence".Translate());
                 }
 
                 Text.Font = GameFont.Small;

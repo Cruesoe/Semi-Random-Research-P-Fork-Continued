@@ -28,6 +28,7 @@ namespace CM_Semi_Random_Research
                 Rect buttonRect = new Rect(leftOutRect.xMax - buttonSize, leftOutRect.yMin, buttonSize, buttonSize);
 
                 bool pressed = Widgets.ButtonImage(buttonRect, NextResearchButtonIcon);
+                TooltipHandler.TipRegion(buttonRect, "CM_Semi_Random_Research_OpenSemiRandom".Translate());
 
                 if (pressed)
                 {
@@ -48,7 +49,7 @@ namespace CM_Semi_Random_Research
                 ___lockedReasons.Clear();
                 if (SemiRandomResearchUtility.IsControllingResearchSelection)
                 {
-                    ___lockedReasons.Add("Semi Random Research is active.");
+                    ___lockedReasons.Add("CM_Semi_Random_Research_Active");
                 }
             }
 
@@ -146,18 +147,18 @@ namespace CM_Semi_Random_Research
                 var rateInfo = rateTracker?.GetResearchRateInfo(proj);
 
                 StringBuilder letterText = new StringBuilder();
-                letterText.AppendLine($"Research completed: {proj.LabelCap}");
+                letterText.AppendLine("CM_Semi_Random_Research_LetterCompleted".Translate(proj.LabelCap));
 
                 if (rateInfo != null && rateInfo.TotalSamples > 0)
                 {
                     letterText.AppendLine();
-                    letterText.AppendLine($"Average rate: {rateInfo.AverageRateFormatted}");
+                    letterText.AppendLine("CM_Semi_Random_Research_LetterAverageRate".Translate(rateInfo.AverageRateFormatted));
                 }
 
                 if (researcher != null)
                 {
                     letterText.AppendLine();
-                    letterText.AppendLine($"Completed by: {researcher.LabelShort}");
+                    letterText.AppendLine("CM_Semi_Random_Research_LetterCompletedBy".Translate(researcher.LabelShort));
                 }
 
                 List<string> unlockedItems = new List<string>();
@@ -187,7 +188,7 @@ namespace CM_Semi_Random_Research
                 if (unlockedItems.Count > 0)
                 {
                     letterText.AppendLine();
-                    letterText.AppendLine("Unlocks:");
+                    letterText.AppendLine("Unlocks".Translate() + ":");
                     foreach (string item in unlockedItems)
                     {
                         letterText.AppendLine($"  - {item}");
@@ -197,7 +198,7 @@ namespace CM_Semi_Random_Research
                 if (SemiRandomResearchMod.settings.showCompletionLetter)
                 {
                     var letter = LetterMaker.MakeLetter(
-                        $"Research Complete: {proj.LabelCap}",
+                        "CM_Semi_Random_Research_LetterTitle".Translate(proj.LabelCap),
                         letterText.ToString(),
                         LetterDefOf.PositiveEvent,
                         researcher != null ? new LookTargets(researcher) : null);
@@ -253,7 +254,7 @@ namespace CM_Semi_Random_Research
                     return true;
                 }
 
-                Messages.Message("Semi Random Research is active.", MessageTypeDefOf.RejectInput, false);
+                Messages.Message("CM_Semi_Random_Research_Active".Translate(), MessageTypeDefOf.RejectInput, false);
                 return false;
             }
         }
@@ -292,13 +293,101 @@ namespace CM_Semi_Random_Research
             [HarmonyPrefix]
             public static bool Prefix()
             {
-                if (SemiRandomResearchUtility.IsControllingResearchSelection)
-                {
-                    Find.MainTabsRoot.SetCurrentTab(MainButtonDefOf.Research);
-                    return false;
-                }
-                return true;
+                ResearchTabCompatibility.Open(ResearchTabDefOf.Main);
+                return false;
             }
+        }
+    }
+
+    [HarmonyPatch]
+    public static class VoidMonolith_ViewResearch
+    {
+        public static bool Prepare()
+        {
+            return ModsConfig.AnomalyActive;
+        }
+
+        public static MethodBase TargetMethod()
+        {
+            Type nested = AccessTools.Inner(typeof(Building_VoidMonolith), "<>c");
+            MethodBase method = nested == null ? null : AccessTools.Method(nested, "<OpenActivatedDialog>b__65_1");
+            if (method == null)
+                Log.Warning("[Semi Random Research] Could not patch Void Monolith View Research.");
+            return method;
+        }
+
+        public static bool Prefix()
+        {
+            ResearchTabCompatibility.Open(ResearchTabDefOf.Anomaly);
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(Alert_NeedAnomalyProject), "OnClick")]
+    public static class Alert_NeedAnomalyProject_OnClick
+    {
+        public static bool Prepare()
+        {
+            return ModsConfig.AnomalyActive;
+        }
+
+        public static bool Prefix()
+        {
+            ResearchTabCompatibility.Open(ResearchTabDefOf.Anomaly);
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(Dialog_InfoCard.Hyperlink), nameof(Dialog_InfoCard.Hyperlink.ActivateHyperlink))]
+    public static class Dialog_InfoCard_Hyperlink_ActivateHyperlink
+    {
+        public static bool Prefix(Quest ___quest, Ideo ___ideo, ResearchProjectDef ___researchProject)
+        {
+            if (___ideo != null || ___quest != null || ___researchProject == null)
+                return true;
+
+            ResearchTabCompatibility.Open(project: ___researchProject);
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(Dialog_EntityCodex), "LeftRect")]
+    public static class Dialog_EntityCodex_LeftRect
+    {
+        public static bool Prepare()
+        {
+            return ModsConfig.AnomalyActive;
+        }
+
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            MethodInfo getTabWindow = AccessTools.PropertyGetter(typeof(MainButtonDef), nameof(MainButtonDef.TabWindow));
+            MethodInfo select = AccessTools.Method(typeof(MainTabWindow_Research), nameof(MainTabWindow_Research.Select));
+            MethodInfo helper = AccessTools.Method(typeof(ResearchTabCompatibility), nameof(ResearchTabCompatibility.SelectProject));
+            FieldInfo researchButton = AccessTools.Field(typeof(MainButtonDefOf), nameof(MainButtonDefOf.Research));
+
+            List<CodeInstruction> list = instructions.ToList();
+            bool patched = false;
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (i + 4 < list.Count &&
+                    list[i].LoadsField(researchButton) &&
+                    list[i + 1].Calls(getTabWindow) &&
+                    list[i + 2].opcode == OpCodes.Castclass &&
+                    list[i + 4].Calls(select))
+                {
+                    yield return list[i + 3];
+                    yield return new CodeInstruction(OpCodes.Call, helper);
+                    i += 4;
+                    patched = true;
+                    continue;
+                }
+
+                yield return list[i];
+            }
+
+            if (!patched)
+                Log.Warning("[Semi Random Research] Could not patch Entity Codex research links.");
         }
     }
 
@@ -315,7 +404,7 @@ namespace CM_Semi_Random_Research
                 if (tracker == null || tracker.IsSelectableProject(projectToStart))
                     return true;
 
-            Messages.Message("Semi Random Research is active.", MessageTypeDefOf.RejectInput, false);
+            Messages.Message("CM_Semi_Random_Research_Active".Translate(), MessageTypeDefOf.RejectInput, false);
             return false;
         }
     }

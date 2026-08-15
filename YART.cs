@@ -64,7 +64,7 @@ namespace CM_Semi_Random_Research
 
         public static void DoWindowContents_Postfix(Rect inRect)
         {
-            DrawColoredButton(SemiRandomButtonRect(inRect), "Semi-Random", SemiRandomButtonColor);
+            DrawColoredButton(SemiRandomButtonRect(inRect), "CM_Semi_Random_Research_YartButton".Translate(), SemiRandomButtonColor);
         }
 
         private static void DrawColoredButton(Rect rect, string label, Color fill)
@@ -95,7 +95,7 @@ namespace CM_Semi_Random_Research
             GUI.color = Color.white;
 
             if (Event.current.type == EventType.Repaint && mouseOver)
-                TooltipHandler.TipRegion(rect, "Return to Semi-Random Research");
+                TooltipHandler.TipRegion(rect, "CM_Semi_Random_Research_ReturnToSemiRandom".Translate());
         }
 
         private static bool Clicked(Rect rect)

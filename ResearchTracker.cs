@@ -292,7 +292,7 @@ namespace CM_Semi_Random_Research
                                 // Suppress the message if the game was already researching this project
                                 if (!alreadyActive)
                                 {
-                                    Messages.Message($"Auto-started research: {cheapestProject.LabelCap}", MessageTypeDefOf.NeutralEvent, false);
+                                    Messages.Message("CM_Semi_Random_Research_AutoStarted".Translate(cheapestProject.LabelCap), MessageTypeDefOf.NeutralEvent, false);
                                 }
                             }
                         }

@@ -163,11 +163,11 @@ namespace CM_Semi_Random_Research
             SetUsingNodeResearch(true);
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
             {
-                ShowHandoverMessage("Switched to Node Research. Prohibit normal project selection is still on.");
+                ShowHandoverMessage("CM_Semi_Random_Research_Handover_Node_Restricted".Translate());
             }
             else
             {
-                ShowHandoverMessage("Switched to Node Research. Free selection enabled.");
+                ShowHandoverMessage("CM_Semi_Random_Research_Handover_Node_Free".Translate());
             }
 
             OpenResearchWindow(NodeResearchWindowType, windowToClose);
@@ -181,11 +181,11 @@ namespace CM_Semi_Random_Research
             {
                 if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
                 {
-                    ShowHandoverMessage("Switched to Semi-Random Research. Selection restricted.");
+                    ShowHandoverMessage("CM_Semi_Random_Research_Handover_Semi_Restricted".Translate());
                 }
                 else
                 {
-                    ShowHandoverMessage("Switched to Semi-Random Research.");
+                    ShowHandoverMessage("CM_Semi_Random_Research_Handover_Semi".Translate());
                 }
             }
 
@@ -210,11 +210,11 @@ namespace CM_Semi_Random_Research
             SetUsingNodeResearch(false);
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
             {
-                ShowHandoverMessage("Switched to YART. Prohibit normal project selection is still on.");
+                ShowHandoverMessage("CM_Semi_Random_Research_Handover_Yart_Restricted".Translate());
             }
             else
             {
-                ShowHandoverMessage("Switched to YART.");
+                ShowHandoverMessage("CM_Semi_Random_Research_Handover_Yart".Translate());
             }
 
             OpenResearchWindow(YartWindowType, windowToClose);
@@ -231,11 +231,11 @@ namespace CM_Semi_Random_Research
             SetUsingNodeResearch(false);
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
             {
-                ShowHandoverMessage("Switched to Sleek Research Tab. Prohibit normal project selection is still on.");
+                ShowHandoverMessage("CM_Semi_Random_Research_Handover_Sleek_Restricted".Translate());
             }
             else
             {
-                ShowHandoverMessage("Switched to Sleek Research Tab.");
+                ShowHandoverMessage("CM_Semi_Random_Research_Handover_Sleek".Translate());
             }
 
             OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose);
@@ -381,7 +381,7 @@ namespace CM_Semi_Random_Research
                 ResearchTabWindowSwitcher.SwitchToSemiRandomResearch(__instance);
                 Event.current.Use();
             }
-            TooltipHandler.TipRegion(semiBtnRect, "Open Semi-Random Research");
+            TooltipHandler.TipRegion(semiBtnRect, "CM_Semi_Random_Research_OpenSemiRandom".Translate());
         }
     }
 

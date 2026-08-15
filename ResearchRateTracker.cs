@@ -369,33 +369,36 @@ namespace CM_Semi_Random_Research
         // Format a rate value as a string with proper units
         public static string FormatRate(float ratePerDay)
         {
-            if (ratePerDay <= 0) return "0 research/day";
+            if (ratePerDay <= 0) return "CM_Semi_Random_Research_RatePerDay".Translate("0").ToString();
             
-            // Format with 1 decimal place
-            return $"{ratePerDay:F1} research/day";
+            return "CM_Semi_Random_Research_RatePerDay".Translate(ratePerDay.ToString("F1")).ToString();
+        }
+
+        public static string FormatRateShort(float ratePerDay)
+        {
+            if (ratePerDay <= 0) return "CM_Semi_Random_Research_RateZeroShort".Translate();
+
+            return "CM_Semi_Random_Research_RatePerDayShort".Translate(ratePerDay.ToString("F1")).ToString();
         }
         
         // Format ETA as a string
         public static string FormatETA(float daysToCompletion)
         {
-            if (daysToCompletion < 0) return "Unknown";
-            if (daysToCompletion == 0) return "Complete";
+            if (daysToCompletion < 0) return "CM_Semi_Random_Research_Unknown".Translate();
+            if (daysToCompletion == 0) return "CM_Semi_Random_Research_Complete".Translate();
             
             if (daysToCompletion < 1)
             {
-                // Convert to hours
                 float hours = daysToCompletion * 24f;
-                return $"{hours:F1} hours";
+                return "CM_Semi_Random_Research_ETA_Hours".Translate(hours.ToString("F1")).ToString();
             }
             else if (daysToCompletion < 10)
             {
-                // Show days with 1 decimal place
-                return $"{daysToCompletion:F1} days";
+                return "CM_Semi_Random_Research_ETA_Days".Translate(daysToCompletion.ToString("F1")).ToString();
             }
             else
             {
-                // Show whole days
-                return $"{Math.Round(daysToCompletion)} days";
+                return "CM_Semi_Random_Research_ETA_Days".Translate(Math.Round(daysToCompletion).ToString()).ToString();
             }
         }
         

@@ -34,26 +34,59 @@ namespace CM_Semi_Random_Research
 
         private void RebuildTechLevelStats()
         {
-            cachedTechLevelStats = new Dictionary<TechLevel, (int, int)>
+            cachedTechLevelStats = new Dictionary<TechLevel, (int completed, int total, float remainingCost)>
             {
-                { TechLevel.Neolithic, (0, 0) },
-                { TechLevel.Medieval, (0, 0) },
-                { TechLevel.Industrial, (0, 0) },
-                { TechLevel.Spacer, (0, 0) },
-                { TechLevel.Ultra, (0, 0) },
-                { TechLevel.Archotech, (0, 0) }
+                { TechLevel.Neolithic, (0, 0, 0f) },
+                { TechLevel.Medieval, (0, 0, 0f) },
+                { TechLevel.Industrial, (0, 0, 0f) },
+                { TechLevel.Spacer, (0, 0, 0f) },
+                { TechLevel.Ultra, (0, 0, 0f) },
+                { TechLevel.Archotech, (0, 0, 0f) }
             };
             List<ResearchProjectDef> allDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading;
             for (int i = 0; i < allDefs.Count; i++)
             {
                 ResearchProjectDef def = allDefs[i];
                 if (!cachedTechLevelStats.TryGetValue(def.techLevel, out var stats))
-                    stats = (0, 0);
+                    stats = (0, 0, 0f);
                 stats.total++;
                 if (def.IsFinished)
+                {
                     stats.completed++;
+                }
+                else if (Faction.OfPlayerSilentFail != null &&
+                    !Compatibility.IsDummyResearch(def) &&
+                    !Compatibility.IsHiddenResearch(def))
+                {
+                    float remaining = def.CostApparent - def.ProgressApparent;
+                    if (remaining > 0f)
+                        stats.remainingCost += remaining;
+                }
                 cachedTechLevelStats[def.techLevel] = stats;
             }
+            cachedTechLevelStatsTick = Find.TickManager.TicksGame;
+        }
+
+        private int cachedTechLevelStatsTick = -1;
+
+        private void RefreshTechLevelStats(int tick)
+        {
+            if (cachedTechLevelStats != null && tick - cachedTechLevelStatsTick < 60)
+                return;
+            cachedTechLevelStatsTick = tick;
+            RebuildTechLevelStats();
+        }
+
+        private string FormatRemainingEta(float remainingCost)
+        {
+            if (remainingCost <= 0f)
+                return "CM_Semi_Random_Research_Complete".Translate();
+
+            float average = cachedRateTracker != null ? cachedRateTracker.GetGlobalAverageRate() : 0f;
+            if (average <= 0f)
+                return "CM_Semi_Random_Research_ETA_UnknownNoAverage".Translate();
+
+            return "CM_Semi_Random_Research_ETA_AtTenDayAverage".Translate(ResearchRateTracker.FormatETA(remainingCost / average)).ToString();
         }
 
         private static readonly TechLevel[] ProgressTechLevels =
@@ -100,7 +133,7 @@ namespace CM_Semi_Random_Research
                 Widgets.DrawBoxSolid(barRect, new Color(0.1f, 0.1f, 0.1f));
             }
 
-            Dictionary<TechLevel, (int completed, int total)> techLevelStats = cachedTechLevelStats;
+            Dictionary<TechLevel, (int completed, int total, float remainingCost)> techLevelStats = cachedTechLevelStats;
             float totalTechs = 0f;
             for (int i = 0; i < techLevels.Length; i++)
             {
@@ -189,21 +222,28 @@ namespace CM_Semi_Random_Research
 
                 if (Mouse.IsOver(segmentRect))
                 {
-                    string tooltip = $"{techLevel.ToStringHuman().CapitalizeFirst()}\n{stats.completed}/{stats.total} ({(progress * 100f):F0}%)";
+                    string tooltip = "CM_Semi_Random_Research_EraProgressTooltip".Translate(
+                        techLevel.ToStringHuman().CapitalizeFirst(),
+                        stats.completed,
+                        stats.total,
+                        (progress * 100f).ToString("F0"),
+                        FormatRemainingEta(stats.remainingCost));
 
                     // Add ProgressionCore info to tooltip
                     if (progressionCoreActive && techLevel == Faction.OfPlayer.def.techLevel)
                     {
-                        tooltip += $"\n\nProgression Core: {(progress * 100f):F0}% of {(requiredProgress * 100f):F0}% required to advance";
+                        tooltip += "\n\n" + "CM_Semi_Random_Research_ProgressionCoreTooltip".Translate(
+                            (progress * 100f).ToString("F0"),
+                            (requiredProgress * 100f).ToString("F0"));
 
                         if (progress >= requiredProgress)
                         {
-                            tooltip += "\nReady to advance to next tech level!";
+                            tooltip += "\n" + "CM_Semi_Random_Research_ProgressionCoreReady".Translate();
                         }
                         else
                         {
                             int remaining = (int)((requiredProgress * stats.total) - stats.completed + 0.999f);
-                            tooltip += $"\nNeed {remaining} more research project(s)";
+                            tooltip += "\n" + "CM_Semi_Random_Research_ProgressionCoreNeedMore".Translate(remaining);
                         }
                     }
 
@@ -245,8 +285,8 @@ namespace CM_Semi_Random_Research
                 float progress = stats.total > 0 ? (float)stats.completed / stats.total : 0f;
 
                 string thresholdLabel = progress >= requiredProgress
-                    ? "Ready to Advance!"
-                    : "Advance Tech Level";
+                    ? "CM_Semi_Random_Research_ReadyToAdvance".Translate()
+                    : "CM_Semi_Random_Research_AdvanceTechLevel".Translate();
 
                 Widgets.Label(labelRect, thresholdLabel);
             }
@@ -283,10 +323,12 @@ namespace CM_Semi_Random_Research
         {
             int completed = 0;
             int total = 0;
+            float remainingCost = 0f;
             foreach (var stats in cachedTechLevelStats.Values)
             {
                 completed += stats.completed;
                 total += stats.total;
+                remainingCost += stats.remainingCost;
             }
 
             if (total <= 0)
@@ -311,7 +353,7 @@ namespace CM_Semi_Random_Research
 
             Text.Font = GameFont.Small;
             Text.Anchor = TextAnchor.MiddleCenter;
-            string label = $"Research ({completed}/{total})";
+            string label = "CM_Semi_Random_Research_ProgressTotal".Translate(completed, total);
             Vector2 labelSize = Text.CalcSize(label);
             Rect labelRect = new Rect(
                 barRect.center.x - (labelSize.x / 2f),
@@ -332,7 +374,11 @@ namespace CM_Semi_Random_Research
             Widgets.Label(labelRect, label);
 
             if (Mouse.IsOver(barRect))
-                TooltipHandler.TipRegion(barRect, $"{completed}/{total} ({(progress * 100f):F0}%)");
+                TooltipHandler.TipRegion(barRect, "CM_Semi_Random_Research_UnifiedProgressTooltip".Translate(
+                    completed,
+                    total,
+                    (progress * 100f).ToString("F0"),
+                    FormatRemainingEta(remainingCost)));
 
             Text.Anchor = TextAnchor.UpperLeft;
             GUI.color = Color.white;

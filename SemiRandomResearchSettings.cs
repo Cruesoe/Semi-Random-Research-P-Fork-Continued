@@ -114,52 +114,52 @@ namespace CM_Semi_Random_Research
             // COLUMN 1: GENERAL & MECHANICS
             // ==========================================
 
-            listing.Label("--- General Settings ---".Colorize(Color.gray));
+            listing.Label("CM_Semi_Random_Research_Setting_Section_General".Translate().Colorize(Color.gray));
             listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Feature_Enabled_Label".Translate(), ref featureEnabled, "CM_Semi_Random_Research_Setting_Feature_Enabled_Description".Translate());
-            listing.CheckboxLabeled("Auto-open on completion", ref autoOpenOnCompletion, "Automatically open the Semi-Random Research window and pause the game when a project finishes.");
-            listing.CheckboxLabeled("Auto pick next research", ref autoPickNextResearch, "Automatically chooses and starts researching the cheapest available project when a research finishes.");
-            listing.CheckboxLabeled("Show research rate graph", ref showResearchRateGraph, "Toggles the visibility of the performance graph on the active research card.");
-            listing.CheckboxLabeled("Show completion letter", ref showCompletionLetter, "Toggles the visibility of the completion letter when a research project is finished.");
-            listing.CheckboxLabeled("Color and group by tech level", ref colorAndGroupByTechLevel, "When enabled, standard research offers are colored and grouped under Neolithic/Medieval/Industrial era headers, and the top progress bar is split by era. When disabled, standard offers use a flat list with neutral colors and the top bar is a single uncolored total of all research. Anomaly and Gravship sections are unchanged.");
+            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_AutoOpen_Label".Translate(), ref autoOpenOnCompletion, "CM_Semi_Random_Research_Setting_AutoOpen_Description".Translate());
+            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_AutoPick_Label".Translate(), ref autoPickNextResearch, "CM_Semi_Random_Research_Setting_AutoPick_Description".Translate());
+            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_ShowGraph_Label".Translate(), ref showResearchRateGraph, "CM_Semi_Random_Research_Setting_ShowGraph_Description".Translate());
+            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_ShowLetter_Label".Translate(), ref showCompletionLetter, "CM_Semi_Random_Research_Setting_ShowLetter_Description".Translate());
+            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_ColorGroup_Label".Translate(), ref colorAndGroupByTechLevel, "CM_Semi_Random_Research_Setting_ColorGroup_Description".Translate());
             listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Verbose_Logging_Label".Translate(), ref verboseLogging, "CM_Semi_Random_Research_Setting_Verbose_Logging_Description".Translate());
 
             if (ResearchTabWindowSwitcher.NodeResearchInstalled)
             {
-                listing.CheckboxLabeled("Delegate UI to Node Research", ref usingNodeResearch, "Use Node Research as the Research tab. This does not change Prohibit normal project selection.");
+                listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_DelegateNode_Label".Translate(), ref usingNodeResearch, "CM_Semi_Random_Research_Setting_DelegateNode_Description".Translate());
             }
 
             if (ResearchTabWindowSwitcher.NodeResearchInstalled || ResearchTabWindowSwitcher.YartInstalled || ResearchTabWindowSwitcher.SleekInstalled)
             {
-                listing.Label("Tree button opens");
+                listing.Label("CM_Semi_Random_Research_Setting_TreeButtonOpens_Label".Translate());
                 Rect treeButtonOptionRect = listing.GetRect(26);
                 List<FloatMenuOption> treeOptions = new List<FloatMenuOption>();
                 if (ResearchTabWindowSwitcher.NodeResearchInstalled)
                 {
-                    treeOptions.Add(new FloatMenuOption("Node Research", () => { preferredResearchTree = PreferredResearchTree.NodeResearch; }));
+                    treeOptions.Add(new FloatMenuOption("CM_Semi_Random_Research_Tree_NodeResearch".Translate(), () => { preferredResearchTree = PreferredResearchTree.NodeResearch; }));
                 }
                 if (ResearchTabWindowSwitcher.YartInstalled)
                 {
-                    treeOptions.Add(new FloatMenuOption("YART", () => { preferredResearchTree = PreferredResearchTree.YART; }));
+                    treeOptions.Add(new FloatMenuOption("CM_Semi_Random_Research_Tree_YART".Translate(), () => { preferredResearchTree = PreferredResearchTree.YART; }));
                 }
                 if (ResearchTabWindowSwitcher.SleekInstalled)
                 {
-                    treeOptions.Add(new FloatMenuOption("Sleek Research Tab", () => { preferredResearchTree = PreferredResearchTree.Sleek; }));
+                    treeOptions.Add(new FloatMenuOption("CM_Semi_Random_Research_Tree_Sleek".Translate(), () => { preferredResearchTree = PreferredResearchTree.Sleek; }));
                 }
                 string treeButtonLabel = PreferredTreeLabel(preferredResearchTree);
-                DoButtonOption(treeButtonOptionRect, treeButtonLabel, "Which research tree the Semi-Random footer button opens.", treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10);
-                listing.CheckboxLabeled("Suppress handover messages", ref suppressHandoverMessages, "Hide the messages shown when switching between Semi-Random Research, Node Research, YART, and Sleek Research Tab.");
+                DoButtonOption(treeButtonOptionRect, treeButtonLabel, "CM_Semi_Random_Research_Setting_TreeButtonOpens_Description".Translate(), treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10);
+                listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_SuppressHandover_Label".Translate(), ref suppressHandoverMessages, "CM_Semi_Random_Research_Setting_SuppressHandover_Description".Translate());
             }
 
             listing.GapLine();
 
-            listing.Label("--- Gameplay Mechanics ---".Colorize(Color.gray));
+            listing.Label("CM_Semi_Random_Research_Setting_Section_Gameplay".Translate().Colorize(Color.gray));
             listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Force_Lowest_Tech_Level_Label".Translate(), ref forceLowestTechLevel, "CM_Semi_Random_Research_Setting_Force_Lowest_Tech_Level_Description".Translate());
             bool restrictFaction = restrictToFactionTechLevel;
             string restrictFactionTip = "CM_Semi_Random_Research_Setting_Restrict_To_Faction_Tech_Level_Description".Translate();
             if (ResearchTabWindowSwitcher.NodeResearchInstalled)
             {
                 restrictFaction = true;
-                restrictFactionTip = "Locked on while Node Research is installed. Node Research controls tech-level progression.";
+                restrictFactionTip = "CM_Semi_Random_Research_Setting_RestrictFaction_LockedTip".Translate();
                 GUI.enabled = false;
             }
             listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Restrict_To_Faction_Tech_Level_Label".Translate(), ref restrictFaction, restrictFactionTip);
@@ -173,7 +173,7 @@ namespace CM_Semi_Random_Research
             if (ResearchTabWindowSwitcher.NodeResearchInstalled)
             {
                 oneHigher = false;
-                oneHigherTip = "Disabled while Node Research is installed. Node Research controls tech-level progression.";
+                oneHigherTip = "CM_Semi_Random_Research_Setting_OneHigher_DisabledTip".Translate();
                 GUI.enabled = false;
             }
             listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Allow_One_Higher_Tech_Project_Label".Translate(), ref oneHigher, oneHigherTip);
@@ -208,7 +208,7 @@ namespace CM_Semi_Random_Research
             // ==========================================
             listing.NewColumn();
 
-            listing.Label("--- Reroll Behavior ---".Colorize(Color.gray));
+            listing.Label("CM_Semi_Random_Research_Setting_Section_Reroll".Translate().Colorize(Color.gray));
             listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Reroll_All_Every_Time_Label".Translate(), ref rerollAllEveryTime, "CM_Semi_Random_Research_Setting_Reroll_All_Every_Time_Description".Translate());
 
             string rerollLableTooltip = "CM_Semi_Random_Research_Setting_Manual_Reroll_Label".Translate() + "\n\n";
@@ -237,7 +237,7 @@ namespace CM_Semi_Random_Research
 
             listing.GapLine();
 
-            listing.Label("--- Project Limits ---".Colorize(Color.gray));
+            listing.Label("CM_Semi_Random_Research_Setting_Section_Limits".Translate().Colorize(Color.gray));
             listing.Label("CM_Semi_Random_Research_Setting_Type_Of_Projects_Count_Label".Translate());
             if (listing.RadioButton("CM_Semi_Random_Research_Setting_Static_Projects_Count_Label".Translate(), amountSelection == ChoiceAmountSelection.Static, 8f, "CM_Semi_Random_Research_Setting_Static_Projects_Count_Description".Translate()))
             {
@@ -276,10 +276,10 @@ namespace CM_Semi_Random_Research
         private static string PreferredTreeLabel(PreferredResearchTree preferred)
         {
             if (preferred == PreferredResearchTree.YART)
-                return "YART";
+                return "CM_Semi_Random_Research_Tree_YART".Translate();
             if (preferred == PreferredResearchTree.Sleek)
-                return "Sleek Research Tab";
-            return "Node Research";
+                return "CM_Semi_Random_Research_Tree_Sleek".Translate();
+            return "CM_Semi_Random_Research_Tree_NodeResearch".Translate();
         }
 
         private void DoButtonOption(Rect rect, string text, string tooltip, List<FloatMenuOption> options, float leftPad = 0, float rightPad = 0)

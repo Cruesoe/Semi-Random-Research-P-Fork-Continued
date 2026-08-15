@@ -34,7 +34,7 @@ namespace CM_Semi_Random_Research
 
         public override string SettingsCategory()
         {
-            return "Semi Random Research";
+            return "CM_Semi_Random_Research_SettingsCategory".Translate();
         }
 
         public override void DoSettingsWindowContents(Rect inRect)

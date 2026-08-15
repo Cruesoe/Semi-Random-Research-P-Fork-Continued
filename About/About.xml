@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+	<name>Semi Random Research:P-Fork Continued</name>
+	<author> Original author: Captain Muscles (Nathan Harbour)
+			 Original Progression Fork: Arodoid
+    </author>
+	<packageId>cruesoe.semirandompfork.continued</packageId>
+	<supportedVersions>
+    <li>1.6</li>
+	</supportedVersions>
+	<description>Semi-Random Research adds random project selection and visual analytics to RimWorld, making research more dynamic and informative.</description>
+	<modDependencies>
+		<li>
+			<packageId>brrainz.harmony</packageId>
+			<displayName>Harmony</displayName>
+			<steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+			<downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
+		</li>
+	</modDependencies>
+
+	<incompatibleWith>
+		<li>cruesoe.research.auto</li>
+	</incompatibleWith>
+
+	<loadAfter>
+		<li>Ludeon.RimWorld</li>
+		<li>brrainz.harmony</li>
+		<li>ferny.noderesearch</li>
+		<li>squishyjellyfish.SleekResearchTab</li>	
+	</loadAfter>
+</ModMetaData>

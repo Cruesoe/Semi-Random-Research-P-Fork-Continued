@@ -48,7 +48,7 @@ namespace CM_Semi_Random_Research
         private List<string> animationOrder = new List<string>();
 
         private Dictionary<TechLevel, float> techLevelHeaderProgress = new Dictionary<TechLevel, float>();
-        private Dictionary<TechLevel, (int completed, int total)> cachedTechLevelStats;
+        private Dictionary<TechLevel, (int completed, int total, float remainingCost)> cachedTechLevelStats;
         private TechLevel cachedWorldTech = TechLevel.Undefined;
         private int cachedOffersRevision = -1;
         private Dictionary<ResearchProjectDef, Def> cachedFirstUnlockable = new Dictionary<ResearchProjectDef, Def>();
@@ -64,7 +64,7 @@ namespace CM_Semi_Random_Research
         private int cachedRateInfoTick = -1;
         private string cachedCurrentRateText = "—";
         private string cachedAvgRateText = "—";
-        private string cachedEtaText = "Unknown";
+        private string cachedEtaText = "—";
         private Color cachedEtaColor = new Color(0.7f, 0.7f, 0.7f);
         private List<ResearchProjectDef> cachedActiveProjects = new List<ResearchProjectDef>();
         private readonly List<Pair<TechLevel, List<ResearchProjectDef>>> cachedStandardGroups = new List<Pair<TechLevel, List<ResearchProjectDef>>>();
@@ -81,8 +81,6 @@ namespace CM_Semi_Random_Research
         private int cachedCanStartNowTick = -1;
         private bool cachedCanReroll;
         private FooterStartMode cachedFooterStartMode;
-        private string cachedTreeButtonText = "Research Tree";
-        private string cachedTreeButtonTip = "Open the research tree. Prohibit normal project selection still applies if it is enabled.";
 
         private enum FooterStartMode
         {
@@ -184,6 +182,12 @@ namespace CM_Semi_Random_Research
                  ResearchTracker.GetCategoryKey(selectedProject) == "Gravship" ||
                  SemiRandomResearchMod.settings.allowSwitchingResearch);
             cachedFooterStartMode = canStart ? FooterStartMode.CanStart : FooterStartMode.Locked;
+        }
+
+        internal void SelectFromExternal(ResearchProjectDef project)
+        {
+            if (project != null)
+                selectedProject = project;
         }
 
         private void SelectDefaultProject()
@@ -368,8 +372,8 @@ namespace CM_Semi_Random_Research
             if (mainProject == null || cachedRateTracker == null)
             {
                 cachedCurrentRateText = "—";
-                cachedAvgRateText = "0/d";
-                cachedEtaText = "Unknown";
+                cachedAvgRateText = "CM_Semi_Random_Research_RateZeroShort".Translate();
+                cachedEtaText = "CM_Semi_Random_Research_Unknown".Translate().ToString();
                 cachedEtaColor = new Color(0.7f, 0.7f, 0.7f);
                 cachedRateInfo = null;
                 cachedRateInfoProject = mainProject;
@@ -386,14 +390,14 @@ namespace CM_Semi_Random_Research
             bool hasRateData = cachedRateInfo != null && cachedRateInfo.TotalSamples > 0;
             float globalAverageRate = cachedRateInfo != null ? cachedRateInfo.AverageRate : 0f;
             cachedCurrentRateText = hasRateData
-                ? cachedRateInfo.CurrentRateFormatted.Replace(" research/day", "/d")
-                : "Calculating...";
+                ? ResearchRateTracker.FormatRateShort(cachedRateInfo.CurrentRate)
+                : "CM_Semi_Random_Research_Calculating".Translate().ToString();
             if (hasRateData)
-                cachedAvgRateText = cachedRateInfo.AverageRateFormatted.Replace(" research/day", "/d");
+                cachedAvgRateText = ResearchRateTracker.FormatRateShort(cachedRateInfo.AverageRate);
             else if (globalAverageRate > 0f)
-                cachedAvgRateText = ResearchRateTracker.FormatRate(globalAverageRate).Replace(" research/day", "/d");
+                cachedAvgRateText = ResearchRateTracker.FormatRateShort(globalAverageRate);
             else
-                cachedAvgRateText = "0/d";
+                cachedAvgRateText = "CM_Semi_Random_Research_RateZeroShort".Translate();
 
             float estimatedDays = -1f;
             if (hasRateData && cachedRateInfo.EstimatedDaysToCompletion >= 0)
@@ -409,7 +413,7 @@ namespace CM_Semi_Random_Research
             }
             else
             {
-                cachedEtaText = "Unknown";
+                cachedEtaText = "CM_Semi_Random_Research_Unknown".Translate().ToString();
             }
 
             cachedEtaColor = new Color(0.7f, 0.7f, 0.7f);
@@ -605,6 +609,7 @@ namespace CM_Semi_Random_Research
             RecacheMatchingBenchIfNeeded();
             RefreshCanStartNow(tick);
             RefreshRateTexts(tick);
+            RefreshTechLevelStats(tick);
         }
 
         private void CopyAvailableProjects(List<ResearchProjectDef> source)
@@ -737,7 +742,7 @@ namespace CM_Semi_Random_Research
                     footerButtonWidth,
                     footerButtonHeight);
 
-                if (ColoredButtonText(debugButtonRect, "Finish Now", FooterDebugButtonColor))
+                if (ColoredButtonText(debugButtonRect, "CM_Semi_Random_Research_FinishNow".Translate(), FooterDebugButtonColor))
                 {
                     Find.ResearchManager.SetCurrentProject(selectedProject);
                     Find.ResearchManager.FinishProject(selectedProject);
@@ -782,7 +787,7 @@ namespace CM_Semi_Random_Research
                     if (inflationMod != null)
                         Find.WindowStack.Add(new Dialog_ModSettings(inflationMod));
                 }
-                TooltipHandler.TipRegion(inflationBtnRect, "Open Research: Inflation Settings");
+                TooltipHandler.TipRegion(inflationBtnRect, "CM_Semi_Random_Research_InflationSettingsTip".Translate());
             }
 
             if (IsRepaint && SettingsIcon != null)
@@ -793,7 +798,7 @@ namespace CM_Semi_Random_Research
                 Mod ourMod = LoadedModManager.GetMod<SemiRandomResearchMod>();
                 Find.WindowStack.Add(new Dialog_ModSettings(ourMod));
             }
-            TooltipHandler.TipRegion(settingsBtnRect, "Open Semi-Random Research Settings");
+            TooltipHandler.TipRegion(settingsBtnRect, "CM_Semi_Random_Research_SettingsTip".Translate());
         }
 
         private const string ResearchInflationPackageId = "cruesoe.research.inflation";

@@ -283,7 +283,7 @@ namespace CM_Semi_Random_Research
                 if (visibleDrawn >= maxVisibleIcons)
                 {
                     rect.yMin += itemHeight + 8f;
-                    Widgets.Label(new Rect(rect.x, rect.yMin, rect.width, 24f), "+" + (unlocked.Count - i - 1) + " more");
+                    Widgets.Label(new Rect(rect.x, rect.yMin, rect.width, 24f), "CM_Semi_Random_Research_MoreUnlocks".Translate(unlocked.Count - i - 1));
                     rect.yMin += 26f;
                     break;
                 }
