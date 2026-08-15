@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -41,6 +42,20 @@ namespace CM_Semi_Random_Research
                 !rpd.IsDummyResearch();
         }
 
+        public static bool AnomalyResearchUnlocked()
+        {
+            if (!ModsConfig.AnomalyActive)
+                return false;
+            return Find.Anomaly != null && Find.Anomaly.AnomalyStudyEnabled;
+        }
+
+        public static bool IsAnomalyKnowledgeCategory(KnowledgeCategoryDef category)
+        {
+            if (category == null || !ModsConfig.AnomalyActive)
+                return false;
+            return category == KnowledgeCategoryDefOf.Basic || category == KnowledgeCategoryDefOf.Advanced;
+        }
+
         public static bool IsHiddenResearch(ResearchProjectDef rpd)
         {
             if (rpd == null)
@@ -49,6 +64,13 @@ namespace CM_Semi_Random_Research
             }
 
             if (rpd.IsHidden)
+            {
+                return true;
+            }
+
+            // Vanilla CanStartNow is true for dark research from day one; the Anomaly
+            // tab is what stays hidden until study is enabled. Mirror that here.
+            if (IsAnomalyKnowledgeCategory(rpd.knowledgeCategory) && !AnomalyResearchUnlocked())
             {
                 return true;
             }

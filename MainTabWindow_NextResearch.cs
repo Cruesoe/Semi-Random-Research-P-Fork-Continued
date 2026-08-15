@@ -82,7 +82,7 @@ namespace CM_Semi_Random_Research
         private bool cachedCanReroll;
         private FooterStartMode cachedFooterStartMode;
         private string cachedTreeButtonText = "Research Tree";
-        private string cachedTreeButtonTip = "View the standard Research Tree (View only).";
+        private string cachedTreeButtonTip = "Open the research tree. Prohibit normal project selection still applies if it is enabled.";
 
         private enum FooterStartMode
         {
@@ -96,14 +96,13 @@ namespace CM_Semi_Random_Research
         private int cachedSelectedUnlockCount;
         private ResearchProjectDef cachedUnlocksProject;
         private float cachedRequiredProgress = 1f;
-        private Type cachedPreferredTreeType;
         private bool loggedDrawError;
 
         private static bool IsRepaint => Event.current.type == EventType.Repaint;
 
         private static bool AnomalyContentEnabled()
         {
-            return ModsConfig.AnomalyActive && KnowledgeCategoryDefOf.Basic != null;
+            return Compatibility.AnomalyResearchUnlocked() && KnowledgeCategoryDefOf.Basic != null;
         }
 
         private static string SafeLabel(ResearchProjectDef project)
@@ -243,23 +242,6 @@ namespace CM_Semi_Random_Research
                         break;
                     }
                 }
-            }
-        }
-
-        private void RefreshTreeButtonLabels()
-        {
-            cachedTreeButtonText = "Research Tree";
-            cachedTreeButtonTip = "View the standard Research Tree (View only).";
-            Type preferredTreeType = cachedPreferredTreeType;
-            if (preferredTreeType != null && preferredTreeType == ResearchTabWindowSwitcher.NodeResearchWindowType)
-            {
-                cachedTreeButtonText = "Node Research";
-                cachedTreeButtonTip = "Switch to Node Research. Prohibit normal project selection still applies if it is enabled.";
-            }
-            else if (preferredTreeType != null && preferredTreeType == ResearchTabWindowSwitcher.YartWindowType)
-            {
-                cachedTreeButtonText = "YART";
-                cachedTreeButtonTip = "Switch to YART. Prohibit normal project selection still applies if it is enabled.";
             }
         }
 
@@ -480,8 +462,6 @@ namespace CM_Semi_Random_Research
             currentRandomSeed = Rand.Int;
             cachedTracker = Current.Game.World.GetComponent<ResearchTracker>();
             cachedRateTracker = Current.Game.World.GetComponent<ResearchRateTracker>();
-            cachedPreferredTreeType = ResearchTabWindowSwitcher.ResolvePreferredTreeWindowType();
-            RefreshTreeButtonLabels();
             cachedRequiredProgress = ProgressionCoreActive ? GetRequiredProgressionPercent() : 1f;
 
             if (cachedTracker != null)

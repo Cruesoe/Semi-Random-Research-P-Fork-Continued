@@ -22,6 +22,7 @@ namespace CM_Semi_Random_Research
         public const string WindowTypeName = "BetterResearchMenu.MainTabWindow_BetterResearch";
         public const string YartPackageId = "seohyeon.yart";
         public const string YartWindowTypeName = "YART.MainTabWindow_YART";
+        public const string SleekPackageId = "squishyjellyfish.SleekResearchTab";
 
         private static Type cachedNodeResearchWindowType;
         private static Type cachedYartWindowType;
@@ -50,6 +51,9 @@ namespace CM_Semi_Random_Research
 
         public static bool YartInstalled =>
             ModLister.GetActiveModWithIdentifier(YartPackageId) != null;
+
+        public static bool SleekInstalled =>
+            ModLister.GetActiveModWithIdentifier(SleekPackageId) != null;
 
         public static void SetUsingNodeResearch(bool value)
         {
@@ -173,7 +177,7 @@ namespace CM_Semi_Random_Research
         public static void SwitchToSemiRandomResearch(Window windowToClose)
         {
             SetUsingNodeResearch(false);
-            if (NodeResearchInstalled || YartInstalled)
+            if (NodeResearchInstalled || YartInstalled || SleekInstalled)
             {
                 if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
                 {
@@ -217,11 +221,37 @@ namespace CM_Semi_Random_Research
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
 
+        public static void SwitchToSleek(Window windowToClose)
+        {
+            if (!SleekInstalled)
+            {
+                return;
+            }
+
+            SetUsingNodeResearch(false);
+            if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
+            {
+                ShowHandoverMessage("Switched to Sleek Research Tab. Prohibit normal project selection is still on.");
+            }
+            else
+            {
+                ShowHandoverMessage("Switched to Sleek Research Tab.");
+            }
+
+            OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose);
+            SoundDefOf.TabOpen.PlayOneShotOnCamera();
+        }
+
         public static Type ResolvePreferredTreeWindowType()
         {
             PreferredResearchTree preferred = SemiRandomResearchMod.settings != null
                 ? SemiRandomResearchMod.settings.preferredResearchTree
                 : PreferredResearchTree.NodeResearch;
+
+            if (preferred == PreferredResearchTree.Sleek && SleekInstalled)
+            {
+                return typeof(MainTabWindow_Research);
+            }
 
             if (preferred == PreferredResearchTree.YART && YartInstalled && YartWindowType != null)
             {
@@ -231,6 +261,11 @@ namespace CM_Semi_Random_Research
             if (preferred == PreferredResearchTree.NodeResearch && NodeResearchInstalled && NodeResearchWindowType != null)
             {
                 return NodeResearchWindowType;
+            }
+
+            if (SleekInstalled)
+            {
+                return typeof(MainTabWindow_Research);
             }
 
             if (YartInstalled && YartWindowType != null)
@@ -258,6 +293,12 @@ namespace CM_Semi_Random_Research
             if (windowType == YartWindowType)
             {
                 SwitchToYart(windowToClose);
+                return;
+            }
+
+            if (SleekInstalled)
+            {
+                SwitchToSleek(windowToClose);
                 return;
             }
 

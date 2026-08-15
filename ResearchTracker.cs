@@ -93,6 +93,7 @@ namespace CM_Semi_Random_Research
         private int tickOffset = 360;
         private int previousDefCount = 0;
         private bool additionalProjectsRefresh = true;
+        private bool pendingWorldGenOffers = false;
 
         private Dictionary<string, bool> lastPicked = new Dictionary<string, bool>();
         private Dictionary<string, string> loggedMessages = new Dictionary<string, string>();
@@ -107,9 +108,22 @@ namespace CM_Semi_Random_Research
             RefreshTypeKeys();
         }
 
+        private bool AnomalyTypeKeysNeedRefresh()
+        {
+            if (!ModsConfig.AnomalyActive || all_typeKeys == null)
+                return false;
+            bool unlocked = Compatibility.AnomalyResearchUnlocked();
+            bool trackingAnomaly = all_typeKeys.Contains("Basic") || all_typeKeys.Contains("Advanced");
+            return unlocked != trackingAnomaly;
+        }
+
         private void RefreshTypeKeys()
         {
-            all_typeKeys = DefDatabase<KnowledgeCategoryDef>.AllDefsListForReading.Select(x => x.defName).ToList();
+            bool anomalyUnlocked = Compatibility.AnomalyResearchUnlocked();
+            all_typeKeys = DefDatabase<KnowledgeCategoryDef>.AllDefsListForReading
+                .Where(cat => !Compatibility.IsAnomalyKnowledgeCategory(cat) || anomalyUnlocked)
+                .Select(x => x.defName)
+                .ToList();
             all_typeKeys.Add("Standard");
 
             bool hasGravship = false;
@@ -160,7 +174,13 @@ namespace CM_Semi_Random_Research
             }
 
             ResearchTabWindowSwitcher.Apply();
-            SettingsChanged();
+
+            // CostApparent / RestrictToFactionTechLevel need Faction.OfPlayer.
+            // During WorldGenerator.GenerateWorld that faction does not exist yet.
+            if (Faction.OfPlayerSilentFail != null)
+                SettingsChanged();
+            else
+                pendingWorldGenOffers = true;
         }
 
         public override void ExposeData()
@@ -210,9 +230,21 @@ namespace CM_Semi_Random_Research
         {
             base.WorldComponentTick();
 
+            if (pendingWorldGenOffers && Faction.OfPlayerSilentFail != null)
+            {
+                pendingWorldGenOffers = false;
+                SettingsChanged();
+            }
+
             if ((tickCounter % tickShortOffset) == 0)
             {
-                if (all_typeKeys == null) RefreshTypeKeys();
+                if (all_typeKeys == null)
+                    RefreshTypeKeys();
+                else if (AnomalyTypeKeysNeedRefresh())
+                {
+                    RefreshTypeKeys();
+                    GetCurrentlyAvailableProjects();
+                }
 
                 List<ResearchProjectDef> availableSnapshot = null;
 
@@ -329,7 +361,12 @@ namespace CM_Semi_Random_Research
 
         public List<ResearchProjectDef> GetCurrentlyAvailableProjects()
         {
-            if (all_typeKeys == null) RefreshTypeKeys();
+            // Rolling uses CostApparent, which NREs if the player faction is missing.
+            if (Faction.OfPlayerSilentFail == null)
+                return currentAvailableProjects ?? new List<ResearchProjectDef>();
+
+            if (all_typeKeys == null || AnomalyTypeKeysNeedRefresh())
+                RefreshTypeKeys();
             List<ResearchProjectDef> result = new List<ResearchProjectDef>();
             SemiRandomResearchMod.settings.DumpSettingToLog();
 
@@ -337,6 +374,16 @@ namespace CM_Semi_Random_Research
                 !projectDef.IsFinished &&
                 !Compatibility.IsHiddenResearch(projectDef) &&
                 Compatibility.SatisfiesAlienRaceRestriction(projectDef)).ToList();
+
+            if (currentProjects.Count > 0)
+            {
+                for (int i = currentProjects.Count - 1; i >= 0; i--)
+                {
+                    ResearchProjectDef current = currentProjects[i];
+                    if (current != null && Compatibility.IsHiddenResearch(current))
+                        SetCurrentProjectByKey(null, GetCategoryKey(current));
+                }
+            }
 
             int additionalProjects = SemiRandomResearchMod.settings.amountSelection == ChoiceAmountSelection.PerColonist ?
                 PawnsFinder.AllMapsCaravansAndTravellingTransporters_AliveSpawned_FreeColonists_NoSuspended.
@@ -419,6 +466,9 @@ namespace CM_Semi_Random_Research
                     result.AddRange(currentProjectOfType);
                 }
             }
+            // Keep the persisted offer list in sync with what we publish (trim path
+            // previously only updated the returned/published list).
+            currentAvailableProjects = result.Distinct().ToList();
             PublishOffers(result);
             return result;
         }
@@ -840,6 +890,11 @@ namespace CM_Semi_Random_Research
         {
             ForceAutoReseachCheckNextTick();
             loggedMessages.Clear();
+
+            // Rebuild offers immediately so count / max / colonist-based amount
+            // changes apply without needing a game restart or tab reopen.
+            if (Current.Game != null && Faction.OfPlayerSilentFail != null)
+                GetCurrentlyAvailableProjects();
         }
 
         public void ForceAutoReseachCheckNextTick()

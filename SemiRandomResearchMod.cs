@@ -16,6 +16,7 @@ namespace CM_Semi_Random_Research
         {
             var harmony = new Harmony("CM_Semi_Random_Research");
             harmony.PatchAll();
+            Sleek_Integration.TryHookSleekStandDown();
 
             _instance = this;
             settings = GetSettings<SemiRandomResearchSettings>();

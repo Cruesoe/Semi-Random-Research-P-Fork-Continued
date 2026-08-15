@@ -301,4 +301,22 @@ namespace CM_Semi_Random_Research
             }
         }
     }
+
+    [HarmonyPatch(typeof(MainTabWindow_Research), "AttemptBeginResearch")]
+    public static class MainTabWindow_Research_AttemptBeginResearch
+    {
+        [HarmonyPrefix]
+            public static bool Prefix(ResearchProjectDef projectToStart)
+            {
+                if (projectToStart == null || !SemiRandomResearchUtility.IsControllingResearchSelection)
+                    return true;
+
+                ResearchTracker tracker = Current.Game?.World?.GetComponent<ResearchTracker>();
+                if (tracker == null || tracker.IsSelectableProject(projectToStart))
+                    return true;
+
+            Messages.Message("Semi Random Research is active.", MessageTypeDefOf.RejectInput, false);
+            return false;
+        }
+    }
 }

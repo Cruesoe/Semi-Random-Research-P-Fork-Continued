@@ -66,10 +66,19 @@ namespace CM_Semi_Random_Research
             TechLevel.Archotech
         };
 
+        private static bool ColorAndGroupByTechLevel =>
+            SemiRandomResearchMod.settings == null || SemiRandomResearchMod.settings.colorAndGroupByTechLevel;
+
         private void DrawTechLevelProgress(Rect rect)
         {
             if (cachedTechLevelStats == null)
                 return;
+
+            if (!ColorAndGroupByTechLevel)
+            {
+                DrawUnifiedResearchProgress(rect);
+                return;
+            }
 
             TechLevel[] techLevels = ProgressTechLevels;
             bool progressionCoreActive = ProgressionCoreActive;
@@ -268,6 +277,65 @@ namespace CM_Semi_Random_Research
 
             // Default value if we can't access the setting
             return 1.0f;
+        }
+
+        private void DrawUnifiedResearchProgress(Rect rect)
+        {
+            int completed = 0;
+            int total = 0;
+            foreach (var stats in cachedTechLevelStats.Values)
+            {
+                completed += stats.completed;
+                total += stats.total;
+            }
+
+            if (total <= 0)
+            {
+                Text.Anchor = TextAnchor.UpperLeft;
+                GUI.color = Color.white;
+                return;
+            }
+
+            float progress = (float)completed / total;
+            float actualBarHeight = 50f;
+            Rect barRect = new Rect(rect.x, rect.y, rect.width, actualBarHeight);
+
+            if (IsRepaint)
+            {
+                Widgets.DrawBoxSolid(barRect, new Color(0.1f, 0.1f, 0.1f));
+                Color fillColor = Color.Lerp(TexUI.AvailResearchColor, Color.white, 0.45f);
+                Widgets.DrawBoxSolid(new Rect(barRect.x, barRect.y, barRect.width * progress, barRect.height), fillColor);
+                GUI.color = Color.grey;
+                Widgets.DrawBox(barRect);
+            }
+
+            Text.Font = GameFont.Small;
+            Text.Anchor = TextAnchor.MiddleCenter;
+            string label = $"Research ({completed}/{total})";
+            Vector2 labelSize = Text.CalcSize(label);
+            Rect labelRect = new Rect(
+                barRect.center.x - (labelSize.x / 2f),
+                barRect.y - 27f,
+                labelSize.x,
+                16f);
+
+            if (IsRepaint)
+            {
+                Color lineColor = new Color(0.6f, 0.6f, 0.6f, 0.8f);
+                Vector2 lineStart = new Vector2(barRect.center.x, labelRect.yMax);
+                Vector2 lineEnd = new Vector2(barRect.center.x, barRect.y - 1f);
+                Widgets.DrawLine(lineStart, lineEnd, lineColor, 1f);
+                Widgets.DrawBoxSolid(labelRect.ExpandedBy(3f), new Color(0.1f, 0.1f, 0.1f, 0.7f));
+            }
+
+            GUI.color = new Color(0.95f, 0.95f, 0.95f);
+            Widgets.Label(labelRect, label);
+
+            if (Mouse.IsOver(barRect))
+                TooltipHandler.TipRegion(barRect, $"{completed}/{total} ({(progress * 100f):F0}%)");
+
+            Text.Anchor = TextAnchor.UpperLeft;
+            GUI.color = Color.white;
         }
     }
 }

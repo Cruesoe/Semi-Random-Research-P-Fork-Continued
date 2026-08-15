@@ -33,7 +33,8 @@ namespace CM_Semi_Random_Research
     public enum PreferredResearchTree
     {
         NodeResearch,
-        YART
+        YART,
+        Sleek
     }
 
     // =========================================================================
@@ -119,7 +120,7 @@ namespace CM_Semi_Random_Research
             listing.CheckboxLabeled("Auto pick next research", ref autoPickNextResearch, "Automatically chooses and starts researching the cheapest available project when a research finishes.");
             listing.CheckboxLabeled("Show research rate graph", ref showResearchRateGraph, "Toggles the visibility of the performance graph on the active research card.");
             listing.CheckboxLabeled("Show completion letter", ref showCompletionLetter, "Toggles the visibility of the completion letter when a research project is finished.");
-            listing.CheckboxLabeled("Color and group by tech level", ref colorAndGroupByTechLevel, "When enabled, standard research offers are colored and grouped under Neolithic/Medieval/Industrial era headers. When disabled, standard offers use a flat list with neutral colors. Anomaly and Gravship sections are unchanged.");
+            listing.CheckboxLabeled("Color and group by tech level", ref colorAndGroupByTechLevel, "When enabled, standard research offers are colored and grouped under Neolithic/Medieval/Industrial era headers, and the top progress bar is split by era. When disabled, standard offers use a flat list with neutral colors and the top bar is a single uncolored total of all research. Anomaly and Gravship sections are unchanged.");
             listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Verbose_Logging_Label".Translate(), ref verboseLogging, "CM_Semi_Random_Research_Setting_Verbose_Logging_Description".Translate());
 
             if (ResearchTabWindowSwitcher.NodeResearchInstalled)
@@ -127,7 +128,7 @@ namespace CM_Semi_Random_Research
                 listing.CheckboxLabeled("Delegate UI to Node Research", ref usingNodeResearch, "Use Node Research as the Research tab. This does not change Prohibit normal project selection.");
             }
 
-            if (ResearchTabWindowSwitcher.NodeResearchInstalled || ResearchTabWindowSwitcher.YartInstalled)
+            if (ResearchTabWindowSwitcher.NodeResearchInstalled || ResearchTabWindowSwitcher.YartInstalled || ResearchTabWindowSwitcher.SleekInstalled)
             {
                 listing.Label("Tree button opens");
                 Rect treeButtonOptionRect = listing.GetRect(26);
@@ -140,9 +141,13 @@ namespace CM_Semi_Random_Research
                 {
                     treeOptions.Add(new FloatMenuOption("YART", () => { preferredResearchTree = PreferredResearchTree.YART; }));
                 }
-                string treeButtonLabel = preferredResearchTree == PreferredResearchTree.YART ? "YART" : "Node Research";
-                DoButtonOption(treeButtonOptionRect, treeButtonLabel, "Which research tree the Semi-Random footer button opens. Defaults to Node Research.", treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10);
-                listing.CheckboxLabeled("Suppress handover messages", ref suppressHandoverMessages, "Hide the messages shown when switching between Semi-Random Research, Node Research, and YART.");
+                if (ResearchTabWindowSwitcher.SleekInstalled)
+                {
+                    treeOptions.Add(new FloatMenuOption("Sleek Research Tab", () => { preferredResearchTree = PreferredResearchTree.Sleek; }));
+                }
+                string treeButtonLabel = PreferredTreeLabel(preferredResearchTree);
+                DoButtonOption(treeButtonOptionRect, treeButtonLabel, "Which research tree the Semi-Random footer button opens.", treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10);
+                listing.CheckboxLabeled("Suppress handover messages", ref suppressHandoverMessages, "Hide the messages shown when switching between Semi-Random Research, Node Research, YART, and Sleek Research Tab.");
             }
 
             listing.GapLine();
@@ -266,6 +271,15 @@ namespace CM_Semi_Random_Research
             listing.End();
 
             DumpSettingToLog();
+        }
+
+        private static string PreferredTreeLabel(PreferredResearchTree preferred)
+        {
+            if (preferred == PreferredResearchTree.YART)
+                return "YART";
+            if (preferred == PreferredResearchTree.Sleek)
+                return "Sleek Research Tab";
+            return "Node Research";
         }
 
         private void DoButtonOption(Rect rect, string text, string tooltip, List<FloatMenuOption> options, float leftPad = 0, float rightPad = 0)
