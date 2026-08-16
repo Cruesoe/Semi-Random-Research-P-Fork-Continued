@@ -452,7 +452,17 @@ namespace CM_Semi_Random_Research
                 researchButtonRect = new Rect(researchTreeButtonRect.xMax + buttonSpacing, footerButtonY, footerButtonWidth, footerHeight);
             }
 
-            if (ColoredButtonText(researchTreeButtonRect, "CM_Semi_Random_Research_TreeButton".Translate(), FooterTreeButtonColor))
+            PreferredResearchTree treeTarget = ResearchTabWindowSwitcher.GetEffectivePreferredTree();
+            bool opensNodeResearch = treeTarget == PreferredResearchTree.NodeResearch
+                && ResearchTabWindowSwitcher.IsTreeAvailable(PreferredResearchTree.NodeResearch);
+            string treeButtonLabel = opensNodeResearch
+                ? "CM_Semi_Random_Research_Tree_NodeResearch".Translate()
+                : "CM_Semi_Random_Research_TreeButton".Translate();
+            string treeButtonTip = opensNodeResearch
+                ? "CM_Semi_Random_Research_TreeButtonTip_Node".Translate()
+                : "CM_Semi_Random_Research_TreeButtonTip".Translate();
+
+            if (ColoredButtonText(researchTreeButtonRect, treeButtonLabel, FooterTreeButtonColor))
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 ResearchTabWindowSwitcher.SwitchToPreferredTree(this);
@@ -460,7 +470,7 @@ namespace CM_Semi_Random_Research
             }
 
             if (IsRepaint && Mouse.IsOver(researchTreeButtonRect))
-                TooltipHandler.TipRegion(researchTreeButtonRect, "CM_Semi_Random_Research_TreeButtonTip".Translate());
+                TooltipHandler.TipRegion(researchTreeButtonRect, treeButtonTip);
 
             if (showRerollButton)
             {

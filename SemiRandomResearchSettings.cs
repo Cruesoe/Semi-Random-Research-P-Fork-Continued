@@ -63,6 +63,7 @@ namespace CM_Semi_Random_Research
         public bool verboseLogging = false;
         public bool usingNodeResearch = false;
         public PreferredResearchTree preferredResearchTree = PreferredResearchTree.NodeResearch;
+        public int settingsVersion;
         public bool suppressHandoverMessages = false;
         public bool colorAndGroupByTechLevel = true;
 
@@ -98,6 +99,7 @@ namespace CM_Semi_Random_Research
             Scribe_Values.Look(ref autoPickNextResearch, "autoPickNextResearch", false);
             Scribe_Values.Look(ref usingNodeResearch, "usingNodeResearch", false);
             Scribe_Values.Look(ref preferredResearchTree, "preferredResearchTree", PreferredResearchTree.NodeResearch);
+            Scribe_Values.Look(ref settingsVersion, "settingsVersion", 0);
             Scribe_Values.Look(ref suppressHandoverMessages, "suppressHandoverMessages", false);
             Scribe_Values.Look(ref colorAndGroupByTechLevel, "colorAndGroupByTechLevel", true);
         }
@@ -305,6 +307,18 @@ namespace CM_Semi_Random_Research
             }
             ResearchTabWindowSwitcher.Apply();
             DumpSettingToLog();
+        }
+
+        // One-time: old configs saved Sleek as the tree button target. Reset to Node Research.
+        // Users can still pick Sleek or YART after this version is written.
+        public bool MigrateTreeButtonDefaultToNode()
+        {
+            if (settingsVersion >= 1)
+                return false;
+
+            preferredResearchTree = PreferredResearchTree.NodeResearch;
+            settingsVersion = 1;
+            return true;
         }
 
         public void DumpSettingToLog()

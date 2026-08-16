@@ -20,6 +20,8 @@ namespace CM_Semi_Random_Research
 
             _instance = this;
             settings = GetSettings<SemiRandomResearchSettings>();
+            if (settings.MigrateTreeButtonDefaultToNode())
+                WriteSettings();
             string versionFromManifest = VersionFromManifest.GetVersionFromModMetaData(content.ModMetaData);
 
             if (!versionFromManifest.NullOrEmpty())

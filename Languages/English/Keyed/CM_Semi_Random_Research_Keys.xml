@@ -131,6 +131,7 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_AvailableGravtech>Available Gravtech research</CM_Semi_Random_Research_AvailableGravtech>
   <CM_Semi_Random_Research_TreeButton>Research Tree</CM_Semi_Random_Research_TreeButton>
   <CM_Semi_Random_Research_TreeButtonTip>Open the research tree. Prohibit normal project selection still applies if it is enabled.</CM_Semi_Random_Research_TreeButtonTip>
+  <CM_Semi_Random_Research_TreeButtonTip_Node>Open Node Research. Prohibit normal project selection still applies if it is enabled.</CM_Semi_Random_Research_TreeButtonTip_Node>
   <CM_Semi_Random_Research_NoRerolls>No rerolls</CM_Semi_Random_Research_NoRerolls>
   <CM_Semi_Random_Research_StartResearch>Start Research</CM_Semi_Random_Research_StartResearch>
   <CM_Semi_Random_Research_Finished>Finished</CM_Semi_Random_Research_Finished>
