@@ -145,7 +145,7 @@ namespace CM_Semi_Random_Research
                 {
                     treeOptions.Add(new FloatMenuOption("CM_Semi_Random_Research_Tree_Sleek".Translate(), () => { preferredResearchTree = PreferredResearchTree.Sleek; }));
                 }
-                string treeButtonLabel = PreferredTreeLabel(preferredResearchTree);
+                string treeButtonLabel = PreferredTreeLabel(ResearchTabWindowSwitcher.GetEffectivePreferredTree());
                 DoButtonOption(treeButtonOptionRect, treeButtonLabel, "CM_Semi_Random_Research_Setting_TreeButtonOpens_Description".Translate(), treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10);
                 listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_SuppressHandover_Label".Translate(), ref suppressHandoverMessages, "CM_Semi_Random_Research_Setting_SuppressHandover_Description".Translate());
             }

@@ -113,7 +113,7 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_Setting_DelegateNode_Label>Delegate UI to Node Research</CM_Semi_Random_Research_Setting_DelegateNode_Label>
   <CM_Semi_Random_Research_Setting_DelegateNode_Description>Use Node Research as the Research tab. This does not change Prohibit normal project selection.</CM_Semi_Random_Research_Setting_DelegateNode_Description>
   <CM_Semi_Random_Research_Setting_TreeButtonOpens_Label>Tree button opens</CM_Semi_Random_Research_Setting_TreeButtonOpens_Label>
-  <CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>Which research tree the Semi-Random footer button opens.</CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>
+  <CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>Which research tree the Semi-Random footer button opens. Defaults to Node Research when it is installed, then YART, then Sleek Research Tab.</CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>
   <CM_Semi_Random_Research_Setting_SuppressHandover_Label>Suppress handover messages</CM_Semi_Random_Research_Setting_SuppressHandover_Label>
   <CM_Semi_Random_Research_Setting_SuppressHandover_Description>Hide the messages shown when switching between Semi-Random Research, Node Research, YART, and Sleek Research Tab.</CM_Semi_Random_Research_Setting_SuppressHandover_Description>
   <CM_Semi_Random_Research_Setting_RestrictFaction_LockedTip>Locked on while Node Research is installed. Node Research controls tech-level progression.</CM_Semi_Random_Research_Setting_RestrictFaction_LockedTip>
@@ -141,6 +141,7 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_FinishNow>Finish Now</CM_Semi_Random_Research_FinishNow>
   <CM_Semi_Random_Research_SettingsTip>Open Semi-Random Research Settings</CM_Semi_Random_Research_SettingsTip>
   <CM_Semi_Random_Research_InflationSettingsTip>Open Research: Inflation Settings</CM_Semi_Random_Research_InflationSettingsTip>
+  <CM_Semi_Random_Research_PacingSettingsTip>Open Pacing Manager Settings</CM_Semi_Random_Research_PacingSettingsTip>
   <CM_Semi_Random_Research_OpenSemiRandom>Open Semi-Random Research</CM_Semi_Random_Research_OpenSemiRandom>
   <CM_Semi_Random_Research_ReturnToSemiRandom>Return to Semi-Random Research</CM_Semi_Random_Research_ReturnToSemiRandom>
   <CM_Semi_Random_Research_YartButton>Semi-Random</CM_Semi_Random_Research_YartButton>

@@ -30,6 +30,7 @@ namespace CM_Semi_Random_Research
 
         private static readonly Texture2D SettingsIcon = ContentFinder<Texture2D>.Get("UI/Settings", true);
         private static readonly Texture2D PlusIcon = ContentFinder<Texture2D>.Get("UI/Plus", true);
+        private static readonly Texture2D PacingIcon = ContentFinder<Texture2D>.Get("UI/Pacing", true);
 
         private static readonly Color ActiveProjectLabelColor = new ColorInt(219, 201, 126, 255).ToColor;
         private static readonly Color FooterTreeButtonColor = new Color(0.22f, 0.38f, 0.55f);
@@ -757,53 +758,65 @@ namespace CM_Semi_Random_Research
 
             float iconGap = 4f;
             float iconY = footerButtonY + (footerButtonHeight - iconSize) / 2f;
-            Rect settingsBtnRect = new Rect(rightFooterRect.xMax - iconSize, iconY, iconSize, iconSize);
+            float nextIconX = rightFooterRect.xMax - iconSize;
 
-            if (ResearchInflationInstalled)
+            Rect settingsBtnRect = new Rect(nextIconX, iconY, iconSize, iconSize);
+            DrawFooterIconButton(settingsBtnRect, SettingsIcon, null, "CM_Semi_Random_Research_SettingsTip", () =>
             {
-                Rect inflationBtnRect = new Rect(
-                    settingsBtnRect.x - iconSize - iconGap,
-                    iconY,
-                    iconSize,
-                    iconSize);
-
-                if (IsRepaint && PlusIcon != null)
-                    GUI.DrawTexture(inflationBtnRect, PlusIcon);
-                else if (IsRepaint)
-                {
-                    Text.Font = GameFont.Medium;
-                    Text.Anchor = TextAnchor.MiddleCenter;
-                    GUI.color = Color.white;
-                    Widgets.Label(inflationBtnRect, "+");
-                    Text.Anchor = TextAnchor.UpperLeft;
-                    Text.Font = GameFont.Small;
-                    GUI.color = Color.white;
-                }
-
-                if (Clicked(inflationBtnRect))
-                {
-                    SoundDefOf.Click.PlayOneShotOnCamera();
-                    Mod inflationMod = FindModByPackageId(ResearchInflationPackageId);
-                    if (inflationMod != null)
-                        Find.WindowStack.Add(new Dialog_ModSettings(inflationMod));
-                }
-                TooltipHandler.TipRegion(inflationBtnRect, "CM_Semi_Random_Research_InflationSettingsTip".Translate());
-            }
-
-            if (IsRepaint && SettingsIcon != null)
-                GUI.DrawTexture(settingsBtnRect, SettingsIcon);
-            if (Clicked(settingsBtnRect))
-            {
-                SoundDefOf.Click.PlayOneShotOnCamera();
                 Mod ourMod = LoadedModManager.GetMod<SemiRandomResearchMod>();
                 Find.WindowStack.Add(new Dialog_ModSettings(ourMod));
+            });
+
+            DrawPackedModSettingsIcon(ResearchInflationInstalled, PlusIcon, "+", ResearchInflationPackageId,
+                "CM_Semi_Random_Research_InflationSettingsTip", iconSize, iconGap, iconY, ref nextIconX);
+            DrawPackedModSettingsIcon(PacingManagerInstalled, PacingIcon, "P", PacingManagerPackageId,
+                "CM_Semi_Random_Research_PacingSettingsTip", iconSize, iconGap, iconY, ref nextIconX);
+        }
+
+        private void DrawPackedModSettingsIcon(bool installed, Texture2D icon, string fallbackText, string packageId,
+            string tooltipKey, float iconSize, float iconGap, float iconY, ref float nextIconX)
+        {
+            if (!installed)
+                return;
+
+            nextIconX -= iconSize + iconGap;
+            Rect btnRect = new Rect(nextIconX, iconY, iconSize, iconSize);
+            DrawFooterIconButton(btnRect, icon, fallbackText, tooltipKey, () =>
+            {
+                Mod mod = FindModByPackageId(packageId);
+                if (mod != null)
+                    Find.WindowStack.Add(new Dialog_ModSettings(mod));
+            });
+        }
+
+        private void DrawFooterIconButton(Rect rect, Texture2D icon, string fallbackText, string tooltipKey, Action onClicked)
+        {
+            if (IsRepaint && icon != null)
+                Widgets.DrawTextureFitted(rect, icon, 1f);
+            else if (IsRepaint && !string.IsNullOrEmpty(fallbackText))
+            {
+                Text.Font = GameFont.Medium;
+                Text.Anchor = TextAnchor.MiddleCenter;
+                GUI.color = Color.white;
+                Widgets.Label(rect, fallbackText);
+                Text.Anchor = TextAnchor.UpperLeft;
+                Text.Font = GameFont.Small;
+                GUI.color = Color.white;
             }
-            TooltipHandler.TipRegion(settingsBtnRect, "CM_Semi_Random_Research_SettingsTip".Translate());
+
+            if (Clicked(rect))
+            {
+                SoundDefOf.Click.PlayOneShotOnCamera();
+                onClicked?.Invoke();
+            }
+            TooltipHandler.TipRegion(rect, tooltipKey.Translate());
         }
 
         private const string ResearchInflationPackageId = "cruesoe.research.inflation";
+        private const string PacingManagerPackageId = "ferny.pacingmanager";
 
         private static bool? researchInflationInstalledCached;
+        private static bool? pacingManagerInstalledCached;
 
         private static bool ResearchInflationInstalled
         {
@@ -812,6 +825,16 @@ namespace CM_Semi_Random_Research
                 if (researchInflationInstalledCached == null)
                     researchInflationInstalledCached = ModLister.GetActiveModWithIdentifier(ResearchInflationPackageId) != null;
                 return researchInflationInstalledCached.Value;
+            }
+        }
+
+        private static bool PacingManagerInstalled
+        {
+            get
+            {
+                if (pacingManagerInstalledCached == null)
+                    pacingManagerInstalledCached = ModLister.GetActiveModWithIdentifier(PacingManagerPackageId) != null;
+                return pacingManagerInstalledCached.Value;
             }
         }
 

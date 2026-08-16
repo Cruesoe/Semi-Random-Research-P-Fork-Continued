@@ -242,40 +242,55 @@ namespace CM_Semi_Random_Research
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
 
-        public static Type ResolvePreferredTreeWindowType()
+        public static bool IsTreeAvailable(PreferredResearchTree tree)
+        {
+            switch (tree)
+            {
+                case PreferredResearchTree.NodeResearch:
+                    return NodeResearchInstalled && NodeResearchWindowType != null;
+                case PreferredResearchTree.YART:
+                    return YartInstalled && YartWindowType != null;
+                case PreferredResearchTree.Sleek:
+                    return SleekInstalled;
+                default:
+                    return false;
+            }
+        }
+
+        // Node Research first, then YART, then Sleek, then vanilla.
+        public static PreferredResearchTree GetEffectivePreferredTree()
         {
             PreferredResearchTree preferred = SemiRandomResearchMod.settings != null
                 ? SemiRandomResearchMod.settings.preferredResearchTree
                 : PreferredResearchTree.NodeResearch;
 
-            if (preferred == PreferredResearchTree.Sleek && SleekInstalled)
-            {
-                return typeof(MainTabWindow_Research);
-            }
+            if (IsTreeAvailable(preferred))
+                return preferred;
 
-            if (preferred == PreferredResearchTree.YART && YartInstalled && YartWindowType != null)
-            {
-                return YartWindowType;
-            }
+            if (IsTreeAvailable(PreferredResearchTree.NodeResearch))
+                return PreferredResearchTree.NodeResearch;
+            if (IsTreeAvailable(PreferredResearchTree.YART))
+                return PreferredResearchTree.YART;
+            if (IsTreeAvailable(PreferredResearchTree.Sleek))
+                return PreferredResearchTree.Sleek;
 
-            if (preferred == PreferredResearchTree.NodeResearch && NodeResearchInstalled && NodeResearchWindowType != null)
-            {
-                return NodeResearchWindowType;
-            }
+            return PreferredResearchTree.NodeResearch;
+        }
 
-            if (SleekInstalled)
+        public static Type ResolvePreferredTreeWindowType()
+        {
+            switch (GetEffectivePreferredTree())
             {
-                return typeof(MainTabWindow_Research);
-            }
-
-            if (YartInstalled && YartWindowType != null)
-            {
-                return YartWindowType;
-            }
-
-            if (NodeResearchInstalled && NodeResearchWindowType != null)
-            {
-                return NodeResearchWindowType;
+                case PreferredResearchTree.NodeResearch:
+                    if (NodeResearchWindowType != null)
+                        return NodeResearchWindowType;
+                    break;
+                case PreferredResearchTree.YART:
+                    if (YartWindowType != null)
+                        return YartWindowType;
+                    break;
+                case PreferredResearchTree.Sleek:
+                    return typeof(MainTabWindow_Research);
             }
 
             return typeof(MainTabWindow_Research);
@@ -283,23 +298,29 @@ namespace CM_Semi_Random_Research
 
         public static void SwitchToPreferredTree(Window windowToClose)
         {
-            Type windowType = ResolvePreferredTreeWindowType();
-            if (windowType == NodeResearchWindowType)
+            switch (GetEffectivePreferredTree())
             {
-                SwitchToNodeResearch(windowToClose);
-                return;
-            }
-
-            if (windowType == YartWindowType)
-            {
-                SwitchToYart(windowToClose);
-                return;
-            }
-
-            if (SleekInstalled)
-            {
-                SwitchToSleek(windowToClose);
-                return;
+                case PreferredResearchTree.NodeResearch:
+                    if (IsTreeAvailable(PreferredResearchTree.NodeResearch))
+                    {
+                        SwitchToNodeResearch(windowToClose);
+                        return;
+                    }
+                    break;
+                case PreferredResearchTree.YART:
+                    if (IsTreeAvailable(PreferredResearchTree.YART))
+                    {
+                        SwitchToYart(windowToClose);
+                        return;
+                    }
+                    break;
+                case PreferredResearchTree.Sleek:
+                    if (IsTreeAvailable(PreferredResearchTree.Sleek))
+                    {
+                        SwitchToSleek(windowToClose);
+                        return;
+                    }
+                    break;
             }
 
             OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose);
