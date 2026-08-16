@@ -102,9 +102,11 @@ namespace CM_Semi_Random_Research
             }
 
             MainTabWindow cached = TabWindowIntField?.GetValue(researchTab) as MainTabWindow;
+            // Node Research subclasses MainTabWindow_Research. IsInstanceOfType would reuse that
+            // window when opening Sleek/vanilla and keep showing Node.
             if (researchTab.tabWindowClass == windowType &&
                 cached != null &&
-                windowType.IsInstanceOfType(cached))
+                cached.GetType() == windowType)
             {
                 return;
             }
@@ -160,7 +162,6 @@ namespace CM_Semi_Random_Research
                 return;
             }
 
-            SetUsingNodeResearch(true);
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
             {
                 ShowHandoverMessage("CM_Semi_Random_Research_Handover_Node_Restricted".Translate());

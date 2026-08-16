@@ -137,16 +137,18 @@ namespace CM_Semi_Random_Research
                 List<FloatMenuOption> treeOptions = new List<FloatMenuOption>();
                 if (ResearchTabWindowSwitcher.NodeResearchInstalled)
                 {
-                    treeOptions.Add(new FloatMenuOption("CM_Semi_Random_Research_Tree_NodeResearch".Translate(), () => { preferredResearchTree = PreferredResearchTree.NodeResearch; }));
+                    treeOptions.Add(new FloatMenuOption("CM_Semi_Random_Research_Tree_NodeResearch".Translate(), () => { SetPreferredTree(PreferredResearchTree.NodeResearch); }));
                 }
                 if (ResearchTabWindowSwitcher.YartInstalled)
                 {
-                    treeOptions.Add(new FloatMenuOption("CM_Semi_Random_Research_Tree_YART".Translate(), () => { preferredResearchTree = PreferredResearchTree.YART; }));
+                    treeOptions.Add(new FloatMenuOption("CM_Semi_Random_Research_Tree_YART".Translate(), () => { SetPreferredTree(PreferredResearchTree.YART); }));
                 }
                 if (ResearchTabWindowSwitcher.SleekInstalled)
                 {
-                    treeOptions.Add(new FloatMenuOption("CM_Semi_Random_Research_Tree_Sleek".Translate(), () => { preferredResearchTree = PreferredResearchTree.Sleek; }));
+                    treeOptions.Add(new FloatMenuOption("CM_Semi_Random_Research_Tree_Sleek".Translate(), () => { SetPreferredTree(PreferredResearchTree.Sleek); }));
                 }
+                if (!ResearchTabWindowSwitcher.IsTreeAvailable(preferredResearchTree))
+                    preferredResearchTree = ResearchTabWindowSwitcher.GetEffectivePreferredTree();
                 string treeButtonLabel = PreferredTreeLabel(ResearchTabWindowSwitcher.GetEffectivePreferredTree());
                 DoButtonOption(treeButtonOptionRect, treeButtonLabel, "CM_Semi_Random_Research_Setting_TreeButtonOpens_Description".Translate(), treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10);
                 listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_SuppressHandover_Label".Translate(), ref suppressHandoverMessages, "CM_Semi_Random_Research_Setting_SuppressHandover_Description".Translate());
@@ -273,6 +275,13 @@ namespace CM_Semi_Random_Research
             listing.End();
 
             DumpSettingToLog();
+        }
+
+        private void SetPreferredTree(PreferredResearchTree tree)
+        {
+            preferredResearchTree = tree;
+            if (tree != PreferredResearchTree.NodeResearch)
+                ResearchTabWindowSwitcher.SetUsingNodeResearch(false);
         }
 
         private static string PreferredTreeLabel(PreferredResearchTree preferred)
