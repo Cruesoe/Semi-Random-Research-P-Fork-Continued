@@ -142,6 +142,7 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_FinishNow>Finish Now</CM_Semi_Random_Research_FinishNow>
   <CM_Semi_Random_Research_SettingsTip>Open Semi-Random Research Settings</CM_Semi_Random_Research_SettingsTip>
   <CM_Semi_Random_Research_InflationSettingsTip>Open Research: Inflation Settings</CM_Semi_Random_Research_InflationSettingsTip>
+  <CM_Semi_Random_Research_TotalSettingsTip>Open Research: Total Settings</CM_Semi_Random_Research_TotalSettingsTip>
   <CM_Semi_Random_Research_PacingSettingsTip>Open Pacing Manager Settings</CM_Semi_Random_Research_PacingSettingsTip>
   <CM_Semi_Random_Research_OpenSemiRandom>Open Semi-Random Research</CM_Semi_Random_Research_OpenSemiRandom>
   <CM_Semi_Random_Research_ReturnToSemiRandom>Return to Semi-Random Research</CM_Semi_Random_Research_ReturnToSemiRandom>
@@ -165,8 +166,8 @@ Prevents being offered only high cost projects while low cost projects are avail
 
   <!-- Progress bar -->
   <CM_Semi_Random_Research_ProgressTotal>Research ({0}/{1})</CM_Semi_Random_Research_ProgressTotal>
-  <CM_Semi_Random_Research_EraProgressTooltip>{0}\n{1}/{2} ({3}%)\n{4}</CM_Semi_Random_Research_EraProgressTooltip>
-  <CM_Semi_Random_Research_UnifiedProgressTooltip>{0}/{1} ({2}%)\n{3}</CM_Semi_Random_Research_UnifiedProgressTooltip>
+  <CM_Semi_Random_Research_EraProgressTooltip>{0}\n{1}/{2} ({3}%)\n{4}/{5}\n{6}</CM_Semi_Random_Research_EraProgressTooltip>
+  <CM_Semi_Random_Research_UnifiedProgressTooltip>{0}/{1} ({2}%)\n{3}/{4}\n{5}</CM_Semi_Random_Research_UnifiedProgressTooltip>
   <CM_Semi_Random_Research_ReadyToAdvance>Ready to Advance!</CM_Semi_Random_Research_ReadyToAdvance>
   <CM_Semi_Random_Research_AdvanceTechLevel>Advance Tech Level</CM_Semi_Random_Research_AdvanceTechLevel>
   <CM_Semi_Random_Research_ProgressionCoreTooltip>Progression Core: {0}% of {1}% required to advance</CM_Semi_Random_Research_ProgressionCoreTooltip>

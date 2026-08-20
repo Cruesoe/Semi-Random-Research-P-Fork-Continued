@@ -34,33 +34,41 @@ namespace CM_Semi_Random_Research
 
         private void RebuildTechLevelStats()
         {
-            cachedTechLevelStats = new Dictionary<TechLevel, (int completed, int total, float remainingCost)>
+            cachedTechLevelStats = new Dictionary<TechLevel, (int completed, int total, float remainingCost, float spentCost)>
             {
-                { TechLevel.Neolithic, (0, 0, 0f) },
-                { TechLevel.Medieval, (0, 0, 0f) },
-                { TechLevel.Industrial, (0, 0, 0f) },
-                { TechLevel.Spacer, (0, 0, 0f) },
-                { TechLevel.Ultra, (0, 0, 0f) },
-                { TechLevel.Archotech, (0, 0, 0f) }
+                { TechLevel.Neolithic, (0, 0, 0f, 0f) },
+                { TechLevel.Medieval, (0, 0, 0f, 0f) },
+                { TechLevel.Industrial, (0, 0, 0f, 0f) },
+                { TechLevel.Spacer, (0, 0, 0f, 0f) },
+                { TechLevel.Ultra, (0, 0, 0f, 0f) },
+                { TechLevel.Archotech, (0, 0, 0f, 0f) }
             };
             List<ResearchProjectDef> allDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading;
             for (int i = 0; i < allDefs.Count; i++)
             {
                 ResearchProjectDef def = allDefs[i];
                 if (!cachedTechLevelStats.TryGetValue(def.techLevel, out var stats))
-                    stats = (0, 0, 0f);
+                    stats = (0, 0, 0f, 0f);
                 stats.total++;
                 if (def.IsFinished)
                 {
                     stats.completed++;
                 }
-                else if (Faction.OfPlayerSilentFail != null &&
+                if (Faction.OfPlayerSilentFail != null &&
                     !Compatibility.IsDummyResearch(def) &&
                     !Compatibility.IsHiddenResearch(def))
                 {
-                    float remaining = def.CostApparent - def.ProgressApparent;
-                    if (remaining > 0f)
-                        stats.remainingCost += remaining;
+                    if (def.IsFinished)
+                    {
+                        stats.spentCost += def.CostApparent;
+                    }
+                    else
+                    {
+                        stats.spentCost += def.ProgressApparent;
+                        float remaining = def.CostApparent - def.ProgressApparent;
+                        if (remaining > 0f)
+                            stats.remainingCost += remaining;
+                    }
                 }
                 cachedTechLevelStats[def.techLevel] = stats;
             }
@@ -133,7 +141,7 @@ namespace CM_Semi_Random_Research
                 Widgets.DrawBoxSolid(barRect, new Color(0.1f, 0.1f, 0.1f));
             }
 
-            Dictionary<TechLevel, (int completed, int total, float remainingCost)> techLevelStats = cachedTechLevelStats;
+            Dictionary<TechLevel, (int completed, int total, float remainingCost, float spentCost)> techLevelStats = cachedTechLevelStats;
             float totalTechs = 0f;
             for (int i = 0; i < techLevels.Length; i++)
             {
@@ -227,6 +235,8 @@ namespace CM_Semi_Random_Research
                         stats.completed,
                         stats.total,
                         (progress * 100f).ToString("F0"),
+                        stats.spentCost.ToString("N0"),
+                        (stats.spentCost + stats.remainingCost).ToString("N0"),
                         FormatRemainingEta(stats.remainingCost));
 
                     // Add ProgressionCore info to tooltip
@@ -324,11 +334,13 @@ namespace CM_Semi_Random_Research
             int completed = 0;
             int total = 0;
             float remainingCost = 0f;
+            float spentCost = 0f;
             foreach (var stats in cachedTechLevelStats.Values)
             {
                 completed += stats.completed;
                 total += stats.total;
                 remainingCost += stats.remainingCost;
+                spentCost += stats.spentCost;
             }
 
             if (total <= 0)
@@ -378,6 +390,8 @@ namespace CM_Semi_Random_Research
                     completed,
                     total,
                     (progress * 100f).ToString("F0"),
+                    spentCost.ToString("N0"),
+                    (spentCost + remainingCost).ToString("N0"),
                     FormatRemainingEta(remainingCost)));
 
             Text.Anchor = TextAnchor.UpperLeft;

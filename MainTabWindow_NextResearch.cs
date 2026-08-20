@@ -30,6 +30,7 @@ namespace CM_Semi_Random_Research
 
         private static readonly Texture2D SettingsIcon = ContentFinder<Texture2D>.Get("UI/Settings", true);
         private static readonly Texture2D PlusIcon = ContentFinder<Texture2D>.Get("UI/Plus", true);
+        private static readonly Texture2D TotalIcon = ContentFinder<Texture2D>.Get("UI/Total", true);
         private static readonly Texture2D PacingIcon = ContentFinder<Texture2D>.Get("UI/Pacing", true);
 
         private static readonly Color ActiveProjectLabelColor = new ColorInt(219, 201, 126, 255).ToColor;
@@ -49,7 +50,7 @@ namespace CM_Semi_Random_Research
         private List<string> animationOrder = new List<string>();
 
         private Dictionary<TechLevel, float> techLevelHeaderProgress = new Dictionary<TechLevel, float>();
-        private Dictionary<TechLevel, (int completed, int total, float remainingCost)> cachedTechLevelStats;
+        private Dictionary<TechLevel, (int completed, int total, float remainingCost, float spentCost)> cachedTechLevelStats;
         private TechLevel cachedWorldTech = TechLevel.Undefined;
         private int cachedOffersRevision = -1;
         private Dictionary<ResearchProjectDef, Def> cachedFirstUnlockable = new Dictionary<ResearchProjectDef, Def>();
@@ -769,6 +770,8 @@ namespace CM_Semi_Random_Research
 
             DrawPackedModSettingsIcon(ResearchInflationInstalled, PlusIcon, "+", ResearchInflationPackageId,
                 "CM_Semi_Random_Research_InflationSettingsTip", iconSize, iconGap, iconY, ref nextIconX);
+            DrawPackedModSettingsIcon(ResearchTotalInstalled, TotalIcon, "T", ResearchTotalPackageId,
+                "CM_Semi_Random_Research_TotalSettingsTip", iconSize, iconGap, iconY, ref nextIconX);
             DrawPackedModSettingsIcon(PacingManagerInstalled, PacingIcon, "P", PacingManagerPackageId,
                 "CM_Semi_Random_Research_PacingSettingsTip", iconSize, iconGap, iconY, ref nextIconX);
         }
@@ -813,9 +816,11 @@ namespace CM_Semi_Random_Research
         }
 
         private const string ResearchInflationPackageId = "cruesoe.research.inflation";
+        private const string ResearchTotalPackageId = "cruesoe.research.total";
         private const string PacingManagerPackageId = "ferny.pacingmanager";
 
         private static bool? researchInflationInstalledCached;
+        private static bool? researchTotalInstalledCached;
         private static bool? pacingManagerInstalledCached;
 
         private static bool ResearchInflationInstalled
@@ -825,6 +830,16 @@ namespace CM_Semi_Random_Research
                 if (researchInflationInstalledCached == null)
                     researchInflationInstalledCached = ModLister.GetActiveModWithIdentifier(ResearchInflationPackageId) != null;
                 return researchInflationInstalledCached.Value;
+            }
+        }
+
+        private static bool ResearchTotalInstalled
+        {
+            get
+            {
+                if (researchTotalInstalledCached == null)
+                    researchTotalInstalledCached = ModLister.GetActiveModWithIdentifier(ResearchTotalPackageId) != null;
+                return researchTotalInstalledCached.Value;
             }
         }
 
