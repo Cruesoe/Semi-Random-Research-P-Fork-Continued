@@ -109,13 +109,11 @@ namespace CM_Semi_Random_Research
                 previousProjectDefNames.Add(project.defName);
             }
             
-            // Compute global rate and add it to the global samples
+            // Compute global rate and add it to the global samples, including idle hours
+            // so the 10-day average matches the per-project card (which records zeros).
             float globalRatePerDay = totalProgressChange * SAMPLES_PER_DAY;
-            if (globalRatePerDay > 0)
-            {
-                globalRateSamples.Add(globalRatePerDay);
-                TrimSamples(globalRateSamples);
-            }
+            globalRateSamples.Add(globalRatePerDay);
+            TrimSamples(globalRateSamples);
             
             // Also continue tracking previously researched projects
             // even if they're not currently selected
@@ -384,22 +382,49 @@ namespace CM_Semi_Random_Research
         // Format ETA as a string
         public static string FormatETA(float daysToCompletion)
         {
-            if (daysToCompletion < 0) return "CM_Semi_Random_Research_Unknown".Translate();
-            if (daysToCompletion == 0) return "CM_Semi_Random_Research_Complete".Translate();
-            
-            if (daysToCompletion < 1)
+            return FormatDuration(daysToCompletion);
+        }
+
+        public static string FormatETAUntilComplete(float daysToCompletion)
+        {
+            if (daysToCompletion < 0)
+                return "CM_Semi_Random_Research_Unknown".Translate();
+            if (daysToCompletion == 0)
+                return "CM_Semi_Random_Research_Complete".Translate();
+
+            return "CM_Semi_Random_Research_ETA_UntilComplete".Translate(FormatDuration(daysToCompletion)).ToString();
+        }
+
+        private static string FormatDuration(float daysToCompletion)
+        {
+            if (daysToCompletion < 0)
+                return "CM_Semi_Random_Research_Unknown".Translate();
+            if (daysToCompletion == 0)
+                return "CM_Semi_Random_Research_Complete".Translate();
+
+            if (daysToCompletion < 1f)
             {
                 float hours = daysToCompletion * 24f;
                 return "CM_Semi_Random_Research_ETA_Hours".Translate(hours.ToString("F1")).ToString();
             }
-            else if (daysToCompletion < 10)
-            {
-                return "CM_Semi_Random_Research_ETA_Days".Translate(daysToCompletion.ToString("F1")).ToString();
-            }
-            else
-            {
-                return "CM_Semi_Random_Research_ETA_Days".Translate(Math.Round(daysToCompletion).ToString()).ToString();
-            }
+
+            int daysPerYear = GenDate.DaysPerYear;
+            int totalDays = Math.Max(1, (int)Math.Round(daysToCompletion));
+            int years = totalDays / daysPerYear;
+            int days = totalDays % daysPerYear;
+
+            string dayLabel = days == 1
+                ? "CM_Semi_Random_Research_ETA_Day".Translate(1).ToString()
+                : "CM_Semi_Random_Research_ETA_Days".Translate(days.ToString()).ToString();
+            string yearLabel = years == 1
+                ? "CM_Semi_Random_Research_ETA_Year".Translate(1).ToString()
+                : "CM_Semi_Random_Research_ETA_Years".Translate(years.ToString()).ToString();
+
+            if (years <= 0)
+                return dayLabel;
+            if (days <= 0)
+                return yearLabel;
+            return yearLabel + " " + dayLabel;
         }
         
         // Override for saving data

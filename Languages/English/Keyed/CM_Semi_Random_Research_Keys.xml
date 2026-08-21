@@ -154,15 +154,20 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_TenDayAvg>10d Avg</CM_Semi_Random_Research_TenDayAvg>
   <CM_Semi_Random_Research_EstTime>Est. Time</CM_Semi_Random_Research_EstTime>
   <CM_Semi_Random_Research_Calculating>Calculating...</CM_Semi_Random_Research_Calculating>
+  <CM_Semi_Random_Research_CollectingData>Collecting data...</CM_Semi_Random_Research_CollectingData>
+  <CM_Semi_Random_Research_GraphAverage>Average</CM_Semi_Random_Research_GraphAverage>
   <CM_Semi_Random_Research_Unknown>Unknown</CM_Semi_Random_Research_Unknown>
   <CM_Semi_Random_Research_Complete>Complete</CM_Semi_Random_Research_Complete>
   <CM_Semi_Random_Research_RatePerDay>{0} research/day</CM_Semi_Random_Research_RatePerDay>
   <CM_Semi_Random_Research_RatePerDayShort>{0}/d</CM_Semi_Random_Research_RatePerDayShort>
   <CM_Semi_Random_Research_RateZeroShort>0/d</CM_Semi_Random_Research_RateZeroShort>
   <CM_Semi_Random_Research_ETA_Hours>{0} hours</CM_Semi_Random_Research_ETA_Hours>
+  <CM_Semi_Random_Research_ETA_Day>{0} day</CM_Semi_Random_Research_ETA_Day>
   <CM_Semi_Random_Research_ETA_Days>{0} days</CM_Semi_Random_Research_ETA_Days>
+  <CM_Semi_Random_Research_ETA_Year>{0} Year</CM_Semi_Random_Research_ETA_Year>
+  <CM_Semi_Random_Research_ETA_Years>{0} Years</CM_Semi_Random_Research_ETA_Years>
+  <CM_Semi_Random_Research_ETA_UntilComplete>{0} until complete</CM_Semi_Random_Research_ETA_UntilComplete>
   <CM_Semi_Random_Research_ETA_UnknownNoAverage>Unknown (no 10-day average yet)</CM_Semi_Random_Research_ETA_UnknownNoAverage>
-  <CM_Semi_Random_Research_ETA_AtTenDayAverage>{0} at 10-day average</CM_Semi_Random_Research_ETA_AtTenDayAverage>
 
   <!-- Progress bar -->
   <CM_Semi_Random_Research_ProgressTotal>Research ({0}/{1})</CM_Semi_Random_Research_ProgressTotal>

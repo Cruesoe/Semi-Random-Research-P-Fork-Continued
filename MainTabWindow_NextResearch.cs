@@ -68,6 +68,9 @@ namespace CM_Semi_Random_Research
         private string cachedAvgRateText = "—";
         private string cachedEtaText = "—";
         private Color cachedEtaColor = new Color(0.7f, 0.7f, 0.7f);
+        private List<float> cachedGraphSamples = new List<float>();
+        private float cachedGraphAverage;
+        private float cachedTenDayAverage;
         private List<ResearchProjectDef> cachedActiveProjects = new List<ResearchProjectDef>();
         private readonly List<Pair<TechLevel, List<ResearchProjectDef>>> cachedStandardGroups = new List<Pair<TechLevel, List<ResearchProjectDef>>>();
         private List<ResearchProjectDef> cachedAnomalyBasic = new List<ResearchProjectDef>();
@@ -379,6 +382,9 @@ namespace CM_Semi_Random_Research
                 cachedEtaColor = new Color(0.7f, 0.7f, 0.7f);
                 cachedRateInfo = null;
                 cachedRateInfoProject = mainProject;
+                cachedGraphSamples.Clear();
+                cachedGraphAverage = 0f;
+                cachedTenDayAverage = 0f;
                 return;
             }
 
@@ -425,6 +431,16 @@ namespace CM_Semi_Random_Research
                 else if (estimatedDays < 3f) cachedEtaColor = new Color(0.7f, 0.7f, 0.0f);
                 else if (estimatedDays > 10f) cachedEtaColor = new Color(0.75f, 0.5f, 0.3f);
             }
+
+            cachedGraphSamples = hasRateData
+                ? cachedRateTracker.GetRateSamplesPeriod(mainProject, 3)
+                : cachedRateTracker.GetGlobalRateSamplesPeriod(3);
+            cachedGraphAverage = hasRateData
+                ? cachedRateTracker.GetAverageRate(mainProject)
+                : cachedRateTracker.GetGlobalAverageRate();
+            cachedTenDayAverage = hasRateData
+                ? cachedRateInfo.AverageRate
+                : cachedRateTracker.GetGlobalAverageRate();
         }
 
         private bool ColonistsHaveResearchBench
@@ -489,6 +505,7 @@ namespace CM_Semi_Random_Research
 
                 RebuildAnimationOrder(currentAvailableProjects, 1f);
 
+                techLevelHeaderProgress[TechLevel.Animal] = 1f;
                 techLevelHeaderProgress[TechLevel.Neolithic] = 1f;
                 techLevelHeaderProgress[TechLevel.Medieval] = 1f;
                 techLevelHeaderProgress[TechLevel.Industrial] = 1f;
@@ -596,6 +613,7 @@ namespace CM_Semi_Random_Research
                 }
 
                 float headerProgress = Mathf.Clamp01(timeSinceReroll / ANIMATION_DURATION * 1.2f);
+                techLevelHeaderProgress[TechLevel.Animal] = headerProgress;
                 techLevelHeaderProgress[TechLevel.Neolithic] = headerProgress;
                 techLevelHeaderProgress[TechLevel.Medieval] = headerProgress;
                 techLevelHeaderProgress[TechLevel.Industrial] = headerProgress;
@@ -692,14 +710,14 @@ namespace CM_Semi_Random_Research
             float progressBarHeight = 70f;
             float progressLabelHeight = 55f;
             float totalProgressHeight = progressBarHeight + progressLabelHeight;
-            float horizontalMargin = 40f;
+            float columnMargin = 16f;
             float topMargin = 6f;
             float arrowBottomPadding = 24f;
 
             Rect progressRect = new Rect(
-                horizontalMargin,
+                columnMargin,
                 topMargin + progressLabelHeight,
-                canvas.width - (horizontalMargin * 2),
+                canvas.width - (columnMargin * 2),
                 progressBarHeight + arrowBottomPadding
             );
             DrawTechLevelProgress(progressRect);
@@ -709,7 +727,6 @@ namespace CM_Semi_Random_Research
 
             float leftWidth = canvas.width * 0.55f;
             float rightWidth = canvas.width * 0.45f;
-            float columnMargin = 16f;
 
             // Match the left column's footer strip so both columns share the same bottom line break.
             float rightFooterPaddingTop = 12f;

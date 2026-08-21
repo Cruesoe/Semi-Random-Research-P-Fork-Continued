@@ -12,6 +12,7 @@ namespace CM_Semi_Random_Research
     public partial class MainTabWindow_NextResearch
     {
         private static bool? progressionCoreActiveCached;
+        private static bool? vfeTribalsActiveCached;
 
         private static bool ProgressionCoreActive
         {
@@ -20,6 +21,16 @@ namespace CM_Semi_Random_Research
                 if (progressionCoreActiveCached == null)
                     progressionCoreActiveCached = GenTypes.GetTypeInAnyAssembly("ProgressionCore.ProgressionCoreMod") != null;
                 return progressionCoreActiveCached.Value;
+            }
+        }
+
+        private static bool VfeTribalsActive
+        {
+            get
+            {
+                if (vfeTribalsActiveCached == null)
+                    vfeTribalsActiveCached = ModLister.GetActiveModWithIdentifier("OskarPotocki.VFE.Tribals") != null;
+                return vfeTribalsActiveCached.Value;
             }
         }
 
@@ -36,6 +47,7 @@ namespace CM_Semi_Random_Research
         {
             cachedTechLevelStats = new Dictionary<TechLevel, (int completed, int total, float remainingCost, float spentCost)>
             {
+                { TechLevel.Animal, (0, 0, 0f, 0f) },
                 { TechLevel.Neolithic, (0, 0, 0f, 0f) },
                 { TechLevel.Medieval, (0, 0, 0f, 0f) },
                 { TechLevel.Industrial, (0, 0, 0f, 0f) },
@@ -90,15 +102,28 @@ namespace CM_Semi_Random_Research
             if (remainingCost <= 0f)
                 return "CM_Semi_Random_Research_Complete".Translate();
 
-            float average = cachedRateTracker != null ? cachedRateTracker.GetGlobalAverageRate() : 0f;
+            float average = cachedTenDayAverage;
+            if (average <= 0f && cachedRateTracker != null)
+                average = cachedRateTracker.GetGlobalAverageRate();
             if (average <= 0f)
                 return "CM_Semi_Random_Research_ETA_UnknownNoAverage".Translate();
 
-            return "CM_Semi_Random_Research_ETA_AtTenDayAverage".Translate(ResearchRateTracker.FormatETA(remainingCost / average)).ToString();
+            return ResearchRateTracker.FormatETAUntilComplete(remainingCost / average);
         }
 
         private static readonly TechLevel[] ProgressTechLevels =
         {
+            TechLevel.Neolithic,
+            TechLevel.Medieval,
+            TechLevel.Industrial,
+            TechLevel.Spacer,
+            TechLevel.Ultra,
+            TechLevel.Archotech
+        };
+
+        private static readonly TechLevel[] ProgressTechLevelsWithAnimal =
+        {
+            TechLevel.Animal,
             TechLevel.Neolithic,
             TechLevel.Medieval,
             TechLevel.Industrial,
@@ -121,7 +146,7 @@ namespace CM_Semi_Random_Research
                 return;
             }
 
-            TechLevel[] techLevels = ProgressTechLevels;
+            TechLevel[] techLevels = VfeTribalsActive ? ProgressTechLevelsWithAnimal : ProgressTechLevels;
             bool progressionCoreActive = ProgressionCoreActive;
             float requiredProgress = cachedRequiredProgress;
 
@@ -163,8 +188,8 @@ namespace CM_Semi_Random_Research
 
             foreach (TechLevel techLevel in techLevels)
             {
-                var stats = techLevelStats[techLevel];
-                if (stats.total == 0) continue;
+                if (!techLevelStats.TryGetValue(techLevel, out var stats) || stats.total == 0)
+                    continue;
 
                 float segmentWidth = (float)stats.total / totalTechs * barWidth;
                 float progress = stats.total > 0 ? (float)stats.completed / stats.total : 0f;
@@ -204,6 +229,10 @@ namespace CM_Semi_Random_Research
                     labelSize.x,
                     labelHeight
                 );
+                if (labelRect.x < barRect.x)
+                    labelRect.x = barRect.x;
+                else if (labelRect.xMax > barRect.xMax)
+                    labelRect.x = barRect.xMax - labelRect.width;
 
                 if (IsRepaint)
                 {
@@ -291,8 +320,9 @@ namespace CM_Semi_Random_Research
                 GUI.color = Color.white;
 
                 TechLevel currentTechLevel = Faction.OfPlayer.def.techLevel;
-                var stats = techLevelStats[currentTechLevel];
-                float progress = stats.total > 0 ? (float)stats.completed / stats.total : 0f;
+                float progress = 0f;
+                if (techLevelStats.TryGetValue(currentTechLevel, out var currentStats) && currentStats.total > 0)
+                    progress = (float)currentStats.completed / currentStats.total;
 
                 string thresholdLabel = progress >= requiredProgress
                     ? "CM_Semi_Random_Research_ReadyToAdvance".Translate()

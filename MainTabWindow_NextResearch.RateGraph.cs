@@ -175,15 +175,102 @@ namespace CM_Semi_Random_Research
                     if (IsRepaint)
                     {
                         Widgets.DrawBoxSolid(graphRect, new Color(0.1f, 0.1f, 0.1f, 0.2f));
+                        DrawTransparentBox(graphRect, new Color(0.4f, 0.4f, 0.4f, 0.3f), 1f);
+                        if (cachedGraphSamples != null && cachedGraphSamples.Count > 0)
+                        {
+                            DrawRateGraph(graphRect, cachedGraphSamples, cachedGraphAverage);
+                        }
+                        else
+                        {
+                            Text.Anchor = TextAnchor.MiddleCenter;
+                            GUI.color = new Color(0.6f, 0.6f, 0.6f, 0.6f);
+                            Widgets.Label(graphRect, "CM_Semi_Random_Research_CollectingData".Translate());
+                        }
                     }
-                    Text.Anchor = TextAnchor.MiddleCenter;
-                    GUI.color = new Color(0.6f, 0.6f, 0.6f, 0.8f);
-                    Widgets.Label(graphRect, cachedCurrentRateText + "  ·  " + cachedAvgRateText);
                 }
             }
 
             Text.Anchor = originalAnchor;
             GUI.color = originalColor;
+        }
+
+        private void DrawRateGraph(Rect rect, List<float> samples, float averageRate)
+        {
+            if (samples == null || samples.Count == 0)
+                return;
+
+            float padding = 10f;
+            Rect graphAreaRect = rect.ContractedBy(padding);
+
+            float maxValue = 0.1f;
+            for (int i = 0; i < samples.Count; i++)
+            {
+                if (samples[i] > maxValue)
+                    maxValue = samples[i];
+            }
+            maxValue *= 1.2f;
+
+            float barWidth = graphAreaRect.width / samples.Count;
+
+            GUI.color = new Color(0.5f, 0.5f, 0.5f, 0.4f);
+            Widgets.DrawLine(
+                new Vector2(graphAreaRect.x, graphAreaRect.yMax),
+                new Vector2(graphAreaRect.xMax, graphAreaRect.yMax),
+                GUI.color,
+                1f);
+
+            for (int i = 0; i < samples.Count; i++)
+            {
+                float normalizedValue = Mathf.Clamp01(samples[i] / maxValue);
+                float barHeight = normalizedValue * graphAreaRect.height;
+                Rect barRect = new Rect(
+                    graphAreaRect.x + (i * barWidth),
+                    graphAreaRect.yMax - barHeight,
+                    barWidth,
+                    barHeight);
+
+                Color barColor = Color.Lerp(
+                    new Color(0.4f, 0.5f, 0.6f),
+                    new Color(0.5f, 0.6f, 0.4f),
+                    normalizedValue);
+                Widgets.DrawBoxSolid(barRect, barColor);
+            }
+
+            if (averageRate > 0f && averageRate <= maxValue)
+            {
+                float avgY = graphAreaRect.yMax - (averageRate / maxValue * graphAreaRect.height);
+                Color avgColor = new Color(0.7f, 0.65f, 0.45f, 0.8f);
+
+                Text.Font = GameFont.Tiny;
+                string avgLabel = "CM_Semi_Random_Research_GraphAverage".Translate();
+                Vector2 avgLabelSize = Text.CalcSize(avgLabel);
+                float labelWidth = avgLabelSize.x + 6f;
+                float labelHeight = Mathf.Max(14f, avgLabelSize.y);
+                Rect labelRect = new Rect(
+                    graphAreaRect.xMax - labelWidth,
+                    avgY - labelHeight / 2f,
+                    labelWidth,
+                    labelHeight);
+                if (labelRect.y < graphAreaRect.y)
+                    labelRect.y = graphAreaRect.y;
+                if (labelRect.yMax > graphAreaRect.yMax)
+                    labelRect.y = graphAreaRect.yMax - labelHeight;
+
+                GUI.color = avgColor;
+                Widgets.DrawLine(
+                    new Vector2(graphAreaRect.x, avgY),
+                    new Vector2(labelRect.x - 4f, avgY),
+                    avgColor,
+                    2f);
+
+                Widgets.DrawBoxSolid(labelRect, new Color(0.08f, 0.08f, 0.08f, 0.85f));
+                Text.Anchor = TextAnchor.MiddleRight;
+                GUI.color = avgColor;
+                Widgets.Label(labelRect, avgLabel);
+            }
+
+            GUI.color = Color.white;
+            Text.Anchor = TextAnchor.UpperLeft;
         }
     }
 }
