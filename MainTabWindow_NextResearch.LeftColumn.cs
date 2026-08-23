@@ -520,7 +520,41 @@ namespace CM_Semi_Random_Research
                     DrawInactiveFooterButton(researchButtonRect, "CM_Semi_Random_Research_Finished".Translate(), Color.grey);
                     break;
                 case FooterStartMode.InProgress:
-                    DrawInactiveFooterButton(researchButtonRect, "CM_Semi_Random_Research_InProgress".Translate(), Color.grey);
+                    if (researchTracker.ResearchPaused)
+                    {
+                        if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_ResumeResearch".Translate(), FooterStartButtonColor))
+                        {
+                            SoundDefOf.ResearchStart.PlayOneShotOnCamera();
+                            researchTracker.ResumeResearch(selectedProject);
+                            InvalidateLeftColumnCache();
+                            if (cachedTracker != null)
+                                CopyAvailableProjects(cachedTracker.PeekAvailableProjects());
+                            cachedCanStartNowTick = -1;
+                            RefreshCanStartNow(Find.TickManager.TicksGame);
+
+                            TutorSystem.Notify_Event("StartResearchProject");
+                            if (!ColonistsHaveResearchBench)
+                            {
+                                Messages.Message("MessageResearchMenuWithoutBench".Translate(), MessageTypeDefOf.CautionInput);
+                            }
+                        }
+                        TooltipHandler.TipRegion(researchButtonRect, "CM_Semi_Random_Research_ResumeResearchTip".Translate());
+                    }
+                    else
+                    {
+                        if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_PauseResearch".Translate(), FooterPauseButtonColor))
+                        {
+                            SoundDefOf.Click.PlayOneShotOnCamera();
+                            researchTracker.PauseResearch(selectedProject);
+                            Messages.Message("CM_Semi_Random_Research_ResearchPausedMessage".Translate(), MessageTypeDefOf.NeutralEvent, false);
+                            InvalidateLeftColumnCache();
+                            if (cachedTracker != null)
+                                CopyAvailableProjects(cachedTracker.PeekAvailableProjects());
+                            cachedCanStartNowTick = -1;
+                            RefreshCanStartNow(Find.TickManager.TicksGame);
+                        }
+                        TooltipHandler.TipRegion(researchButtonRect, "CM_Semi_Random_Research_PauseResearchTip".Translate());
+                    }
                     break;
                 case FooterStartMode.Locked:
                     DrawInactiveFooterButton(researchButtonRect, "CM_Semi_Random_Research_Locked".Translate(), Color.grey);

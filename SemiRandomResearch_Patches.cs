@@ -297,6 +297,24 @@ namespace CM_Semi_Random_Research
                 return false;
             }
         }
+
+        [HarmonyPatch(typeof(Alert_NeedResearchProject), nameof(Alert_NeedResearchProject.GetReport))]
+        public static class Alert_NeedResearchProject_GetReport
+        {
+            [HarmonyPrefix]
+            public static bool Prefix(ref AlertReport __result)
+            {
+                if (Current.ProgramState != ProgramState.Playing || Find.World == null)
+                    return true;
+
+                ResearchTracker tracker = Find.World.GetComponent<ResearchTracker>();
+                if (tracker == null || !tracker.ResearchPaused)
+                    return true;
+
+                __result = AlertReport.Inactive;
+                return false;
+            }
+        }
     }
 
     [HarmonyPatch]
@@ -334,6 +352,28 @@ namespace CM_Semi_Random_Research
         public static bool Prefix()
         {
             ResearchTabCompatibility.Open(ResearchTabDefOf.Anomaly);
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(Alert_NeedAnomalyProject), nameof(Alert_NeedAnomalyProject.GetReport))]
+    public static class Alert_NeedAnomalyProject_GetReport
+    {
+        public static bool Prepare()
+        {
+            return ModsConfig.AnomalyActive;
+        }
+
+        public static bool Prefix(ref AlertReport __result)
+        {
+            if (Current.ProgramState != ProgramState.Playing || Find.World == null)
+                return true;
+
+            ResearchTracker tracker = Find.World.GetComponent<ResearchTracker>();
+            if (tracker == null || !tracker.ResearchPaused)
+                return true;
+
+            __result = AlertReport.Inactive;
             return false;
         }
     }

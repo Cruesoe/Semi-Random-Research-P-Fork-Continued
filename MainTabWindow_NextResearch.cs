@@ -36,6 +36,7 @@ namespace CM_Semi_Random_Research
         private static readonly Color ActiveProjectLabelColor = new ColorInt(219, 201, 126, 255).ToColor;
         private static readonly Color FooterTreeButtonColor = new Color(0.22f, 0.38f, 0.55f);
         private static readonly Color FooterRerollButtonColor = new Color(0.55f, 0.38f, 0.14f);
+        private static readonly Color FooterPauseButtonColor = new Color(0.50f, 0.42f, 0.16f);
         private static readonly Color FooterStartButtonColor = new Color(0.22f, 0.48f, 0.28f);
         private static readonly Color FooterDebugButtonColor = new Color(0.55f, 0.22f, 0.22f);
 
@@ -179,9 +180,11 @@ namespace CM_Semi_Random_Research
                 cachedFooterStartMode = FooterStartMode.InProgress;
                 return;
             }
-            bool categoryFree = selectedProject.knowledgeCategory == null
+            bool pausedOccupiesCategory = cachedTracker != null && cachedTracker.ResearchPaused &&
+                cachedTracker.CurrentProject.Any(p => p != null && ResearchTracker.GetCategoryKey(p) == ResearchTracker.GetCategoryKey(selectedProject));
+            bool categoryFree = !pausedOccupiesCategory && (selectedProject.knowledgeCategory == null
                 ? Find.ResearchManager.GetProject() == null
-                : Find.ResearchManager.GetProject(selectedProject.knowledgeCategory) == null;
+                : Find.ResearchManager.GetProject(selectedProject.knowledgeCategory) == null);
             bool canStart = cachedSelectedCanStartNow &&
                 (categoryFree ||
                  ResearchTracker.GetCategoryKey(selectedProject) == "Gravship" ||

@@ -134,6 +134,13 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_TreeButtonTip_Node>Open Node Research. Prohibit normal project selection still applies if it is enabled.</CM_Semi_Random_Research_TreeButtonTip_Node>
   <CM_Semi_Random_Research_NoRerolls>No rerolls</CM_Semi_Random_Research_NoRerolls>
   <CM_Semi_Random_Research_StartResearch>Start Research</CM_Semi_Random_Research_StartResearch>
+  <CM_Semi_Random_Research_PauseResearch>Pause research</CM_Semi_Random_Research_PauseResearch>
+  <CM_Semi_Random_Research_PauseResearchTip>Stop colonists from researching. The project stays selected as current research until you resume.</CM_Semi_Random_Research_PauseResearchTip>
+  <CM_Semi_Random_Research_ResumeResearch>Resume research</CM_Semi_Random_Research_ResumeResearch>
+  <CM_Semi_Random_Research_ResumeResearchTip>Resume the current research project.</CM_Semi_Random_Research_ResumeResearchTip>
+  <CM_Semi_Random_Research_ResearchPausedAlert>Research paused</CM_Semi_Random_Research_ResearchPausedAlert>
+  <CM_Semi_Random_Research_ResearchPausedAlertDesc>Research is paused. Colonists will not work on the current project until you resume. Click to open the research tab.</CM_Semi_Random_Research_ResearchPausedAlertDesc>
+  <CM_Semi_Random_Research_ResearchPausedMessage>Research paused.</CM_Semi_Random_Research_ResearchPausedMessage>
   <CM_Semi_Random_Research_Finished>Finished</CM_Semi_Random_Research_Finished>
   <CM_Semi_Random_Research_InProgress>In Progress</CM_Semi_Random_Research_InProgress>
   <CM_Semi_Random_Research_Locked>Locked</CM_Semi_Random_Research_Locked>

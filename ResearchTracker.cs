@@ -20,6 +20,9 @@ namespace CM_Semi_Random_Research
 
         public List<ResearchProjectDef> CurrentProject => currentProjects;
 
+        private bool researchPaused;
+        public bool ResearchPaused => researchPaused;
+
         public int OffersRevision { get; private set; }
 
         public List<ResearchProjectDef> PeekAvailableProjects() => lastOfferedProjects ?? currentAvailableProjects;
@@ -224,6 +227,7 @@ namespace CM_Semi_Random_Research
 
             bool defaultUsingNodeResearch = SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.usingNodeResearch;
             Scribe_Values.Look(ref usingNodeResearch, "usingNodeResearch", defaultUsingNodeResearch);
+            Scribe_Values.Look(ref researchPaused, "researchPaused", false);
         }
 
         public override void WorldComponentTick()
@@ -267,7 +271,7 @@ namespace CM_Semi_Random_Research
                         ConsiderProjectFinished(finishedProject);
                     }
 
-                    if (currentProjectOfType.Empty() || finished)
+                    if ((currentProjectOfType.Empty() || finished) && !researchPaused)
                     {
                         if (SemiRandomResearchMod.settings.autoPickNextResearch && (finished || (tickCounter % tickOffset) == 0))
                         {
@@ -325,28 +329,31 @@ namespace CM_Semi_Random_Research
                         }
                         // --- VGE SPAM FIX END ---
 
-                        if (activeProject == null && !currentProjectOfType.Empty() && currentProjectOfType.First().CanStartNow)
+                        if (!researchPaused)
                         {
-                            SetCurrentProjectByKey(currentProjectOfType.First(), typeKey);
-                        }
-                        else if (activeProject != null && (currentProjectOfType.Empty() || !currentProjectOfType.Contains(activeProject)) && activeProject.CanStartNow)
-                        {
-                            if (!SemiRandomResearchMod.settings.featureEnabled)
-                            {
-                                SetCurrentProjectByKey(activeProject, typeKey);
-                            }
-                            else if (currentProjectOfType.Empty() && currentAvailableProjects.Contains(activeProject))
-                            {
-                                SetCurrentProjectByKey(activeProject, typeKey);
-                            }
-                            else if (!currentProjectOfType.Empty())
+                            if (activeProject == null && !currentProjectOfType.Empty() && currentProjectOfType.First().CanStartNow)
                             {
                                 SetCurrentProjectByKey(currentProjectOfType.First(), typeKey);
                             }
-                            else
+                            else if (activeProject != null && (currentProjectOfType.Empty() || !currentProjectOfType.Contains(activeProject)) && activeProject.CanStartNow)
                             {
-                                LogIfNewMessage("WorldTickUnexpectedState" + typeKey, $"Error? Set as activeProject: {activeProject.LabelCap} currentAvailableProjects: {currentAvailableProjects.Count} and of type {typeKey}: {currentAvailableProjects.Where(x => GetCategoryKey(x) == typeKey).Count()}");
-                                SetCurrentProjectByKey(activeProject, typeKey);
+                                if (!SemiRandomResearchMod.settings.featureEnabled)
+                                {
+                                    SetCurrentProjectByKey(activeProject, typeKey);
+                                }
+                                else if (currentProjectOfType.Empty() && currentAvailableProjects.Contains(activeProject))
+                                {
+                                    SetCurrentProjectByKey(activeProject, typeKey);
+                                }
+                                else if (!currentProjectOfType.Empty())
+                                {
+                                    SetCurrentProjectByKey(currentProjectOfType.First(), typeKey);
+                                }
+                                else
+                                {
+                                    LogIfNewMessage("WorldTickUnexpectedState" + typeKey, $"Error? Set as activeProject: {activeProject.LabelCap} currentAvailableProjects: {currentAvailableProjects.Count} and of type {typeKey}: {currentAvailableProjects.Where(x => GetCategoryKey(x) == typeKey).Count()}");
+                                    SetCurrentProjectByKey(activeProject, typeKey);
+                                }
                             }
                         }
                     }
@@ -720,6 +727,7 @@ namespace CM_Semi_Random_Research
             loggedMessages.Clear();
             currentProjects = currentProjects.Where(x => GetCategoryKey(x) != typeKey).ToList();
             projectDefsCacheByType.Remove(typeKey);
+            researchPaused = false;
             if (newCurrentProject != null)
             {
                 currentProjects.Add(newCurrentProject);
@@ -733,26 +741,56 @@ namespace CM_Semi_Random_Research
             }
             else
             {
-                ResearchProjectDef active = null;
-                ResearchProjectDef standardActive = Find.ResearchManager.GetProject(null);
-                if (standardActive != null && GetCategoryKey(standardActive) == typeKey) active = standardActive;
-                foreach (var cat in DefDatabase<KnowledgeCategoryDef>.AllDefsListForReading)
-                {
-                    ResearchProjectDef catActive = Find.ResearchManager.GetProject(cat);
-                    if (catActive != null && GetCategoryKey(catActive) == typeKey) active = catActive;
-                }
-
-                // Add safety net for stopping Gravship projects since they hide from GetProject
-                var trackedType = currentProjectDefsCacheByType.ContainsKey(typeKey) ? currentProjectDefsCacheByType[typeKey].FirstOrDefault() : null;
-                if (active == null && trackedType != null && Find.ResearchManager.IsCurrentProject(trackedType))
-                {
-                    active = trackedType;
-                }
-
-                if (active != null) Find.ResearchManager.StopProject(active);
+                StopVanillaProjectForKey(typeKey);
             }
             currentProjectDefsCacheByType[typeKey] = currentProjects.Where(x => GetCategoryKey(x) == typeKey).ToList();
             PublishOffers(new List<ResearchProjectDef>(currentAvailableProjects));
+        }
+
+        private void StopVanillaProjectForKey(string typeKey)
+        {
+            ResearchProjectDef active = null;
+            ResearchProjectDef standardActive = Find.ResearchManager.GetProject(null);
+            if (standardActive != null && GetCategoryKey(standardActive) == typeKey) active = standardActive;
+            foreach (var cat in DefDatabase<KnowledgeCategoryDef>.AllDefsListForReading)
+            {
+                ResearchProjectDef catActive = Find.ResearchManager.GetProject(cat);
+                if (catActive != null && GetCategoryKey(catActive) == typeKey) active = catActive;
+            }
+
+            // Add safety net for stopping Gravship projects since they hide from GetProject
+            ResearchProjectDef trackedType = currentProjects.FirstOrDefault(x => GetCategoryKey(x) == typeKey);
+            if (trackedType == null && currentProjectDefsCacheByType.ContainsKey(typeKey))
+                trackedType = currentProjectDefsCacheByType[typeKey].FirstOrDefault();
+            if (active == null && trackedType != null && Find.ResearchManager.IsCurrentProject(trackedType))
+                active = trackedType;
+
+            if (active != null)
+                Find.ResearchManager.StopProject(active);
+            else if (trackedType != null && Find.ResearchManager.IsCurrentProject(trackedType))
+                Find.ResearchManager.StopProject(trackedType);
+        }
+
+        public void PauseResearch(ResearchProjectDef project)
+        {
+            if (project == null)
+                return;
+
+            string typeKey = GetCategoryKey(project);
+            if (!currentProjects.Contains(project))
+                currentProjects.Add(project);
+
+            researchPaused = true;
+            StopVanillaProjectForKey(typeKey);
+            currentProjectDefsCacheByType[typeKey] = currentProjects.Where(x => GetCategoryKey(x) == typeKey).ToList();
+        }
+
+        public void ResumeResearch(ResearchProjectDef project)
+        {
+            if (project == null)
+                return;
+
+            SetCurrentProjectByKey(project, GetCategoryKey(project));
         }
 
         public void ManageNotChosenByKey(string typeKey)
