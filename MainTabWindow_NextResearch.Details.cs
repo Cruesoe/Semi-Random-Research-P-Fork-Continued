@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using UnityEngine;
 using Verse;
 using Verse.Sound;
@@ -27,7 +26,6 @@ namespace CM_Semi_Random_Research
                 if (Event.current.type == EventType.Layout)
                     rightScrollHeightForFrame = rightScrollViewHeight;
                 Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(rightScrollHeightForFrame, 1f));
-                rightViewportHeight = outRect.height;
 
                 Widgets.BeginScrollView(outRect, ref rightScrollPosition, viewRect);
                 try

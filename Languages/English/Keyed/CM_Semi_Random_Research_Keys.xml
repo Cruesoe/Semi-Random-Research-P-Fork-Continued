@@ -6,8 +6,6 @@
   <CM_Semi_Random_Research_Setting_Reroll_All_Every_Time_Label>Reroll all choices every time</CM_Semi_Random_Research_Setting_Reroll_All_Every_Time_Label>
   <CM_Semi_Random_Research_Setting_Reroll_All_Every_Time_Description>If disabled, projects that are not selected will stay in the list until researched.</CM_Semi_Random_Research_Setting_Reroll_All_Every_Time_Description>
   
-  <CM_Semi_Random_Research_Setting_Show_Research_Button_Label>Show research button</CM_Semi_Random_Research_Setting_Show_Research_Button_Label>
-  <CM_Semi_Random_Research_Setting_Show_Research_Button_Description>If disabled, the vanilla research button will be hidden.</CM_Semi_Random_Research_Setting_Show_Research_Button_Description>
   
   <CM_Semi_Random_Research_Setting_Manual_Reroll_Label>Allow manual rerolls</CM_Semi_Random_Research_Setting_Manual_Reroll_Label>
   <CM_Semi_Random_Research_Setting_Manual_Reroll_Description>Whether the Reroll button in the research tab can replace the projects you are being offered.</CM_Semi_Random_Research_Setting_Manual_Reroll_Description>
@@ -82,19 +80,10 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_Setting_Verbose_Logging_Label>Verbose Logging</CM_Semi_Random_Research_Setting_Verbose_Logging_Label>
   <CM_Semi_Random_Research_Setting_Verbose_Logging_Description>Enable logging of how offered research projects choices are chosen. Not likely to help much, and will spam your log. Keep disabled unless you are debugging something!
   </CM_Semi_Random_Research_Setting_Verbose_Logging_Description>
-  <CM_Semi_Random_Research_Setting_Experimental_Anomaly_Support_Label>Experimental Anomaly Support</CM_Semi_Random_Research_Setting_Experimental_Anomaly_Support_Label>
-  <CM_Semi_Random_Research_Setting_Experimental_Anomaly_Support_Description>Enable Semi Random Research for Anomaly content. Not tested yet. Use at own risk. This option will be removed as soon as it is confirmed to be working correctly.
-  </CM_Semi_Random_Research_Setting_Experimental_Anomaly_Support_Description>
   
   <CM_Semi_Random_Research_Available_Projects>Available Projects</CM_Semi_Random_Research_Available_Projects>
-  <CM_Semi_Random_Research_Auto_Research_Label>Select research automatically</CM_Semi_Random_Research_Auto_Research_Label>
   <CM_Semi_Random_Research_Reroll_Label>Reroll</CM_Semi_Random_Research_Reroll_Label>
-  <CM_Semi_Random_Research_Reroll_Spent_Label>Reroll not available for</CM_Semi_Random_Research_Reroll_Spent_Label>
-  <CM_Semi_Random_Research_Technology_Label>Technology</CM_Semi_Random_Research_Technology_Label>
 
-  <CM_Semi_Random_Research_Setting_Version>Version: </CM_Semi_Random_Research_Setting_Version>
-  <CM_Semi_Random_Unlocks_Research>Unlocks research: </CM_Semi_Random_Unlocks_Research>
-  <CM_Hidden_Research>Hidden</CM_Hidden_Research>
 
   <!-- Settings window -->
   <CM_Semi_Random_Research_SettingsCategory>Semi Random Research</CM_Semi_Random_Research_SettingsCategory>
@@ -147,7 +136,6 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_ResearchPausedMessage>Research paused.</CM_Semi_Random_Research_ResearchPausedMessage>
   <CM_Semi_Random_Research_PausedTag>Paused</CM_Semi_Random_Research_PausedTag>
   <CM_Semi_Random_Research_Finished>Finished</CM_Semi_Random_Research_Finished>
-  <CM_Semi_Random_Research_InProgress>In Progress</CM_Semi_Random_Research_InProgress>
   <CM_Semi_Random_Research_Locked>Locked</CM_Semi_Random_Research_Locked>
   <CM_Semi_Random_Research_Foundation>Foundation</CM_Semi_Random_Research_Foundation>
   <CM_Semi_Random_Research_Emergence>Emergence</CM_Semi_Random_Research_Emergence>
@@ -157,7 +145,6 @@ Prevents being offered only high cost projects while low cost projects are avail
   <!-- Research history -->
   <CM_Semi_Random_Research_HistoryHeader>Recently completed</CM_Semi_Random_Research_HistoryHeader>
   <CM_Semi_Random_Research_HistoryEmpty>No research has been completed yet.</CM_Semi_Random_Research_HistoryEmpty>
-  <CM_Semi_Random_Research_HistoryEntryTip>Select a project to see what it unlocked.</CM_Semi_Random_Research_HistoryEntryTip>
   <CM_Semi_Random_Research_HistoryTip>Show recently completed research. Pick a project to see what it unlocked.</CM_Semi_Random_Research_HistoryTip>
   <CM_Semi_Random_Research_HistoryBack>Back</CM_Semi_Random_Research_HistoryBack>
   <CM_Semi_Random_Research_HistoryBackTip>Return to the current and available projects.</CM_Semi_Random_Research_HistoryBackTip>

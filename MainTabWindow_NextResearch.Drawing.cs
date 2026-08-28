@@ -2,10 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using UnityEngine;
 using Verse;
-using Verse.Sound;
 
 namespace CM_Semi_Random_Research
 {
@@ -180,7 +178,7 @@ namespace CM_Semi_Random_Research
             return new CardRowLayout(iconRect, firstSeparator, secondSeparator, nameRect, costRect);
         }
 
-        private void DrawTransparentBox(Rect rect, Color borderColor, float borderThickness = 1f, bool cutOutside = false)
+        private static void DrawTransparentBox(Rect rect, Color borderColor, float borderThickness = 1f)
         {
             Color saveColor = GUI.color;
             GUI.color = borderColor;

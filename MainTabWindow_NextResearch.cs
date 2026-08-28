@@ -1,8 +1,6 @@
 ﻿using RimWorld;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using UnityEngine;
 using Verse;
 using Verse.Sound;
@@ -62,11 +60,9 @@ namespace CM_Semi_Random_Research
         private Dictionary<ResearchProjectDef, Def> cachedFirstUnlockable = new Dictionary<ResearchProjectDef, Def>();
         private Building_ResearchBench cachedMatchingBench;
         private ResearchProjectDef cachedMatchingBenchProject;
-        private float rightViewportHeight;
         private ResearchTracker cachedTracker;
         private ResearchRateTracker cachedRateTracker;
         private ResearchTracker drawTracker;
-        private ResearchRateTracker drawRateTracker;
         private ResearchRateInfo cachedRateInfo;
         private ResearchProjectDef cachedRateInfoProject;
         private int cachedRateInfoTick = -1;
@@ -102,7 +98,6 @@ namespace CM_Semi_Random_Research
             Locked
         }
         private List<Def> cachedSelectedUnlocks;
-        private int cachedSelectedUnlockCount;
         private ResearchProjectDef cachedUnlocksProject;
         private float cachedRequiredProgress = 1f;
         private bool loggedDrawError;
@@ -148,11 +143,6 @@ namespace CM_Semi_Random_Research
                 return false;
             Event.current.Use();
             return true;
-        }
-
-        private bool SelectedProjectCanStartNow()
-        {
-            return selectedProject != null && cachedSelectedCanStartNow;
         }
 
         private void RefreshCanStartNow(int tick)
@@ -305,7 +295,6 @@ namespace CM_Semi_Random_Research
 
             cachedUnlocksProject = selectedProject;
             cachedSelectedUnlocks = null;
-            cachedSelectedUnlockCount = 0;
             if (selectedProject == null)
                 return;
 
@@ -314,7 +303,6 @@ namespace CM_Semi_Random_Research
             {
                 List<Def> unlocked = selectedProject.UnlockedDefs;
                 cachedSelectedUnlocks = unlocked;
-                cachedSelectedUnlockCount = unlocked != null ? unlocked.Count : 0;
             }
             catch (Exception)
             {
@@ -538,7 +526,6 @@ namespace CM_Semi_Random_Research
             cachedCanStartNowTick = -1;
             cachedUnlocksProject = null;
             cachedSelectedUnlocks = null;
-            cachedSelectedUnlockCount = 0;
             InvalidateLeftColumnCache();
             RebuildLeftColumnLists(cachedTracker);
             WarmUnlockCaches();
@@ -736,7 +723,6 @@ namespace CM_Semi_Random_Research
         private void DrawWindowBody(Rect canvas)
         {
             drawTracker = cachedTracker;
-            drawRateTracker = cachedRateTracker;
 
             if (lastRerollTime > 0f && Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Space)
             {

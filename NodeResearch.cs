@@ -320,29 +320,6 @@ namespace CM_Semi_Random_Research
             return PreferredResearchTree.NodeResearch;
         }
 
-        public static Type ResolvePreferredTreeWindowType()
-        {
-            switch (GetEffectivePreferredTree())
-            {
-                case PreferredResearchTree.NodeResearch:
-                    if (NodeResearchWindowType != null)
-                        return NodeResearchWindowType;
-                    break;
-                case PreferredResearchTree.YART:
-                    if (YartWindowType != null)
-                        return YartWindowType;
-                    break;
-                case PreferredResearchTree.Sleek:
-                    return typeof(MainTabWindow_Research);
-                case PreferredResearchTree.NiceResearchTab:
-                    if (NiceWindowType != null)
-                        return NiceWindowType;
-                    break;
-            }
-
-            return typeof(MainTabWindow_Research);
-        }
-
         public static void SwitchToPreferredTree(Window windowToClose)
         {
             switch (GetEffectivePreferredTree())

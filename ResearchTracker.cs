@@ -110,14 +110,6 @@ namespace CM_Semi_Random_Research
             return true;
         }
 
-        public bool IsSelectableProject(ResearchProjectDef proj)
-        {
-            if (proj == null)
-                return false;
-
-            return currentProjects.Contains(proj) || currentAvailableProjects.Contains(proj);
-        }
-
         // The tracker's own bookkeeping writes vanilla's current project constantly (restoring
         // the tracked project, resuming, auto picking). Those writes are not player selections
         // and must never be judged by the selection gate.
@@ -1052,18 +1044,6 @@ namespace CM_Semi_Random_Research
                 ResearchProjectDef active = Find.ResearchManager.GetProject(type);
                 if (active != null) SetCurrentProjectByKey(null, GetCategoryKey(active));
             }
-        }
-
-        public void ManageNotChosen(KnowledgeCategoryDef type)
-        {
-            string key = type == null ? "Standard" : type.defName;
-            ManageNotChosenByKey(key);
-        }
-
-        public void SetRerolled(KnowledgeCategoryDef type, bool newValue)
-        {
-            string key = type == null ? "Standard" : type.defName;
-            SetRerolledByKey(key, newValue);
         }
 
         public bool CanReroll(KnowledgeCategoryDef type)
