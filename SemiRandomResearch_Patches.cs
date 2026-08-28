@@ -108,6 +108,19 @@ namespace CM_Semi_Random_Research
     [StaticConstructorOnStartup]
     public static class ResearchManager_Patches
     {
+        private static float lastRejectionMessageTime = -99f;
+
+        // A tree with a research queue can retry its selection every frame. Throttled on real
+        // time because the game is usually paused while the research tab is open.
+        internal static void RejectSelection()
+        {
+            if (Time.realtimeSinceStartup - lastRejectionMessageTime < 1.5f)
+                return;
+
+            lastRejectionMessageTime = Time.realtimeSinceStartup;
+            Messages.Message("CM_Semi_Random_Research_Active".Translate(), MessageTypeDefOf.RejectInput, false);
+        }
+
         [HarmonyPatch(typeof(ResearchManager))]
         [HarmonyPatch("FinishProject", MethodType.Normal)]
         public static class ResearchManager_FinishProject
@@ -240,6 +253,11 @@ namespace CM_Semi_Random_Research
         [HarmonyPatch(new[] { typeof(ResearchProjectDef) })]
         public static class ResearchManager_SetCurrentProject
         {
+            // The gate every research UI passes through. With "Prohibit normal project selection"
+            // on, the Semi-Random tab is the only place research is chosen - the vanilla and Sleek
+            // trees already have their start button hard-locked by the DrawStartButton patch, and
+            // this makes Node Research, Nice Research Tab and anything else behave the same way.
+            // Our own window and the tracker's bookkeeping go through SetVanillaProjectUngated.
             [HarmonyPrefix]
             public static bool Prefix(ResearchProjectDef proj)
             {
@@ -248,13 +266,12 @@ namespace CM_Semi_Random_Research
                     return true;
                 }
 
-                ResearchTracker tracker = Current.Game?.World?.GetComponent<ResearchTracker>();
-                if (tracker == null || tracker.IsSelectableProject(proj))
+                if (ResearchTracker.ApplyingTrackedProject)
                 {
                     return true;
                 }
 
-                Messages.Message("CM_Semi_Random_Research_Active".Translate(), MessageTypeDefOf.RejectInput, false);
+                RejectSelection();
                 return false;
             }
         }
@@ -440,11 +457,10 @@ namespace CM_Semi_Random_Research
                 if (projectToStart == null || !SemiRandomResearchUtility.IsControllingResearchSelection)
                     return true;
 
-                ResearchTracker tracker = Current.Game?.World?.GetComponent<ResearchTracker>();
-                if (tracker == null || tracker.IsSelectableProject(projectToStart))
+                if (ResearchTracker.ApplyingTrackedProject)
                     return true;
 
-            Messages.Message("CM_Semi_Random_Research_Active".Translate(), MessageTypeDefOf.RejectInput, false);
+            ResearchManager_Patches.RejectSelection();
             return false;
         }
     }

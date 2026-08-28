@@ -72,12 +72,14 @@
     <Compile Include="MainTabWindow_NextResearch.Drawing.cs" />
     <Compile Include="MainTabWindow_NextResearch.Details.cs" />
     <Compile Include="MainTabWindow_NextResearch.RateGraph.cs" />
+    <Compile Include="MainTabWindow_NextResearch.History.cs" />
     <Compile Include="ResearchRateTracker.cs" />
     <Compile Include="ResearchTracker.cs" />
     <Compile Include="Alert_ResearchPaused.cs" />
     <Compile Include="SemiRandomResearchMod.cs" />
     <Compile Include="SemiRandomResearch_Core.cs" />
     <Compile Include="NodeResearch.cs" />
+    <Compile Include="NiceResearchTab.cs" />
     <Compile Include="YART.cs" />
     <Compile Include="Sleek.cs" />
     <Compile Include="SemiRandomResearch_Patches.cs" />

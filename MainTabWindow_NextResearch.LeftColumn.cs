@@ -17,6 +17,12 @@ namespace CM_Semi_Random_Research
             cachedLeftCurrentHash = int.MinValue;
         }
 
+        // Paused still counts as busy: the project keeps the category until it is resumed or cancelled.
+        private static bool IsCategoryBusy(ResearchProjectDef activeProject)
+        {
+            return activeProject != null && !activeProject.IsFinished;
+        }
+
         private static int CurrentProjectsHash(List<ResearchProjectDef> projects)
         {
             if (projects == null)
@@ -93,6 +99,16 @@ namespace CM_Semi_Random_Research
             cachedGravshipProjects.Clear();
             cachedStandardGroups.Clear();
 
+            // "Allow switching between choices" off means nothing else can be started until the
+            // active project finishes, so the rest of that category's offers are hidden instead of
+            // being listed as locked. Only the display is filtered: the tracker still holds them,
+            // so with "Reroll all choices every time" off they come back on completion.
+            bool hideBusyCategoryOffers = SemiRandomResearchMod.settings == null || !SemiRandomResearchMod.settings.allowSwitchingResearch;
+            bool standardBusy = hideBusyCategoryOffers && IsCategoryBusy(activeNonAnomalyProject);
+            bool anomalyBasicBusy = hideBusyCategoryOffers && IsCategoryBusy(activeAnomalyProjectBasic);
+            bool anomalyAdvancedBusy = hideBusyCategoryOffers && IsCategoryBusy(activeAnomalyProjectAdvanced);
+            bool gravshipBusy = hideBusyCategoryOffers && IsCategoryBusy(activeGravshipProject);
+
             var standardByLevel = new Dictionary<TechLevel, List<ResearchProjectDef>>();
             bool anomalyOn = AnomalyContentEnabled();
             for (int i = 0; i < currentAvailableProjects.Count; i++)
@@ -109,26 +125,32 @@ namespace CM_Semi_Random_Research
                 string key = ResearchTracker.GetCategoryKey(p);
                 if (key == "Gravship")
                 {
-                    if (p != activeGravshipProject)
+                    if (p != activeGravshipProject && !gravshipBusy)
+                    {
                         cachedGravshipProjects.Add(p);
+                    }
                     continue;
                 }
 
                 if (anomalyOn && p.knowledgeCategory == KnowledgeCategoryDefOf.Basic)
                 {
-                    if (p != activeAnomalyProjectBasic)
+                    if (p != activeAnomalyProjectBasic && !anomalyBasicBusy)
+                    {
                         cachedAnomalyBasic.Add(p);
+                    }
                     continue;
                 }
 
                 if (anomalyOn && p.knowledgeCategory == KnowledgeCategoryDefOf.Advanced)
                 {
-                    if (p != activeAnomalyProjectAdvanced)
+                    if (p != activeAnomalyProjectAdvanced && !anomalyAdvancedBusy)
+                    {
                         cachedAnomalyAdvanced.Add(p);
+                    }
                     continue;
                 }
 
-                if (key == "Standard" && p != activeNonAnomalyProject)
+                if (key == "Standard" && p != activeNonAnomalyProject && !standardBusy)
                 {
                     if (!standardByLevel.TryGetValue(p.techLevel, out List<ResearchProjectDef> list))
                     {
@@ -499,7 +521,9 @@ namespace CM_Semi_Random_Research
                     if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_StartResearch".Translate(), FooterStartButtonColor))
                     {
                         SoundDefOf.ResearchStart.PlayOneShotOnCamera();
-                        Find.ResearchManager.SetCurrentProject(selectedProject);
+                        // Ungated: this button is only drawn when PlayerCanStartProject allows it,
+                        // so the selection gate (which refuses every other UI) must not re-judge it.
+                        ResearchTracker.SetVanillaProjectUngated(selectedProject);
 
                         string categoryKey = ResearchTracker.GetCategoryKey(selectedProject);
                         Current.Game.World.GetComponent<ResearchTracker>()?.SetCurrentProjectByKey(selectedProject, categoryKey);

@@ -23,9 +23,12 @@ namespace CM_Semi_Random_Research
         public const string YartPackageId = "seohyeon.yart";
         public const string YartWindowTypeName = "YART.MainTabWindow_YART";
         public const string SleekPackageId = "squishyjellyfish.SleekResearchTab";
+        public const string NicePackageId = "Andromeda.NiceResearchTab";
+        public const string NiceWindowTypeName = "NiceResearchTab.MainTabWindow_ResearchTree";
 
         private static Type cachedNodeResearchWindowType;
         private static Type cachedYartWindowType;
+        private static Type cachedNiceWindowType;
 
         private static readonly FieldInfo TabWindowIntField =
             AccessTools.Field(typeof(MainButtonDef), "tabWindowInt");
@@ -54,6 +57,16 @@ namespace CM_Semi_Random_Research
 
         public static bool SleekInstalled =>
             ModLister.GetActiveModWithIdentifier(SleekPackageId) != null;
+
+        public static Type NiceWindowType =>
+            cachedNiceWindowType
+            ?? (cachedNiceWindowType = AccessTools.TypeByName(NiceWindowTypeName));
+
+        public static bool NiceResearchTabInstalled =>
+            ModLister.GetActiveModWithIdentifier(NicePackageId) != null;
+
+        public static bool AnyTreeInstalled =>
+            NodeResearchInstalled || YartInstalled || SleekInstalled || NiceResearchTabInstalled;
 
         public static void SetUsingNodeResearch(bool value)
         {
@@ -175,10 +188,31 @@ namespace CM_Semi_Random_Research
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
 
+        public static void SwitchToNiceResearchTab(Window windowToClose)
+        {
+            if (!NiceResearchTabInstalled || NiceWindowType == null)
+            {
+                return;
+            }
+
+            SetUsingNodeResearch(false);
+            if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
+            {
+                ShowHandoverMessage("CM_Semi_Random_Research_Handover_Nice_Restricted".Translate());
+            }
+            else
+            {
+                ShowHandoverMessage("CM_Semi_Random_Research_Handover_Nice".Translate());
+            }
+
+            OpenResearchWindow(NiceWindowType, windowToClose);
+            SoundDefOf.TabOpen.PlayOneShotOnCamera();
+        }
+
         public static void SwitchToSemiRandomResearch(Window windowToClose)
         {
             SetUsingNodeResearch(false);
-            if (NodeResearchInstalled || YartInstalled || SleekInstalled)
+            if (AnyTreeInstalled)
             {
                 if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
                 {
@@ -194,7 +228,10 @@ namespace CM_Semi_Random_Research
             ResearchTracker tracker = Current.Game?.World?.GetComponent<ResearchTracker>();
             if (tracker != null && activeProj != null && !tracker.CurrentProject.Contains(activeProj))
             {
-                tracker.SetCurrentProject(activeProj, activeProj.knowledgeCategory);
+                // Bookkeeping, not a selection: vanilla is already researching this, the tracker
+                // is only catching up. Goes by key so the gate on SetCurrentProject does not
+                // reject it on the way back from another tree.
+                tracker.SetCurrentProjectByKey(activeProj, ResearchTracker.GetCategoryKey(activeProj));
             }
 
             OpenResearchWindow(typeof(MainTabWindow_NextResearch), windowToClose);
@@ -253,12 +290,15 @@ namespace CM_Semi_Random_Research
                     return YartInstalled && YartWindowType != null;
                 case PreferredResearchTree.Sleek:
                     return SleekInstalled;
+                case PreferredResearchTree.NiceResearchTab:
+                    return NiceResearchTabInstalled && NiceWindowType != null;
                 default:
                     return false;
             }
         }
 
-        // Node Research first, then YART, then Sleek, then vanilla.
+        // Node Research first, then YART, then Sleek, then Nice Research Tab, then vanilla.
+        // Nice Research Tab is last so installing it never changes an existing preference.
         public static PreferredResearchTree GetEffectivePreferredTree()
         {
             PreferredResearchTree preferred = SemiRandomResearchMod.settings != null
@@ -274,6 +314,8 @@ namespace CM_Semi_Random_Research
                 return PreferredResearchTree.YART;
             if (IsTreeAvailable(PreferredResearchTree.Sleek))
                 return PreferredResearchTree.Sleek;
+            if (IsTreeAvailable(PreferredResearchTree.NiceResearchTab))
+                return PreferredResearchTree.NiceResearchTab;
 
             return PreferredResearchTree.NodeResearch;
         }
@@ -292,6 +334,10 @@ namespace CM_Semi_Random_Research
                     break;
                 case PreferredResearchTree.Sleek:
                     return typeof(MainTabWindow_Research);
+                case PreferredResearchTree.NiceResearchTab:
+                    if (NiceWindowType != null)
+                        return NiceWindowType;
+                    break;
             }
 
             return typeof(MainTabWindow_Research);
@@ -319,6 +365,13 @@ namespace CM_Semi_Random_Research
                     if (IsTreeAvailable(PreferredResearchTree.Sleek))
                     {
                         SwitchToSleek(windowToClose);
+                        return;
+                    }
+                    break;
+                case PreferredResearchTree.NiceResearchTab:
+                    if (IsTreeAvailable(PreferredResearchTree.NiceResearchTab))
+                    {
+                        SwitchToNiceResearchTab(windowToClose);
                         return;
                     }
                     break;

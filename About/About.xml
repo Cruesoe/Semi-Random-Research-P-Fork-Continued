@@ -26,6 +26,7 @@
 		<li>Ludeon.RimWorld</li>
 		<li>brrainz.harmony</li>
 		<li>ferny.noderesearch</li>
-		<li>squishyjellyfish.SleekResearchTab</li>	
+		<li>squishyjellyfish.SleekResearchTab</li>
+		<li>Andromeda.NiceResearchTab</li>
 	</loadAfter>
 </ModMetaData>

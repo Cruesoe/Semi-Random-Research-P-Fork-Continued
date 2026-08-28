@@ -47,6 +47,7 @@ namespace CM_Semi_Random_Research
 
         public override void WriteSettings()
         {
+            settings.FlushPendingChoices();
             base.WriteSettings();
             settings.UpdateSettings();
         }

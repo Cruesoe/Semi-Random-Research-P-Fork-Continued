@@ -34,7 +34,8 @@ namespace CM_Semi_Random_Research
     {
         NodeResearch,
         YART,
-        Sleek
+        Sleek,
+        NiceResearchTab
     }
 
     // =========================================================================
@@ -104,60 +105,113 @@ namespace CM_Semi_Random_Research
             Scribe_Values.Look(ref colorAndGroupByTechLevel, "colorAndGroupByTechLevel", true);
         }
 
+        private static readonly Color SectionColor = new Color(0.62f, 0.72f, 0.80f);
+
+        // A float menu option and a radio button fire in the middle of a frame, between this
+        // window's layout pass and its repaint. Applying a value that shows or hides rows right
+        // there changes how many GUI controls the window draws between those two passes, and
+        // Unity then throws out the pass - which is how a chosen option could silently fail to
+        // stick. These hold the choice until the next layout pass, where it is safe to apply.
+        private ManualReroll? pendingManualReroll;
+        private ProgressAddsChoice? pendingProgressAddsChoice;
+        private ChoiceAmountSelection? pendingAmountSelection;
+
+        private void ApplyPendingChoices(bool force)
+        {
+            if (!force && Event.current != null && Event.current.type != EventType.Layout)
+                return;
+
+            if (pendingManualReroll.HasValue)
+            {
+                allowManualReroll = pendingManualReroll.Value;
+                pendingManualReroll = null;
+            }
+            if (pendingProgressAddsChoice.HasValue)
+            {
+                progressAddsChoice = pendingProgressAddsChoice.Value;
+                pendingProgressAddsChoice = null;
+            }
+            if (pendingAmountSelection.HasValue)
+            {
+                amountSelection = pendingAmountSelection.Value;
+                pendingAmountSelection = null;
+            }
+        }
+
         public void DoSettingsWindowContents(Rect inRect)
         {
+            ApplyPendingChoices(false);
+
             Listing_Standard listing = new Listing_Standard();
 
-            // Set column width to half the screen with a slight margin
+            // Two columns, each half the window minus the gutter.
             listing.ColumnWidth = (inRect.width - 34f) / 2f;
             listing.Begin(inRect);
 
             // ==========================================
-            // COLUMN 1: GENERAL & MECHANICS
+            // COLUMN 1: GENERAL, DISPLAY, TREES
             // ==========================================
-
-            listing.Label("CM_Semi_Random_Research_Setting_Section_General".Translate().Colorize(Color.gray));
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Feature_Enabled_Label".Translate(), ref featureEnabled, "CM_Semi_Random_Research_Setting_Feature_Enabled_Description".Translate());
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_AutoOpen_Label".Translate(), ref autoOpenOnCompletion, "CM_Semi_Random_Research_Setting_AutoOpen_Description".Translate());
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_AutoPick_Label".Translate(), ref autoPickNextResearch, "CM_Semi_Random_Research_Setting_AutoPick_Description".Translate());
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_ShowGraph_Label".Translate(), ref showResearchRateGraph, "CM_Semi_Random_Research_Setting_ShowGraph_Description".Translate());
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_ShowLetter_Label".Translate(), ref showCompletionLetter, "CM_Semi_Random_Research_Setting_ShowLetter_Description".Translate());
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_ColorGroup_Label".Translate(), ref colorAndGroupByTechLevel, "CM_Semi_Random_Research_Setting_ColorGroup_Description".Translate());
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Verbose_Logging_Label".Translate(), ref verboseLogging, "CM_Semi_Random_Research_Setting_Verbose_Logging_Description".Translate());
-
-            if (ResearchTabWindowSwitcher.NodeResearchInstalled)
-            {
-                listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_DelegateNode_Label".Translate(), ref usingNodeResearch, "CM_Semi_Random_Research_Setting_DelegateNode_Description".Translate());
-            }
-
-            if (ResearchTabWindowSwitcher.NodeResearchInstalled || ResearchTabWindowSwitcher.YartInstalled || ResearchTabWindowSwitcher.SleekInstalled)
-            {
-                listing.Label("CM_Semi_Random_Research_Setting_TreeButtonOpens_Label".Translate());
-                Rect treeButtonOptionRect = listing.GetRect(26);
-                List<FloatMenuOption> treeOptions = new List<FloatMenuOption>();
-                if (ResearchTabWindowSwitcher.NodeResearchInstalled)
-                {
-                    treeOptions.Add(new FloatMenuOption("CM_Semi_Random_Research_Tree_NodeResearch".Translate(), () => { SetPreferredTree(PreferredResearchTree.NodeResearch); }));
-                }
-                if (ResearchTabWindowSwitcher.YartInstalled)
-                {
-                    treeOptions.Add(new FloatMenuOption("CM_Semi_Random_Research_Tree_YART".Translate(), () => { SetPreferredTree(PreferredResearchTree.YART); }));
-                }
-                if (ResearchTabWindowSwitcher.SleekInstalled)
-                {
-                    treeOptions.Add(new FloatMenuOption("CM_Semi_Random_Research_Tree_Sleek".Translate(), () => { SetPreferredTree(PreferredResearchTree.Sleek); }));
-                }
-                if (!ResearchTabWindowSwitcher.IsTreeAvailable(preferredResearchTree))
-                    preferredResearchTree = ResearchTabWindowSwitcher.GetEffectivePreferredTree();
-                string treeButtonLabel = PreferredTreeLabel(ResearchTabWindowSwitcher.GetEffectivePreferredTree());
-                DoButtonOption(treeButtonOptionRect, treeButtonLabel, "CM_Semi_Random_Research_Setting_TreeButtonOpens_Description".Translate(), treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10);
-                listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_SuppressHandover_Label".Translate(), ref suppressHandoverMessages, "CM_Semi_Random_Research_Setting_SuppressHandover_Description".Translate());
-            }
+            // Auto research is not listed here on purpose: it is the toggle in the bottom left
+            // of the research tab, and having it in two places invited confusion.
+            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_General");
+            Checkbox(listing, "Feature_Enabled", ref featureEnabled);
+            Checkbox(listing, "AutoOpen", ref autoOpenOnCompletion);
+            Checkbox(listing, "ShowLetter", ref showCompletionLetter);
 
             listing.GapLine();
 
-            listing.Label("CM_Semi_Random_Research_Setting_Section_Gameplay".Translate().Colorize(Color.gray));
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Force_Lowest_Tech_Level_Label".Translate(), ref forceLowestTechLevel, "CM_Semi_Random_Research_Setting_Force_Lowest_Tech_Level_Description".Translate());
+            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Display");
+            Checkbox(listing, "ColorGroup", ref colorAndGroupByTechLevel);
+            Checkbox(listing, "ShowGraph", ref showResearchRateGraph);
+
+            if (ResearchTabWindowSwitcher.AnyTreeInstalled)
+            {
+                listing.GapLine();
+                SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Trees");
+
+                string treeTooltip = "CM_Semi_Random_Research_Setting_TreeButtonOpens_Description".Translate();
+                listing.Label("CM_Semi_Random_Research_Setting_TreeButtonOpens_Label".Translate(), -1, treeTooltip);
+
+                List<FloatMenuOption> treeOptions = new List<FloatMenuOption>();
+                AddTreeOption(treeOptions, PreferredResearchTree.NodeResearch);
+                AddTreeOption(treeOptions, PreferredResearchTree.YART);
+                AddTreeOption(treeOptions, PreferredResearchTree.Sleek);
+                AddTreeOption(treeOptions, PreferredResearchTree.NiceResearchTab);
+
+                if (!ResearchTabWindowSwitcher.IsTreeAvailable(preferredResearchTree))
+                    preferredResearchTree = ResearchTabWindowSwitcher.GetEffectivePreferredTree();
+
+                Rect treeButtonOptionRect = listing.GetRect(26);
+                DoButtonOption(treeButtonOptionRect,
+                    PreferredTreeLabel(ResearchTabWindowSwitcher.GetEffectivePreferredTree()),
+                    treeTooltip,
+                    treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10);
+
+                if (ResearchTabWindowSwitcher.NodeResearchInstalled)
+                    Checkbox(listing, "DelegateNode", ref usingNodeResearch);
+
+                Checkbox(listing, "SuppressHandover", ref suppressHandoverMessages);
+            }
+
+            // Verbose logging is a debugging aid that only spams the log for everyone else,
+            // so the whole section stays out of the way unless dev mode is on.
+            if (Prefs.DevMode)
+            {
+                listing.GapLine();
+
+                SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Debug");
+                Checkbox(listing, "Verbose_Logging", ref verboseLogging);
+            }
+
+            // ==========================================
+            // COLUMN 2: SELECTION RULES, REROLLS, AMOUNTS
+            // ==========================================
+            listing.NewColumn();
+
+            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Gameplay");
+            Checkbox(listing, "Force_Lowest_Tech_Level", ref forceLowestTechLevel);
+
+            // Node Research owns tech-level progression, so these two are locked while it is installed.
             bool restrictFaction = restrictToFactionTechLevel;
             string restrictFactionTip = "CM_Semi_Random_Research_Setting_Restrict_To_Faction_Tech_Level_Description".Translate();
             if (ResearchTabWindowSwitcher.NodeResearchInstalled)
@@ -172,6 +226,7 @@ namespace CM_Semi_Random_Research
             {
                 restrictToFactionTechLevel = restrictFaction;
             }
+
             bool oneHigher = allowOneHigherTechProject;
             string oneHigherTip = "CM_Semi_Random_Research_Setting_Allow_One_Higher_Tech_Project_Description".Translate();
             if (ResearchTabWindowSwitcher.NodeResearchInstalled)
@@ -186,74 +241,72 @@ namespace CM_Semi_Random_Research
             {
                 allowOneHigherTechProject = oneHigher;
             }
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Allow_Switching_Research_Label".Translate(), ref allowSwitchingResearch, "CM_Semi_Random_Research_Setting_Allow_Switching_Research_Description".Translate());
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Equalize_Cost_Label".Translate(), ref equalizeCost, "CM_Semi_Random_Research_Setting_Equalize_Cost_Description".Translate());
 
-            // Progress Adds Choice Option
-            string progressAddChoiceLableTooltip = "CM_Semi_Random_Research_Setting_Progress_Adds_Choice_Description".Translate() + "\n\n";
-            foreach (ProgressAddsChoice option in System.Enum.GetValues(typeof(ProgressAddsChoice)))
-            {
-                progressAddChoiceLableTooltip += ("CM_Semi_Random_Research_Setting_Progress_Adds_Choice_" + option.ToString() + "_Label").Translate() + ": " + ("CM_Semi_Random_Research_Setting_Progress_Adds_Choice_" + option.ToString() + "_Description").Translate() + "\n\n";
-            }
-            listing.Label("CM_Semi_Random_Research_Setting_Progress_Adds_Choice_Label".Translate(), -1, progressAddChoiceLableTooltip);
-            Rect button_rect_1 = listing.GetRect(26);
+            Checkbox(listing, "Allow_Switching_Research", ref allowSwitchingResearch);
+            Checkbox(listing, "Equalize_Cost", ref equalizeCost);
+
+            string progressAddChoiceTooltip = EnumTooltip<ProgressAddsChoice>(
+                "CM_Semi_Random_Research_Setting_Progress_Adds_Choice_Description",
+                "CM_Semi_Random_Research_Setting_Progress_Adds_Choice_");
+            listing.Label("CM_Semi_Random_Research_Setting_Progress_Adds_Choice_Label".Translate(), -1, progressAddChoiceTooltip);
+            Rect progressAddsRect = listing.GetRect(26);
             List<FloatMenuOption> progressAddsChoiceOptions = new List<FloatMenuOption>();
             foreach (ProgressAddsChoice option in System.Enum.GetValues(typeof(ProgressAddsChoice)))
             {
-                string keyLabel = ("CM_Semi_Random_Research_Setting_Progress_Adds_Choice_" + option.ToString() + "_Label").Translate();
-                var menuOption = new FloatMenuOption(keyLabel, () => { progressAddsChoice = option; });
-                menuOption.tooltip = new TipSignal(("CM_Semi_Random_Research_Setting_Progress_Adds_Choice_" + option.ToString() + "_Description").Translate());
+                ProgressAddsChoice captured = option;
+                string keyLabel = ("CM_Semi_Random_Research_Setting_Progress_Adds_Choice_" + option + "_Label").Translate();
+                var menuOption = new FloatMenuOption(keyLabel, () => { pendingProgressAddsChoice = captured; });
+                menuOption.tooltip = new TipSignal(("CM_Semi_Random_Research_Setting_Progress_Adds_Choice_" + option + "_Description").Translate());
                 progressAddsChoiceOptions.Add(menuOption);
             }
-            DoButtonOption(button_rect_1, ("CM_Semi_Random_Research_Setting_Progress_Adds_Choice_" + progressAddsChoice.ToString() + "_Label").Translate(), progressAddChoiceLableTooltip, progressAddsChoiceOptions, button_rect_1.width / 10, button_rect_1.width / 10);
+            DoButtonOption(progressAddsRect,
+                ("CM_Semi_Random_Research_Setting_Progress_Adds_Choice_" + (pendingProgressAddsChoice ?? progressAddsChoice) + "_Label").Translate(),
+                progressAddChoiceTooltip, progressAddsChoiceOptions, progressAddsRect.width / 10, progressAddsRect.width / 10);
 
-            // ==========================================
-            // COLUMN 2: REROLLS & LIMITS
-            // ==========================================
-            listing.NewColumn();
+            listing.GapLine();
 
-            listing.Label("CM_Semi_Random_Research_Setting_Section_Reroll".Translate().Colorize(Color.gray));
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Reroll_All_Every_Time_Label".Translate(), ref rerollAllEveryTime, "CM_Semi_Random_Research_Setting_Reroll_All_Every_Time_Description".Translate());
+            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Reroll");
+            Checkbox(listing, "Reroll_All_Every_Time", ref rerollAllEveryTime);
 
-            string rerollLableTooltip = "CM_Semi_Random_Research_Setting_Manual_Reroll_Label".Translate() + "\n\n";
-            foreach (ManualReroll option in System.Enum.GetValues(typeof(ManualReroll)))
-            {
-                rerollLableTooltip += ("CM_Semi_Random_Research_Setting_Manual_Reroll_" + option.ToString() + "_Label").Translate() + ": " + ("CM_Semi_Random_Research_Setting_Manual_Reroll_" + option.ToString() + "_Description").Translate() + "\n\n";
-            }
-            listing.Label("CM_Semi_Random_Research_Setting_Manual_Reroll_Label".Translate(), -1, rerollLableTooltip);
-
-            Rect button_rect_2 = listing.GetRect(26);
+            string rerollTooltip = EnumTooltip<ManualReroll>(
+                "CM_Semi_Random_Research_Setting_Manual_Reroll_Description",
+                "CM_Semi_Random_Research_Setting_Manual_Reroll_");
+            listing.Label("CM_Semi_Random_Research_Setting_Manual_Reroll_Label".Translate(), -1, rerollTooltip);
+            Rect rerollRect = listing.GetRect(26);
             List<FloatMenuOption> manualRerollOptions = new List<FloatMenuOption>();
             foreach (ManualReroll option in System.Enum.GetValues(typeof(ManualReroll)))
             {
-                string keyLabel = ("CM_Semi_Random_Research_Setting_Manual_Reroll_" + option.ToString() + "_Label").Translate();
-                var menuOption = new FloatMenuOption(keyLabel, () => { allowManualReroll = option; });
-                menuOption.tooltip = new TipSignal(("CM_Semi_Random_Research_Setting_Manual_Reroll_" + option.ToString() + "_Description").Translate());
+                ManualReroll captured = option;
+                string keyLabel = ("CM_Semi_Random_Research_Setting_Manual_Reroll_" + option + "_Label").Translate();
+                var menuOption = new FloatMenuOption(keyLabel, () => { pendingManualReroll = captured; });
+                menuOption.tooltip = new TipSignal(("CM_Semi_Random_Research_Setting_Manual_Reroll_" + option + "_Description").Translate());
                 manualRerollOptions.Add(menuOption);
             }
-            DoButtonOption(button_rect_2, ("CM_Semi_Random_Research_Setting_Manual_Reroll_" + allowManualReroll.ToString() + "_Label").Translate(), rerollLableTooltip, manualRerollOptions, button_rect_2.width / 10, button_rect_2.width / 10);
+            DoButtonOption(rerollRect,
+                ("CM_Semi_Random_Research_Setting_Manual_Reroll_" + (pendingManualReroll ?? allowManualReroll) + "_Label").Translate(),
+                rerollTooltip, manualRerollOptions, rerollRect.width / 10, rerollRect.width / 10);
 
             if (allowManualReroll != ManualReroll.None)
             {
-                listing.Label(("CM_Semi_Random_Research_Setting_Prevent_Rerolled_From_Appearing_Label".Translate()) + ": " + reofferAfterAmountOfRerolls.ToString(), -1, "CM_Semi_Random_Research_Setting_Prevent_Rerolled_From_Appearing_Description".Translate());
-                listing.IntAdjuster(ref reofferAfterAmountOfRerolls, 1);
+                IntSetting(listing, "Prevent_Rerolled_From_Appearing", ref reofferAfterAmountOfRerolls, 0);
             }
 
             listing.GapLine();
 
-            listing.Label("CM_Semi_Random_Research_Setting_Section_Limits".Translate().Colorize(Color.gray));
-            listing.Label("CM_Semi_Random_Research_Setting_Type_Of_Projects_Count_Label".Translate());
-            if (listing.RadioButton("CM_Semi_Random_Research_Setting_Static_Projects_Count_Label".Translate(), amountSelection == ChoiceAmountSelection.Static, 8f, "CM_Semi_Random_Research_Setting_Static_Projects_Count_Description".Translate()))
+            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Limits");
+            string amountTooltip = "CM_Semi_Random_Research_Setting_Type_Of_Projects_Count_Description".Translate();
+            listing.Label("CM_Semi_Random_Research_Setting_Type_Of_Projects_Count_Label".Translate(), -1, amountTooltip);
+            ChoiceAmountSelection shownAmountSelection = pendingAmountSelection ?? amountSelection;
+            if (listing.RadioButton("CM_Semi_Random_Research_Setting_Static_Projects_Count_Label".Translate(), shownAmountSelection == ChoiceAmountSelection.Static, 8f, "CM_Semi_Random_Research_Setting_Static_Projects_Count_Description".Translate()))
             {
-                amountSelection = ChoiceAmountSelection.Static;
+                pendingAmountSelection = ChoiceAmountSelection.Static;
             }
-            if (listing.RadioButton("CM_Semi_Random_Research_Setting_Dynamic_Projects_Count_Label".Translate(), amountSelection == ChoiceAmountSelection.PerColonist, 8f, "CM_Semi_Random_Research_Setting_Dynamic_Projects_Count_Description".Translate()))
+            if (listing.RadioButton("CM_Semi_Random_Research_Setting_Dynamic_Projects_Count_Label".Translate(), shownAmountSelection == ChoiceAmountSelection.PerColonist, 8f, "CM_Semi_Random_Research_Setting_Dynamic_Projects_Count_Description".Translate()))
             {
-                amountSelection = ChoiceAmountSelection.PerColonist;
+                pendingAmountSelection = ChoiceAmountSelection.PerColonist;
             }
 
-            listing.Label(("CM_Semi_Random_Research_Setting_Available_Projects_Count_Label".Translate()) + ": " + availableProjectCount.ToString(), -1, "CM_Semi_Random_Research_Setting_Available_Projects_Count_Description".Translate());
-            listing.IntAdjuster(ref availableProjectCount, 1, 0);
+            IntSetting(listing, "Available_Projects_Count", ref availableProjectCount, 0);
             if (availableProjectCount > maxProjectCount)
             {
                 maxProjectCount = availableProjectCount;
@@ -261,11 +314,8 @@ namespace CM_Semi_Random_Research
 
             if (amountSelection == ChoiceAmountSelection.PerColonist)
             {
-                listing.Label(("CM_Semi_Random_Research_Setting_Additional_Project_Per_XColonists_Label".Translate()) + ": " + additionalProjectPerXColonists.ToString(), -1, "CM_Semi_Random_Research_Setting_Additional_Project_Per_XColonists_Description".Translate());
-                listing.IntAdjuster(ref additionalProjectPerXColonists, 1, 1);
-
-                listing.Label(("CM_Semi_Random_Research_Setting_Max_Projects_Label".Translate()) + ": " + maxProjectCount.ToString(), -1, "CM_Semi_Random_Research_Setting_Max_Projects_Description".Translate());
-                listing.IntAdjuster(ref maxProjectCount, 1, 1);
+                IntSetting(listing, "Additional_Project_Per_XColonists", ref additionalProjectPerXColonists, 1);
+                IntSetting(listing, "Max_Projects", ref maxProjectCount, 1);
                 if (availableProjectCount > maxProjectCount)
                 {
                     availableProjectCount = maxProjectCount;
@@ -275,6 +325,50 @@ namespace CM_Semi_Random_Research
             listing.End();
 
             DumpSettingToLog();
+        }
+
+        private static void SectionHeader(Listing_Standard listing, string translationKey)
+        {
+            Text.Font = GameFont.Small;
+            listing.Label(translationKey.Translate().Colorize(SectionColor));
+        }
+
+        // Every checkbox in this window follows the same "<prefix>_Label" / "<prefix>_Description"
+        // key pair, so the description always ends up on the row as its tooltip.
+        private static void Checkbox(Listing_Standard listing, string keyStem, ref bool value)
+        {
+            listing.CheckboxLabeled(
+                ("CM_Semi_Random_Research_Setting_" + keyStem + "_Label").Translate(),
+                ref value,
+                ("CM_Semi_Random_Research_Setting_" + keyStem + "_Description").Translate());
+        }
+
+        // Label + adjuster pair. The label carries the tooltip because IntAdjuster has no room for one.
+        private static void IntSetting(Listing_Standard listing, string keyStem, ref int value, int min)
+        {
+            TaggedString label = ("CM_Semi_Random_Research_Setting_" + keyStem + "_Label").Translate() + ": " + value.ToString();
+            string tooltip = ("CM_Semi_Random_Research_Setting_" + keyStem + "_Description").Translate();
+            listing.Label(label, -1, tooltip);
+            listing.IntAdjuster(ref value, 1, min);
+        }
+
+        private static string EnumTooltip<T>(string headerKey, string optionKeyPrefix)
+        {
+            string tooltip = headerKey.Translate() + "\n\n";
+            foreach (T option in System.Enum.GetValues(typeof(T)))
+            {
+                tooltip += (optionKeyPrefix + option + "_Label").Translate() + ": " +
+                    (optionKeyPrefix + option + "_Description").Translate() + "\n\n";
+            }
+            return tooltip;
+        }
+
+        private void AddTreeOption(List<FloatMenuOption> options, PreferredResearchTree tree)
+        {
+            if (!ResearchTabWindowSwitcher.IsTreeAvailable(tree))
+                return;
+
+            options.Add(new FloatMenuOption(PreferredTreeLabel(tree), () => { SetPreferredTree(tree); }));
         }
 
         private void SetPreferredTree(PreferredResearchTree tree)
@@ -290,6 +384,8 @@ namespace CM_Semi_Random_Research
                 return "CM_Semi_Random_Research_Tree_YART".Translate();
             if (preferred == PreferredResearchTree.Sleek)
                 return "CM_Semi_Random_Research_Tree_Sleek".Translate();
+            if (preferred == PreferredResearchTree.NiceResearchTab)
+                return "CM_Semi_Random_Research_Tree_Nice".Translate();
             return "CM_Semi_Random_Research_Tree_NodeResearch".Translate();
         }
 
@@ -297,12 +393,23 @@ namespace CM_Semi_Random_Research
         {
             rect.x += leftPad;
             rect.width -= leftPad + rightPad;
-            bool button1 = Widgets.ButtonImage(rect, null, true, tooltip);
-            bool button2 = Widgets.ButtonText(rect, text);
-            if (button1 || button2)
+
+            // One control, not two stacked on the same rect: the old invisible ButtonImage
+            // underneath doubled this row's control count for no benefit.
+            if (!tooltip.NullOrEmpty())
+                TooltipHandler.TipRegion(rect, tooltip);
+
+            if (Widgets.ButtonText(rect, text))
             {
                 Find.WindowStack.Add(new FloatMenu(options));
             }
+        }
+
+        // Closing the settings window can beat the next layout pass. Flushed before the write
+        // so a choice made on the last frame is both applied and saved.
+        public void FlushPendingChoices()
+        {
+            ApplyPendingChoices(true);
         }
 
         public void UpdateSettings()

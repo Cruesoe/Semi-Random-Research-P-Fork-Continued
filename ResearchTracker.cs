@@ -7,6 +7,31 @@ using Verse;
 
 namespace CM_Semi_Random_Research
 {
+    // One finished project, kept so the research tab can show a short "recently completed" list.
+    // Deep-scribed (rather than two parallel lists) so a removed mod's project cannot shift the
+    // remaining entries out of sync with their completion ticks.
+    public class ResearchHistoryEntry : IExposable
+    {
+        public ResearchProjectDef project;
+        public int tick;
+
+        public ResearchHistoryEntry()
+        {
+        }
+
+        public ResearchHistoryEntry(ResearchProjectDef project, int tick)
+        {
+            this.project = project;
+            this.tick = tick;
+        }
+
+        public void ExposeData()
+        {
+            Scribe_Defs.Look(ref project, "project");
+            Scribe_Values.Look(ref tick, "tick", 0);
+        }
+    }
+
     public class ResearchTracker : WorldComponent
     {
         private List<ResearchProjectDef> currentAvailableProjects = new List<ResearchProjectDef>();
@@ -19,6 +44,13 @@ namespace CM_Semi_Random_Research
         private HashSet<KnowledgeCategoryDef> pendingResearchRerolls = new HashSet<KnowledgeCategoryDef>();
 
         public List<ResearchProjectDef> CurrentProject => currentProjects;
+
+        // Newest first. Only the tail of it is ever shown, but a few spare entries cost nothing
+        // and let the history screen stay full on tall windows.
+        private List<ResearchHistoryEntry> completedHistory = new List<ResearchHistoryEntry>();
+        private const int MaxCompletedHistoryEntries = 40;
+
+        public List<ResearchHistoryEntry> CompletedHistory => completedHistory;
 
         private bool researchPaused;
         public bool ResearchPaused => researchPaused;
@@ -84,6 +116,63 @@ namespace CM_Semi_Random_Research
                 return false;
 
             return currentProjects.Contains(proj) || currentAvailableProjects.Contains(proj);
+        }
+
+        // The tracker's own bookkeeping writes vanilla's current project constantly (restoring
+        // the tracked project, resuming, auto picking). Those writes are not player selections
+        // and must never be judged by the selection gate.
+        private static bool applyingTrackedProject;
+
+        public static bool ApplyingTrackedProject => applyingTrackedProject;
+
+        public static void SetVanillaProjectUngated(ResearchProjectDef proj)
+        {
+            applyingTrackedProject = true;
+            try
+            {
+                Find.ResearchManager.SetCurrentProject(proj);
+            }
+            finally
+            {
+                applyingTrackedProject = false;
+            }
+        }
+
+        // The one rule for "may the player start this project right now", shared by the research
+        // tab's start button and by the gate that gets applied to external research trees, so a
+        // handover to Node Research or Nice Research Tab obeys the same limits as our own window.
+        public bool PlayerCanStartProject(ResearchProjectDef proj)
+        {
+            if (proj == null)
+                return false;
+            if (currentProjects.Contains(proj))
+                return true;
+            if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.allowSwitchingResearch)
+                return true;
+            // Gravship research runs alongside the standard project rather than replacing it.
+            if (GetCategoryKey(proj) == "Gravship")
+                return true;
+
+            return !CategoryOccupied(proj);
+        }
+
+        // A paused project still occupies its category: it is waiting to be resumed, not free.
+        private bool CategoryOccupied(ResearchProjectDef proj)
+        {
+            string key = GetCategoryKey(proj);
+
+            for (int i = 0; i < currentProjects.Count; i++)
+            {
+                ResearchProjectDef tracked = currentProjects[i];
+                if (tracked != null && tracked != proj && !tracked.IsFinished && GetCategoryKey(tracked) == key)
+                    return true;
+            }
+
+            ResearchProjectDef vanilla = proj.knowledgeCategory == null
+                ? Find.ResearchManager.GetProject()
+                : Find.ResearchManager.GetProject(proj.knowledgeCategory);
+
+            return vanilla != null && vanilla != proj && !vanilla.IsFinished && GetCategoryKey(vanilla) == key;
         }
     
         private Dictionary<string, bool> rerolled = new Dictionary<string, bool>();
@@ -225,6 +314,12 @@ namespace CM_Semi_Random_Research
             Scribe_Collections.Look(ref pendingResearchRerolls, "pendingResearchRerolls", LookMode.Def);
             if (pendingResearchRerolls == null) pendingResearchRerolls = new HashSet<KnowledgeCategoryDef>();
 
+            Scribe_Collections.Look(ref completedHistory, "completedHistory", LookMode.Deep);
+            if (completedHistory == null)
+                completedHistory = new List<ResearchHistoryEntry>();
+            else
+                completedHistory.RemoveAll(entry => entry == null || entry.project == null);
+
             bool defaultUsingNodeResearch = SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.usingNodeResearch;
             Scribe_Values.Look(ref usingNodeResearch, "usingNodeResearch", defaultUsingNodeResearch);
             Scribe_Values.Look(ref researchPaused, "researchPaused", false);
@@ -273,7 +368,11 @@ namespace CM_Semi_Random_Research
 
                     if ((currentProjectOfType.Empty() || finished) && !researchPaused)
                     {
-                        if (SemiRandomResearchMod.settings.autoPickNextResearch && (finished || (tickCounter % tickOffset) == 0))
+                        // While the research tab is open the player is still choosing. Auto mode
+                        // waits for the window to close (MainTabWindow_NextResearch.PreClose ->
+                        // AutoPickNow) so toggling it on does not snatch the choice away.
+                        if (SemiRandomResearchMod.settings.autoPickNextResearch && !SemiRandomResearchWindowOpen &&
+                            (finished || (tickCounter % tickOffset) == 0))
                         {
                             List<ResearchProjectDef> possibleProjectsOfType = currentAvailableProjects.Where(x => GetCategoryKey(x) == typeKey).ToList();
                             if (possibleProjectsOfType.Empty())
@@ -364,6 +463,73 @@ namespace CM_Semi_Random_Research
                 }
             }
             tickCounter = (tickCounter + 1) % tickOffset;
+        }
+
+        private static bool SemiRandomResearchWindowOpen
+        {
+            get
+            {
+                WindowStack stack = Find.WindowStack;
+                return stack != null && stack.IsOpen(typeof(MainTabWindow_NextResearch));
+            }
+        }
+
+        // Auto mode's pick. Called when the research tab closes, so the player always gets a
+        // chance to choose first. Picks the cheapest of the offered cards per category.
+        public void AutoPickNow()
+        {
+            if (researchPaused || SemiRandomResearchMod.settings == null || !SemiRandomResearchMod.settings.autoPickNextResearch)
+                return;
+            if (Current.Game == null || Faction.OfPlayerSilentFail == null)
+                return;
+
+            if (all_typeKeys == null || AnomalyTypeKeysNeedRefresh())
+                RefreshTypeKeys();
+
+            List<ResearchProjectDef> availableSnapshot = null;
+
+            foreach (string typeKey in all_typeKeys)
+            {
+                if (currentProjects.Any(x => x != null && !x.IsFinished && GetCategoryKey(x) == typeKey))
+                    continue;
+
+                List<ResearchProjectDef> possibleProjectsOfType = currentAvailableProjects
+                    .Where(x => x != null && !x.IsFinished && x.CanStartNow && GetCategoryKey(x) == typeKey).ToList();
+
+                if (possibleProjectsOfType.Empty())
+                {
+                    if (availableSnapshot == null)
+                        availableSnapshot = GetCurrentlyAvailableProjects();
+                    possibleProjectsOfType = availableSnapshot
+                        .Where(x => x != null && !x.IsFinished && x.CanStartNow && GetCategoryKey(x) == typeKey).ToList();
+                }
+
+                if (possibleProjectsOfType.Empty())
+                    continue;
+
+                ResearchProjectDef cheapestProject = possibleProjectsOfType.OrderBy(x => x.CostApparent).First();
+                bool alreadyActive = Find.ResearchManager.IsCurrentProject(cheapestProject);
+
+                SetCurrentProjectByKey(cheapestProject, typeKey);
+
+                if (!alreadyActive)
+                    Messages.Message("CM_Semi_Random_Research_AutoStarted".Translate(cheapestProject.LabelCap), MessageTypeDefOf.NeutralEvent, false);
+            }
+        }
+
+        private void RecordCompletedProject(ResearchProjectDef def)
+        {
+            if (def == null)
+                return;
+
+            if (completedHistory == null)
+                completedHistory = new List<ResearchHistoryEntry>();
+
+            completedHistory.RemoveAll(entry => entry == null || entry.project == def);
+            completedHistory.Insert(0, new ResearchHistoryEntry(def, Find.TickManager?.TicksGame ?? 0));
+
+            if (completedHistory.Count > MaxCompletedHistoryEntries)
+                completedHistory.RemoveRange(MaxCompletedHistoryEntries, completedHistory.Count - MaxCompletedHistoryEntries);
         }
 
         public List<ResearchProjectDef> GetCurrentlyAvailableProjects()
@@ -731,7 +897,7 @@ namespace CM_Semi_Random_Research
             if (newCurrentProject != null)
             {
                 currentProjects.Add(newCurrentProject);
-                Find.ResearchManager.SetCurrentProject(newCurrentProject);
+                SetVanillaProjectUngated(newCurrentProject);
 
                 if (!SemiRandomResearchMod.settings.featureEnabled && !currentAvailableProjects.Contains(newCurrentProject))
                     currentAvailableProjects.Add(newCurrentProject);
@@ -862,8 +1028,21 @@ namespace CM_Semi_Random_Research
         // These intercept calls from your UI and route them to the Pseudo-Categories
         // ==============================================================================
 
+        // Public entry point kept at the original mod's signature, because other research UIs
+        // find it by reflection: Nice Research Tab looks up CM_Semi_Random_Research.ResearchTracker
+        // and calls this to start a project, which never touches ResearchManager.SetCurrentProject
+        // and so slips straight past the gate there. Prohibit has to be enforced here as well.
+        // Clearing the project (null) is a stop rather than a selection, so it stays allowed.
         public void SetCurrentProject(ResearchProjectDef newCurrentProject, KnowledgeCategoryDef type)
         {
+            if (newCurrentProject != null &&
+                !applyingTrackedProject &&
+                SemiRandomResearchUtility.IsControllingResearchSelection)
+            {
+                ResearchManager_Patches.RejectSelection();
+                return;
+            }
+
             if (newCurrentProject != null)
             {
                 SetCurrentProjectByKey(newCurrentProject, GetCategoryKey(newCurrentProject));
@@ -955,6 +1134,7 @@ namespace CM_Semi_Random_Research
 
             string typeKey = GetCategoryKey(def);
 
+            RecordCompletedProject(def);
             SetRerolledByKey(typeKey, false);
             ForceAutoReseachCheckNextTick();
 

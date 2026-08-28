@@ -11,6 +11,29 @@ namespace CM_Semi_Random_Research
 {
     public partial class MainTabWindow_NextResearch
     {
+        private static readonly Color PausedTextColor = new Color(0.62f, 0.62f, 0.64f);
+        private static readonly Color PausedTagColor = new Color(0.82f, 0.70f, 0.36f);
+
+        // Paused means the tracker still holds the project as current while nothing is being
+        // researched on it. Checked per project so pausing standard research does not grey out
+        // an anomaly or gravship project that is still running.
+        private bool IsProjectPaused(ResearchProjectDef project)
+        {
+            return project != null
+                && drawTracker != null
+                && drawTracker.ResearchPaused
+                && !Find.ResearchManager.IsCurrentProject(project);
+        }
+
+        // Drain the colour rather than just darkening it, so a paused card reads as inactive
+        // at a glance next to the coloured offer cards below it.
+        private static Color PausedTint(Color color)
+        {
+            float grey = color.grayscale;
+            Color desaturated = new Color(grey, grey, grey, color.a);
+            return Color.Lerp(desaturated, new Color(0.30f, 0.30f, 0.32f, color.a), 0.45f);
+        }
+
         private void DrawResearchRateUI(Rect rect, ResearchProjectDef project, bool isMainProject, float costColumnWidth)
         {
             if (project == null) return;
@@ -36,17 +59,26 @@ namespace CM_Semi_Random_Research
             Rect nameRect = layout.NameRect;
             Rect costRect = layout.CostRect;
 
+            bool isPaused = IsProjectPaused(project);
+
             Color techColor = GetCategoryColor(project);
             Color structureAccent = GetCardStructureAccent(project, techColor);
+            if (isPaused)
+            {
+                techColor = PausedTint(techColor);
+                structureAccent = PausedTint(structureAccent);
+            }
 
             Color backgroundColor = Color.Lerp(TexUI.AvailResearchColor, techColor, 0.3f);
+            if (isPaused)
+                backgroundColor = PausedTint(backgroundColor);
             if (IsRepaint)
             {
                 Widgets.DrawBoxSolid(headerRect, backgroundColor);
             }
 
             Rect progressRect = new Rect(headerRect.x, headerRect.y, headerRect.width * project.ProgressPercent, headerRect.height);
-            Color progressColor = GetProgressFillAccent(project, techColor);
+            Color progressColor = isPaused ? new Color(0.45f, 0.45f, 0.47f) : GetProgressFillAccent(project, techColor);
             progressColor.a = 0.55f;
             if (IsRepaint)
             {
@@ -84,12 +116,32 @@ namespace CM_Semi_Random_Research
                 Widgets.DrawLine(new Vector2(secondSeparator.x, secondSeparator.y), new Vector2(secondSeparator.x, secondSeparator.yMax), borderColor, separatorWidth);
             }
 
-            Text.Anchor = TextAnchor.MiddleLeft;
-            GUI.color = Color.white;
-            Widgets.Label(nameRect, SafeLabel(project));
+            if (isPaused)
+            {
+                // Name moves up a line so the paused tag can sit under it, the same two line
+                // layout the offer cards use for their Foundation / Emergence tags.
+                Rect pausedNameRect = new Rect(nameRect.x, nameRect.y + 2f, nameRect.width, 24f);
+                Rect pausedTagRect = new Rect(nameRect.x, nameRect.y + 24f, nameRect.width, 20f);
+
+                Text.Anchor = TextAnchor.LowerLeft;
+                GUI.color = PausedTextColor;
+                Widgets.Label(pausedNameRect, SafeLabel(project));
+
+                Text.Anchor = TextAnchor.UpperLeft;
+                Text.Font = GameFont.Tiny;
+                GUI.color = PausedTagColor;
+                Widgets.Label(pausedTagRect, "CM_Semi_Random_Research_PausedTag".Translate());
+                Text.Font = GameFont.Small;
+            }
+            else
+            {
+                Text.Anchor = TextAnchor.MiddleLeft;
+                GUI.color = Color.white;
+                Widgets.Label(nameRect, SafeLabel(project));
+            }
 
             Text.Anchor = TextAnchor.MiddleCenter;
-            GUI.color = new Color(1f, 1f, 1f, 0.8f);
+            GUI.color = isPaused ? PausedTextColor : new Color(1f, 1f, 1f, 0.8f);
             bool wordWrap = Text.WordWrap;
             Text.WordWrap = false;
             Widgets.Label(costRect, progressText);
@@ -161,10 +213,12 @@ namespace CM_Semi_Random_Research
                 Rect etaRect = new Rect(statsRowRect.x + sectionWidth * 2, statsRowRect.y, sectionWidth, statsLineHeight);
                 GUI.color = new Color(1f, 1f, 1f, 0.8f);
                 Widgets.Label(new Rect(etaRect.x, etaRect.y, etaRect.width, statsLineHeight / 2), "CM_Semi_Random_Research_EstTime".Translate());
-                GUI.color = cachedEtaColor;
-                float etaTextWidth = Text.CalcSize(cachedEtaText).x + 8f;
+                // A countdown that is not counting down is worse than no countdown.
+                string etaText = isPaused ? "CM_Semi_Random_Research_PausedTag".Translate().ToString() : cachedEtaText;
+                GUI.color = isPaused ? PausedTagColor : cachedEtaColor;
+                float etaTextWidth = Text.CalcSize(etaText).x + 8f;
                 float etaCenterX = etaRect.x + (etaRect.width - etaTextWidth) / 2;
-                Widgets.Label(new Rect(etaCenterX, etaRect.y + statsLineHeight / 2, etaTextWidth, statsLineHeight / 2), cachedEtaText);
+                Widgets.Label(new Rect(etaCenterX, etaRect.y + statsLineHeight / 2, etaTextWidth, statsLineHeight / 2), etaText);
 
                 currentY += statsLineHeight + sectionSpacing;
 

@@ -259,34 +259,14 @@ namespace CM_Semi_Random_Research
 
                 if (Mouse.IsOver(segmentRect))
                 {
-                    string tooltip = "CM_Semi_Random_Research_EraProgressTooltip".Translate(
-                        techLevel.ToStringHuman().CapitalizeFirst(),
-                        stats.completed,
-                        stats.total,
-                        (progress * 100f).ToString("F0"),
-                        stats.spentCost.ToString("N0"),
-                        (stats.spentCost + stats.remainingCost).ToString("N0"),
-                        FormatRemainingEta(stats.remainingCost));
-
-                    // Add ProgressionCore info to tooltip
-                    if (progressionCoreActive && techLevel == Faction.OfPlayer.def.techLevel)
-                    {
-                        tooltip += "\n\n" + "CM_Semi_Random_Research_ProgressionCoreTooltip".Translate(
-                            (progress * 100f).ToString("F0"),
-                            (requiredProgress * 100f).ToString("F0"));
-
-                        if (progress >= requiredProgress)
-                        {
-                            tooltip += "\n" + "CM_Semi_Random_Research_ProgressionCoreReady".Translate();
-                        }
-                        else
-                        {
-                            int remaining = (int)((requiredProgress * stats.total) - stats.completed + 0.999f);
-                            tooltip += "\n" + "CM_Semi_Random_Research_ProgressionCoreNeedMore".Translate(remaining);
-                        }
-                    }
-
-                    TooltipHandler.TipRegion(segmentRect, tooltip);
+                    // The text is rebuilt on demand behind a stable id. Passing a plain string
+                    // would key the tooltip on the text's hash, so the changing research rate
+                    // inside it would register as a brand new tooltip every few ticks and the
+                    // window would restart its fade - a visible flicker while hovering.
+                    TechLevel tooltipTechLevel = techLevel;
+                    TooltipHandler.TipRegion(segmentRect,
+                        () => BuildEraTooltip(tooltipTechLevel),
+                        EraTooltipIdBase + (int)tooltipTechLevel);
                 }
 
                 currentBarX += segmentWidth;
@@ -335,6 +315,83 @@ namespace CM_Semi_Random_Research
             GUI.color = Color.white;
         }
 
+        // Stable tooltip ids. Anything hovering over the progress bar shares this range;
+        // the era bars offset by tech level, the unified bar takes the last slot.
+        private const int EraTooltipIdBase = 0x5252_0100;
+        private const int UnifiedTooltipId = EraTooltipIdBase + 64;
+
+        private string BuildEraTooltip(TechLevel techLevel)
+        {
+            if (cachedTechLevelStats == null || !cachedTechLevelStats.TryGetValue(techLevel, out var stats) || stats.total == 0)
+                return string.Empty;
+
+            float progress = (float)stats.completed / stats.total;
+            string tooltip = "CM_Semi_Random_Research_EraProgressTooltip".Translate(
+                techLevel.ToStringHuman().CapitalizeFirst(),
+                stats.completed,
+                stats.total,
+                (progress * 100f).ToString("F0"),
+                stats.spentCost.ToString("N0"),
+                (stats.spentCost + stats.remainingCost).ToString("N0"),
+                FormatRemainingEta(stats.remainingCost));
+
+            if (ProgressionCoreActive && techLevel == Faction.OfPlayer.def.techLevel)
+            {
+                float requiredProgress = cachedRequiredProgress;
+                tooltip += "\n\n" + "CM_Semi_Random_Research_ProgressionCoreTooltip".Translate(
+                    (progress * 100f).ToString("F0"),
+                    (requiredProgress * 100f).ToString("F0"));
+
+                if (progress >= requiredProgress)
+                {
+                    tooltip += "\n" + "CM_Semi_Random_Research_ProgressionCoreReady".Translate();
+                }
+                else
+                {
+                    int remaining = (int)((requiredProgress * stats.total) - stats.completed + 0.999f);
+                    tooltip += "\n" + "CM_Semi_Random_Research_ProgressionCoreNeedMore".Translate(remaining);
+                }
+            }
+
+            return tooltip;
+        }
+
+        private string BuildUnifiedTooltip()
+        {
+            if (cachedTechLevelStats == null)
+                return string.Empty;
+
+            SumAllTechLevels(out int completed, out int total, out float remainingCost, out float spentCost);
+            if (total <= 0)
+                return string.Empty;
+
+            return "CM_Semi_Random_Research_UnifiedProgressTooltip".Translate(
+                completed,
+                total,
+                ((float)completed / total * 100f).ToString("F0"),
+                spentCost.ToString("N0"),
+                (spentCost + remainingCost).ToString("N0"),
+                FormatRemainingEta(remainingCost));
+        }
+
+        private void SumAllTechLevels(out int completed, out int total, out float remainingCost, out float spentCost)
+        {
+            completed = 0;
+            total = 0;
+            remainingCost = 0f;
+            spentCost = 0f;
+            if (cachedTechLevelStats == null)
+                return;
+
+            foreach (var stats in cachedTechLevelStats.Values)
+            {
+                completed += stats.completed;
+                total += stats.total;
+                remainingCost += stats.remainingCost;
+                spentCost += stats.spentCost;
+            }
+        }
+
         private float GetRequiredProgressionPercent()
         {
             try
@@ -361,17 +418,7 @@ namespace CM_Semi_Random_Research
 
         private void DrawUnifiedResearchProgress(Rect rect)
         {
-            int completed = 0;
-            int total = 0;
-            float remainingCost = 0f;
-            float spentCost = 0f;
-            foreach (var stats in cachedTechLevelStats.Values)
-            {
-                completed += stats.completed;
-                total += stats.total;
-                remainingCost += stats.remainingCost;
-                spentCost += stats.spentCost;
-            }
+            SumAllTechLevels(out int completed, out int total, out float remainingCost, out float spentCost);
 
             if (total <= 0)
             {
@@ -415,14 +462,9 @@ namespace CM_Semi_Random_Research
             GUI.color = new Color(0.95f, 0.95f, 0.95f);
             Widgets.Label(labelRect, label);
 
+            // Stable id, see BuildEraTooltip: the rate inside this text changes while hovering.
             if (Mouse.IsOver(barRect))
-                TooltipHandler.TipRegion(barRect, "CM_Semi_Random_Research_UnifiedProgressTooltip".Translate(
-                    completed,
-                    total,
-                    (progress * 100f).ToString("F0"),
-                    spentCost.ToString("N0"),
-                    (spentCost + remainingCost).ToString("N0"),
-                    FormatRemainingEta(remainingCost)));
+                TooltipHandler.TipRegion(barRect, BuildUnifiedTooltip, UnifiedTooltipId);
 
             Text.Anchor = TextAnchor.UpperLeft;
             GUI.color = Color.white;

@@ -32,6 +32,11 @@ namespace CM_Semi_Random_Research
         private static readonly Texture2D PlusIcon = ContentFinder<Texture2D>.Get("UI/Plus", true);
         private static readonly Texture2D TotalIcon = ContentFinder<Texture2D>.Get("UI/Total", true);
         private static readonly Texture2D PacingIcon = ContentFinder<Texture2D>.Get("UI/Pacing", true);
+        private static readonly Texture2D HistoryIcon = ContentFinder<Texture2D>.Get("UI/History", true);
+        private static readonly Texture2D ToggleOnIcon = ContentFinder<Texture2D>.Get("UI/ToggleOn", true);
+        private static readonly Texture2D ToggleOffIcon = ContentFinder<Texture2D>.Get("UI/ToggleOff", true);
+
+        private static readonly Color AutoToggleOnColor = new Color(0.35f, 0.8f, 0.42f);
 
         private static readonly Color ActiveProjectLabelColor = new ColorInt(219, 201, 126, 255).ToColor;
         private static readonly Color FooterTreeButtonColor = new Color(0.22f, 0.38f, 0.55f);
@@ -180,15 +185,11 @@ namespace CM_Semi_Random_Research
                 cachedFooterStartMode = FooterStartMode.InProgress;
                 return;
             }
-            bool pausedOccupiesCategory = cachedTracker != null && cachedTracker.ResearchPaused &&
-                cachedTracker.CurrentProject.Any(p => p != null && ResearchTracker.GetCategoryKey(p) == ResearchTracker.GetCategoryKey(selectedProject));
-            bool categoryFree = !pausedOccupiesCategory && (selectedProject.knowledgeCategory == null
-                ? Find.ResearchManager.GetProject() == null
-                : Find.ResearchManager.GetProject(selectedProject.knowledgeCategory) == null);
+            // Same rule the selection gate applies to external research trees, so the start button
+            // and a handover to another tree can never disagree about what is startable.
             bool canStart = cachedSelectedCanStartNow &&
-                (categoryFree ||
-                 ResearchTracker.GetCategoryKey(selectedProject) == "Gravship" ||
-                 SemiRandomResearchMod.settings.allowSwitchingResearch);
+                cachedTracker != null &&
+                cachedTracker.PlayerCanStartProject(selectedProject);
             cachedFooterStartMode = canStart ? FooterStartMode.CanStart : FooterStartMode.Locked;
         }
 
@@ -484,6 +485,10 @@ namespace CM_Semi_Random_Research
         {
             base.PreOpen();
 
+            // The history view is never remembered between openings.
+            showingHistory = false;
+            selectionBeforeHistory = null;
+
             currentRandomSeed = Rand.Int;
             cachedTracker = Current.Game.World.GetComponent<ResearchTracker>();
             cachedRateTracker = Current.Game.World.GetComponent<ResearchRateTracker>();
@@ -581,9 +586,15 @@ namespace CM_Semi_Random_Research
                 WarmUnlockCaches();
             }
 
-            if (selectedProject == null || selectedProject.IsFinished ||
+            // The history view intentionally keeps a finished project selected so the right
+            // column can show what it unlocked. Outside it, a selection whose card is no longer
+            // drawn falls back to the default, so the right column never describes a card that
+            // is not on screen.
+            if (!showingHistory &&
+                (selectedProject == null || selectedProject.IsFinished ||
                 (currentAvailableProjects != null && !currentAvailableProjects.Contains(selectedProject) &&
-                 (cachedTracker == null || !cachedTracker.CurrentProject.Contains(selectedProject))))
+                 (cachedTracker == null || !cachedTracker.CurrentProject.Contains(selectedProject))) ||
+                SelectionHiddenByBusyCategory()))
             {
                 SelectDefaultProject();
             }
@@ -633,6 +644,30 @@ namespace CM_Semi_Random_Research
             RefreshCanStartNow(tick);
             RefreshRateTexts(tick);
             RefreshTechLevelStats(tick);
+        }
+
+        // True when the selected offer is one the left column hides because its category already
+        // has a project running and switching is off. Mirrors the filter in RebuildLeftColumnLists.
+        private bool SelectionHiddenByBusyCategory()
+        {
+            if (selectedProject == null || cachedTracker == null)
+                return false;
+            if (SemiRandomResearchMod.settings == null || SemiRandomResearchMod.settings.allowSwitchingResearch)
+                return false;
+
+            List<ResearchProjectDef> current = cachedTracker.CurrentProject;
+            if (current == null || current.Contains(selectedProject))
+                return false;
+
+            string selectedKey = ResearchTracker.GetCategoryKey(selectedProject);
+            for (int i = 0; i < current.Count; i++)
+            {
+                ResearchProjectDef active = current[i];
+                if (active != null && !active.IsFinished && ResearchTracker.GetCategoryKey(active) == selectedKey)
+                    return true;
+            }
+
+            return false;
         }
 
         private void CopyAvailableProjects(List<ResearchProjectDef> source)
@@ -744,7 +779,11 @@ namespace CM_Semi_Random_Research
             Rect rightContentRect = new Rect(rightRect.x, rightRect.y, rightRect.width, rightRect.height - rightFooterHeight);
             Rect rightFooterRect = new Rect(rightRect.x, rightRect.yMax - rightFooterHeight, rightRect.width, rightFooterHeight);
 
-            DrawLeftColumn(leftRect);
+            if (showingHistory)
+                DrawHistoryColumn(leftRect);
+            else
+                DrawLeftColumn(leftRect);
+
             DrawRightColumn(rightContentRect);
 
             if (IsRepaint)
@@ -766,7 +805,8 @@ namespace CM_Semi_Random_Research
 
                 if (ColoredButtonText(debugButtonRect, "CM_Semi_Random_Research_FinishNow".Translate(), FooterDebugButtonColor))
                 {
-                    Find.ResearchManager.SetCurrentProject(selectedProject);
+                    // Ungated: the dev button finishes whatever is selected, gate or no gate.
+                    ResearchTracker.SetVanillaProjectUngated(selectedProject);
                     Find.ResearchManager.FinishProject(selectedProject);
 
                     ResearchTracker researchTracker = cachedTracker ?? Current.Game.World.GetComponent<ResearchTracker>();
@@ -787,6 +827,16 @@ namespace CM_Semi_Random_Research
                 Mod ourMod = LoadedModManager.GetMod<SemiRandomResearchMod>();
                 Find.WindowStack.Add(new Dialog_ModSettings(ourMod));
             });
+
+            nextIconX -= iconSize + iconGap;
+            DrawHistoryToggleButton(new Rect(nextIconX, iconY, iconSize, iconSize));
+
+            float autoToggleHeight = 24f;
+            DrawAutoPickToggle(new Rect(
+                rightFooterRect.x,
+                footerButtonY + (footerButtonHeight - autoToggleHeight) / 2f,
+                autoToggleHeight * 1.78f,
+                autoToggleHeight));
 
             DrawPackedModSettingsIcon(ResearchInflationInstalled, PlusIcon, "+", ResearchInflationPackageId,
                 "CM_Semi_Random_Research_InflationSettingsTip", iconSize, iconGap, iconY, ref nextIconX);
@@ -833,6 +883,74 @@ namespace CM_Semi_Random_Research
                 onClicked?.Invoke();
             }
             TooltipHandler.TipRegion(rect, tooltipKey.Translate());
+        }
+
+        private void DrawHistoryToggleButton(Rect rect)
+        {
+            if (IsRepaint && HistoryIcon != null)
+            {
+                Color old = GUI.color;
+                GUI.color = showingHistory ? ActiveProjectLabelColor : Color.white;
+                Widgets.DrawTextureFitted(rect, HistoryIcon, 1f);
+                GUI.color = old;
+            }
+
+            if (Clicked(rect))
+            {
+                SoundDefOf.Click.PlayOneShotOnCamera();
+                if (showingHistory)
+                    CloseHistory();
+                else
+                    OpenHistory();
+            }
+
+            TooltipHandler.TipRegion(rect, showingHistory
+                ? "CM_Semi_Random_Research_HistoryBackTip".Translate()
+                : "CM_Semi_Random_Research_HistoryTip".Translate());
+        }
+
+        // Auto mode toggle. Deliberately does not pick anything while the window is open -
+        // ResearchTracker.AutoPickNow runs on close, so a curious click cannot steal the choice.
+        private void DrawAutoPickToggle(Rect toggleRect)
+        {
+            bool on = SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.autoPickNextResearch;
+
+            Text.Font = GameFont.Tiny;
+            string label = "CM_Semi_Random_Research_AutoToggleLabel".Translate();
+            float labelWidth = Text.CalcSize(label).x + 4f;
+            Rect labelRect = new Rect(toggleRect.xMax + 6f, toggleRect.y, labelWidth, toggleRect.height);
+            Rect hitRect = new Rect(toggleRect.x, toggleRect.y, labelRect.xMax - toggleRect.x, toggleRect.height);
+
+            if (IsRepaint)
+            {
+                Color old = GUI.color;
+                GUI.color = on ? AutoToggleOnColor : Color.white;
+                Texture2D icon = on ? ToggleOnIcon : ToggleOffIcon;
+                if (icon != null)
+                    Widgets.DrawTextureFitted(toggleRect, icon, 1f);
+
+                Text.Anchor = TextAnchor.MiddleLeft;
+                GUI.color = on ? AutoToggleOnColor : new Color(0.8f, 0.8f, 0.8f);
+                Widgets.Label(labelRect, label);
+                Text.Anchor = TextAnchor.UpperLeft;
+                GUI.color = old;
+            }
+            Text.Font = GameFont.Small;
+
+            if (Clicked(hitRect))
+            {
+                SoundDefOf.Click.PlayOneShotOnCamera();
+                if (SemiRandomResearchMod.settings != null)
+                {
+                    SemiRandomResearchMod.settings.autoPickNextResearch = !on;
+                    SemiRandomResearchMod.Instance?.WriteSettings();
+                }
+            }
+
+            TooltipHandler.TipRegion(hitRect, "CM_Semi_Random_Research_AutoToggleTip".Translate() + "\n\n" +
+                (on
+                    ? "CM_Semi_Random_Research_AutoToggleStateOn".Translate()
+                    : "CM_Semi_Random_Research_AutoToggleStateOff".Translate()));
         }
 
         private const string ResearchInflationPackageId = "cruesoe.research.inflation";
@@ -916,6 +1034,18 @@ namespace CM_Semi_Random_Research
             base.PreClose();
 
             SkipAnimation();
+
+            showingHistory = false;
+            selectionBeforeHistory = null;
+
+            // Auto mode picks here rather than while the window is open, so the player always
+            // gets the chance to choose (or to undo an accidental toggle) first.
+            if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.autoPickNextResearch &&
+                Current.Game != null)
+            {
+                ResearchTracker tracker = cachedTracker ?? Current.Game.World?.GetComponent<ResearchTracker>();
+                tracker?.AutoPickNow();
+            }
         }
     }
 }
