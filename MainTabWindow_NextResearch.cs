@@ -480,6 +480,10 @@ namespace CM_Semi_Random_Research
             currentRandomSeed = Rand.Int;
             cachedTracker = Current.Game.World.GetComponent<ResearchTracker>();
             cachedRateTracker = Current.Game.World.GetComponent<ResearchRateTracker>();
+
+            // Arms auto research. Until the tab has been opened once, a freshly started or
+            // freshly loaded colony picks nothing on its own.
+            cachedTracker?.NotifyResearchTabOpened();
             cachedRequiredProgress = ProgressionCoreActive ? GetRequiredProgressionPercent() : 1f;
 
             if (cachedTracker != null)

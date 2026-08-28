@@ -362,8 +362,10 @@ namespace CM_Semi_Random_Research
                     {
                         // While the research tab is open the player is still choosing. Auto mode
                         // waits for the window to close (MainTabWindow_NextResearch.PreClose ->
-                        // AutoPickNow) so toggling it on does not snatch the choice away.
-                        if (SemiRandomResearchMod.settings.autoPickNextResearch && !SemiRandomResearchWindowOpen &&
+                        // AutoPickNow) so toggling it on does not snatch the choice away, and it
+                        // stays dormant until the tab has been opened at least once this session.
+                        if (SemiRandomResearchMod.settings.autoPickNextResearch && AutoPickArmed &&
+                            !SemiRandomResearchWindowOpen &&
                             (finished || (tickCounter % tickOffset) == 0))
                         {
                             List<ResearchProjectDef> possibleProjectsOfType = currentAvailableProjects.Where(x => GetCategoryKey(x) == typeKey).ToList();
@@ -466,13 +468,27 @@ namespace CM_Semi_Random_Research
             }
         }
 
+        // Auto research stays dormant until the player has opened the research tab, so a new
+        // colony never has its first project chosen before the player has even seen the offers.
+        // Deliberately not saved: every load starts dormant again.
+        private bool researchTabOpened;
+
+        public void NotifyResearchTabOpened()
+        {
+            researchTabOpened = true;
+        }
+
+        // With the UI delegated to Node Research our tab never opens, so there would be nothing
+        // to arm the gate with - auto behaves as it always did for those players.
+        private bool AutoPickArmed => researchTabOpened || usingNodeResearch;
+
         // Auto mode's pick. Called when the research tab closes, so the player always gets a
         // chance to choose first. Picks the cheapest of the offered cards per category.
         public void AutoPickNow()
         {
             if (researchPaused || SemiRandomResearchMod.settings == null || !SemiRandomResearchMod.settings.autoPickNextResearch)
                 return;
-            if (Current.Game == null || Faction.OfPlayerSilentFail == null)
+            if (!AutoPickArmed || Current.Game == null || Faction.OfPlayerSilentFail == null)
                 return;
 
             if (all_typeKeys == null || AnomalyTypeKeysNeedRefresh())
