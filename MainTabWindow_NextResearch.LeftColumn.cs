@@ -833,12 +833,10 @@ namespace CM_Semi_Random_Research
             }
 
             // --- NODE RESEARCH TECH INJECTIONS ---
-            bool isFoundation = cachedFoundationProjects.Contains(projectDef);
-            bool isEmergence = cachedEmergenceProjects.Contains(projectDef);
+            string nodeTag = GetNodeTechTag(projectDef);
 
-            if (isFoundation || isEmergence)
+            if (!nodeTag.NullOrEmpty())
             {
-
                 Rect topTextRect = new Rect(nameRect.x, nameRect.y + 2f, nameRect.width, 24f);
                 Rect bottomTextRect = new Rect(nameRect.x, nameRect.y + 24f, nameRect.width, 20f);
 
@@ -849,18 +847,11 @@ namespace CM_Semi_Random_Research
                 Text.Anchor = TextAnchor.UpperLeft;
                 Text.Font = GameFont.Tiny;
 
-                Color nodeTagColor = new Color(0.95f, 0.75f, 0.25f);
+                Color nodeTagColor = NodeTechTagColor;
                 nodeTagColor.a *= animProgress;
                 GUI.color = nodeTagColor;
 
-                if (isFoundation)
-                {
-                    Widgets.Label(bottomTextRect, "CM_Semi_Random_Research_Foundation".Translate());
-                }
-                else if (isEmergence)
-                {
-                    Widgets.Label(bottomTextRect, "CM_Semi_Random_Research_Emergence".Translate());
-                }
+                Widgets.Label(bottomTextRect, nodeTag);
 
                 Text.Font = GameFont.Small;
             }

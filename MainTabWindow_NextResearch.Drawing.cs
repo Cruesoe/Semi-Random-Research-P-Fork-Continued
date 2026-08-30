@@ -87,6 +87,22 @@ namespace CM_Semi_Random_Research
             return Color.Lerp(categoryColor, Color.white, 0.15f);
         }
 
+        private static readonly Color NodeTechTagColor = new Color(0.95f, 0.75f, 0.25f);
+
+        // Node Research marks some projects as foundation or emergence techs. The tag describes
+        // the project itself, so it has to survive the card moving from the offer list up into
+        // Currently researching, which is drawn by a different method.
+        private string GetNodeTechTag(ResearchProjectDef projectDef)
+        {
+            if (projectDef == null)
+                return null;
+            if (cachedFoundationProjects.Contains(projectDef))
+                return "CM_Semi_Random_Research_Foundation".Translate();
+            if (cachedEmergenceProjects.Contains(projectDef))
+                return "CM_Semi_Random_Research_Emergence".Translate();
+            return null;
+        }
+
         private static string GetProjectCostText(ResearchProjectDef project)
         {
             if (project == null)

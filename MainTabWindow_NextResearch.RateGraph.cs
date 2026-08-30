@@ -115,21 +115,31 @@ namespace CM_Semi_Random_Research
                 Widgets.DrawLine(new Vector2(secondSeparator.x, secondSeparator.y), new Vector2(secondSeparator.x, secondSeparator.yMax), borderColor, separatorWidth);
             }
 
+            // Foundation / Emergence follows the project up from the offer list, and pausing adds
+            // to that line rather than replacing it, so neither piece of state hides the other.
+            string nodeTag = GetNodeTechTag(project);
+            string cardTag = nodeTag;
             if (isPaused)
             {
-                // Name moves up a line so the paused tag can sit under it, the same two line
-                // layout the offer cards use for their Foundation / Emergence tags.
-                Rect pausedNameRect = new Rect(nameRect.x, nameRect.y + 2f, nameRect.width, 24f);
-                Rect pausedTagRect = new Rect(nameRect.x, nameRect.y + 24f, nameRect.width, 20f);
+                string pausedTag = "CM_Semi_Random_Research_PausedTag".Translate();
+                cardTag = nodeTag.NullOrEmpty() ? pausedTag : nodeTag + " · " + pausedTag;
+            }
+
+            if (!cardTag.NullOrEmpty())
+            {
+                // Name moves up a line so the tag can sit under it, the same two line layout
+                // the offer cards use.
+                Rect taggedNameRect = new Rect(nameRect.x, nameRect.y + 2f, nameRect.width, 24f);
+                Rect tagRect = new Rect(nameRect.x, nameRect.y + 24f, nameRect.width, 20f);
 
                 Text.Anchor = TextAnchor.LowerLeft;
-                GUI.color = PausedTextColor;
-                Widgets.Label(pausedNameRect, SafeLabel(project));
+                GUI.color = isPaused ? PausedTextColor : Color.white;
+                Widgets.Label(taggedNameRect, SafeLabel(project));
 
                 Text.Anchor = TextAnchor.UpperLeft;
                 Text.Font = GameFont.Tiny;
-                GUI.color = PausedTagColor;
-                Widgets.Label(pausedTagRect, "CM_Semi_Random_Research_PausedTag".Translate());
+                GUI.color = isPaused ? PausedTagColor : NodeTechTagColor;
+                Widgets.Label(tagRect, cardTag);
                 Text.Font = GameFont.Small;
             }
             else
