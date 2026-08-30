@@ -33,6 +33,9 @@ namespace CM_Semi_Random_Research
         private static readonly FieldInfo TabWindowIntField =
             AccessTools.Field(typeof(MainButtonDef), "tabWindowInt");
 
+        // One window instance per research tree, kept alive across swaps. See SetResearchWindowClass.
+        private static readonly Dictionary<Type, MainTabWindow> parkedWindows = new Dictionary<Type, MainTabWindow>();
+
         static ResearchTabWindowSwitcher()
         {
             Apply();
@@ -124,9 +127,21 @@ namespace CM_Semi_Random_Research
                 return;
             }
 
+            // Park the window we are swapping away from and reuse it next time its tree is
+            // opened. A research tree keeps its view in the window object - YART holds camera
+            // position and zoom in instance fields, vanilla holds its scroll position - and
+            // nothing writes that to disk on close, so discarding the instance is what reset
+            // the camera on every round trip. MainButtonDef would otherwise hold one window for
+            // the whole session, so this restores the lifetime those trees are written against.
+            if (cached != null)
+                parkedWindows[cached.GetType()] = cached;
+
             researchTab.tabWindowClass = windowType;
-            TabWindowIntField?.SetValue(researchTab, null);
             researchTab.ClearCachedData();
+
+            // Assigned after ClearCachedData so a cache reset cannot drop the window we restore.
+            parkedWindows.TryGetValue(windowType, out MainTabWindow parked);
+            TabWindowIntField?.SetValue(researchTab, parked);
         }
 
         public static void OpenResearchWindow(Type windowType, Window windowToClose)
