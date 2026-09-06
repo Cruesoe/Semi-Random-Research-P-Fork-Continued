@@ -184,32 +184,11 @@ namespace CM_Semi_Random_Research
             Checkbox(listing, "ColorGroup", ref colorAndGroupByTechLevel);
             Checkbox(listing, "ShowGraph", ref showResearchRateGraph);
 
-            listing.GapLine();
-            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Trees");
-
-            string tabTooltip = "CM_Semi_Random_Research_Setting_ResearchTabOpens_Description".Translate();
-            listing.Label("CM_Semi_Random_Research_Setting_ResearchTabOpens_Label".Translate(), -1, tabTooltip);
-
-            List<FloatMenuOption> tabOptions = new List<FloatMenuOption>();
-            AddTabOwnerOption(tabOptions, ResearchTabOwner.SemiRandom);
-            AddTabOwnerOption(tabOptions, ResearchTabOwner.Vanilla);
-            AddTabOwnerOption(tabOptions, ResearchTabOwner.NodeResearch);
-            AddTabOwnerOption(tabOptions, ResearchTabOwner.YART);
-            AddTabOwnerOption(tabOptions, ResearchTabOwner.Sleek);
-            AddTabOwnerOption(tabOptions, ResearchTabOwner.NiceResearchTab);
-            AddTabOwnerOption(tabOptions, ResearchTabOwner.Organized);
-
-            if (!ResearchTabWindowSwitcher.IsTabOwnerAvailable(researchTabOwner))
-                researchTabOwner = ResearchTabWindowSwitcher.GetEffectiveTabOwner();
-
-            Rect tabOwnerOptionRect = listing.GetRect(26);
-            DoButtonOption(tabOwnerOptionRect,
-                TabOwnerLabel(ResearchTabWindowSwitcher.GetEffectiveTabOwner()),
-                tabTooltip,
-                tabOptions, tabOwnerOptionRect.width / 10, tabOwnerOptionRect.width / 10);
-
             if (ResearchTabWindowSwitcher.AnyTreeInstalled)
             {
+                listing.GapLine();
+                SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Trees");
+
                 string treeTooltip = "CM_Semi_Random_Research_Setting_TreeButtonOpens_Description".Translate();
                 listing.Label("CM_Semi_Random_Research_Setting_TreeButtonOpens_Label".Translate(), -1, treeTooltip);
 
@@ -413,35 +392,6 @@ namespace CM_Semi_Random_Research
         private void SetPreferredTree(PreferredResearchTree tree)
         {
             preferredResearchTree = tree;
-        }
-
-        private void AddTabOwnerOption(List<FloatMenuOption> options, ResearchTabOwner owner)
-        {
-            if (!ResearchTabWindowSwitcher.IsTabOwnerAvailable(owner))
-                return;
-
-            options.Add(new FloatMenuOption(TabOwnerLabel(owner), () => { researchTabOwner = owner; }));
-        }
-
-        private static string TabOwnerLabel(ResearchTabOwner owner)
-        {
-            switch (owner)
-            {
-                case ResearchTabOwner.Vanilla:
-                    return "CM_Semi_Random_Research_Tree_Vanilla".Translate();
-                case ResearchTabOwner.NodeResearch:
-                    return "CM_Semi_Random_Research_Tree_NodeResearch".Translate();
-                case ResearchTabOwner.YART:
-                    return "CM_Semi_Random_Research_Tree_YART".Translate();
-                case ResearchTabOwner.Sleek:
-                    return "CM_Semi_Random_Research_Tree_Sleek".Translate();
-                case ResearchTabOwner.NiceResearchTab:
-                    return "CM_Semi_Random_Research_Tree_Nice".Translate();
-                case ResearchTabOwner.Organized:
-                    return "CM_Semi_Random_Research_Tree_Organized".Translate();
-                default:
-                    return "CM_Semi_Random_Research_Tree_SemiRandom".Translate();
-            }
         }
 
         private static string PreferredTreeLabel(PreferredResearchTree preferred)

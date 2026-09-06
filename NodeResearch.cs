@@ -90,11 +90,12 @@ namespace CM_Semi_Random_Research
         public static bool AnyTreeInstalled =>
             NodeResearchInstalled || YartInstalled || SleekInstalled || NiceResearchTabInstalled || OrganizedInstalled;
 
-        // Which window the Research main tab button opens. This is a setting of its own on
-        // purpose. It used to fall out of featureEnabled ("Prohibit normal project selection"),
-        // which is a research rule and nothing to do with the UI: turning that rule off handed
-        // the tab to whatever redressed the vanilla window, and reasserted it on every load,
-        // which is how Node Research kept losing the tab it claims at startup.
+        // Which window the Research main tab button opens. Not a setting the player picks: it
+        // records the window they last switched to with the tree and swap buttons, so the tab
+        // reopens it next session. It used to fall out of featureEnabled ("Prohibit normal
+        // project selection"), which is a research rule and nothing to do with the UI: turning
+        // that rule off handed the tab to whatever redressed the vanilla window, and reasserted
+        // it on every load, which is how Node Research kept losing the tab it claims at startup.
         public static bool IsTabOwnerAvailable(ResearchTabOwner owner)
         {
             switch (owner)
@@ -102,10 +103,10 @@ namespace CM_Semi_Random_Research
                 case ResearchTabOwner.SemiRandom:
                     return true;
                 // Sleek Research Tab and Research: Organized redress the vanilla window rather
-                // than replacing it, so when either is installed it *is* the vanilla entry and
-                // listing both would be two labels for one window.
+                // than replacing it, so all three resolve to the same window and it is always
+                // there to go back to.
                 case ResearchTabOwner.Vanilla:
-                    return !SleekInstalled && !OrganizedInstalled;
+                    return true;
                 case ResearchTabOwner.NodeResearch:
                     return IsTreeAvailable(PreferredResearchTree.NodeResearch);
                 case ResearchTabOwner.YART:
@@ -207,10 +208,23 @@ namespace CM_Semi_Random_Research
             TabWindowIntField?.SetValue(researchTab, parked);
         }
 
-        // Swapping trees from a button is a move within the session, not a settings change:
-        // the "Research tab opens" choice is reasserted by Apply on the next load. Writing the
-        // setting from a button is what used to make the tab owner drift on its own.
-        public static void OpenResearchWindow(Type windowType, Window windowToClose)
+        // The tab remembers the window you last switched to, so the Research button reopens it
+        // next session instead of snapping back to whatever this mod last decided for you.
+        // Saved with SaveSettingsOnly rather than WriteSettings: the latter also runs
+        // SettingsChanged, and swapping trees must not rebuild the offer list.
+        private static void RememberTabOwner(ResearchTabOwner owner)
+        {
+            if (SemiRandomResearchMod.settings == null ||
+                SemiRandomResearchMod.settings.researchTabOwner == owner)
+            {
+                return;
+            }
+
+            SemiRandomResearchMod.settings.researchTabOwner = owner;
+            SemiRandomResearchMod.Instance?.SaveSettingsOnly();
+        }
+
+        public static void OpenResearchWindow(Type windowType, Window windowToClose, ResearchTabOwner owner)
         {
             MainButtonDef researchTab = ResearchMainButton;
             if (researchTab == null)
@@ -226,6 +240,8 @@ namespace CM_Semi_Random_Research
             {
                 return;
             }
+
+            RememberTabOwner(owner);
 
             WindowStack stack = Find.WindowStack;
             IList<Window> windows = stack.Windows;
@@ -265,7 +281,7 @@ namespace CM_Semi_Random_Research
                 ShowHandoverMessage("CM_Semi_Random_Research_Handover_Node_Free".Translate());
             }
 
-            OpenResearchWindow(NodeResearchWindowType, windowToClose);
+            OpenResearchWindow(NodeResearchWindowType, windowToClose, ResearchTabOwner.NodeResearch);
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
 
@@ -285,7 +301,7 @@ namespace CM_Semi_Random_Research
                 ShowHandoverMessage("CM_Semi_Random_Research_Handover_Nice".Translate());
             }
 
-            OpenResearchWindow(NiceWindowType, windowToClose);
+            OpenResearchWindow(NiceWindowType, windowToClose, ResearchTabOwner.NiceResearchTab);
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
 
@@ -313,7 +329,7 @@ namespace CM_Semi_Random_Research
                 tracker.SetCurrentProjectByKey(activeProj, ResearchTracker.GetCategoryKey(activeProj));
             }
 
-            OpenResearchWindow(typeof(MainTabWindow_NextResearch), windowToClose);
+            OpenResearchWindow(typeof(MainTabWindow_NextResearch), windowToClose, ResearchTabOwner.SemiRandom);
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
 
@@ -333,7 +349,7 @@ namespace CM_Semi_Random_Research
                 ShowHandoverMessage("CM_Semi_Random_Research_Handover_Yart".Translate());
             }
 
-            OpenResearchWindow(YartWindowType, windowToClose);
+            OpenResearchWindow(YartWindowType, windowToClose, ResearchTabOwner.YART);
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
 
@@ -353,7 +369,7 @@ namespace CM_Semi_Random_Research
                 ShowHandoverMessage("CM_Semi_Random_Research_Handover_Sleek".Translate());
             }
 
-            OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose);
+            OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose, ResearchTabOwner.Sleek);
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
 
@@ -373,7 +389,7 @@ namespace CM_Semi_Random_Research
                 ShowHandoverMessage("CM_Semi_Random_Research_Handover_Organized".Translate());
             }
 
-            OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose);
+            OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose, ResearchTabOwner.Organized);
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
 
@@ -463,7 +479,7 @@ namespace CM_Semi_Random_Research
                     break;
             }
 
-            OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose);
+            OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose, ResearchTabOwner.Vanilla);
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
     }

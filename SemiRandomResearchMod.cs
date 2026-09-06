@@ -52,5 +52,13 @@ namespace CM_Semi_Random_Research
             settings.UpdateSettings();
         }
 
+        // Persist the config without the UpdateSettings pass that follows a settings-window
+        // edit. Remembering which research window was last opened must not run SettingsChanged
+        // and rebuild the offer list underneath the player.
+        public void SaveSettingsOnly()
+        {
+            base.WriteSettings();
+        }
+
     }
 }

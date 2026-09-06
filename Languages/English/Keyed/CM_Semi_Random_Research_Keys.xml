@@ -89,7 +89,7 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_SettingsCategory>Semi Random Research</CM_Semi_Random_Research_SettingsCategory>
   <CM_Semi_Random_Research_Setting_Section_General>General</CM_Semi_Random_Research_Setting_Section_General>
   <CM_Semi_Random_Research_Setting_Section_Display>Display</CM_Semi_Random_Research_Setting_Section_Display>
-  <CM_Semi_Random_Research_Setting_Section_Trees>Research tab and tree button</CM_Semi_Random_Research_Setting_Section_Trees>
+  <CM_Semi_Random_Research_Setting_Section_Trees>Research trees</CM_Semi_Random_Research_Setting_Section_Trees>
   <CM_Semi_Random_Research_Setting_Section_Debug>Troubleshooting</CM_Semi_Random_Research_Setting_Section_Debug>
   <CM_Semi_Random_Research_Setting_Section_Gameplay>Which projects are offered</CM_Semi_Random_Research_Setting_Section_Gameplay>
   <CM_Semi_Random_Research_Setting_Section_Reroll>Rerolls</CM_Semi_Random_Research_Setting_Section_Reroll>
@@ -102,16 +102,12 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_Setting_ShowLetter_Description>Toggles the visibility of the completion letter when a research project is finished.</CM_Semi_Random_Research_Setting_ShowLetter_Description>
   <CM_Semi_Random_Research_Setting_ColorGroup_Label>Color and group by tech level</CM_Semi_Random_Research_Setting_ColorGroup_Label>
   <CM_Semi_Random_Research_Setting_ColorGroup_Description>When enabled, standard research offers are colored and grouped under Neolithic/Medieval/Industrial era headers, and the top progress bar is split by era. When disabled, standard offers use a flat list with neutral colors and the top bar is a single uncolored total of all research. Anomaly and Gravship sections are unchanged.</CM_Semi_Random_Research_Setting_ColorGroup_Description>
-  <CM_Semi_Random_Research_Setting_ResearchTabOpens_Label>Research tab opens</CM_Semi_Random_Research_Setting_ResearchTabOpens_Label>
-  <CM_Semi_Random_Research_Setting_ResearchTabOpens_Description>Which window the Research button at the bottom of the screen opens. Only research tabs you have installed are listed. Whichever you pick, the other one is always one button away: Semi Random's window has the tree button in its footer, and every supported tree gets a button back to Semi Random. This does not change Prohibit normal project selection - the offered-choices rule applies in any of these windows.</CM_Semi_Random_Research_Setting_ResearchTabOpens_Description>
-  <CM_Semi_Random_Research_Setting_TreeButtonOpens_Label>Tree button opens</CM_Semi_Random_Research_Setting_TreeButtonOpens_Label>
-  <CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>Which research tree the Research Tree button at the bottom of the research tab opens. Only trees you have installed are listed. Defaults to Node Research when it is installed, then YART, then Sleek Research Tab, then Nice Research Tab, then Research: Organized.</CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>
+  <CM_Semi_Random_Research_Setting_TreeButtonOpens_Label>Switch button opens</CM_Semi_Random_Research_Setting_TreeButtonOpens_Label>
+  <CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>Which research tree the switch button at the bottom of Semi Random Research opens. That button is named after the tree it will take you to. Only trees you have installed are listed. The Research tab itself reopens whichever window you last switched to, so this button is how you change it. Defaults to Node Research when it is installed, then YART, then Sleek Research Tab, then Nice Research Tab, then Research: Organized.</CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>
   <CM_Semi_Random_Research_Setting_SuppressHandover_Label>Suppress handover messages</CM_Semi_Random_Research_Setting_SuppressHandover_Label>
   <CM_Semi_Random_Research_Setting_SuppressHandover_Description>Hide the messages shown when switching between Semi-Random Research, Node Research, YART, and Sleek Research Tab.</CM_Semi_Random_Research_Setting_SuppressHandover_Description>
   <CM_Semi_Random_Research_Setting_RestrictFaction_LockedTip>Locked on while Node Research is installed. Node Research controls tech-level progression.</CM_Semi_Random_Research_Setting_RestrictFaction_LockedTip>
   <CM_Semi_Random_Research_Setting_OneHigher_DisabledTip>Disabled while Node Research is installed. Node Research controls tech-level progression.</CM_Semi_Random_Research_Setting_OneHigher_DisabledTip>
-  <CM_Semi_Random_Research_Tree_SemiRandom>Semi Random Research</CM_Semi_Random_Research_Tree_SemiRandom>
-  <CM_Semi_Random_Research_Tree_Vanilla>Vanilla research tab</CM_Semi_Random_Research_Tree_Vanilla>
   <CM_Semi_Random_Research_Tree_NodeResearch>Node Research</CM_Semi_Random_Research_Tree_NodeResearch>
   <CM_Semi_Random_Research_Tree_YART>YART</CM_Semi_Random_Research_Tree_YART>
   <CM_Semi_Random_Research_Tree_Sleek>Sleek Research Tab</CM_Semi_Random_Research_Tree_Sleek>
