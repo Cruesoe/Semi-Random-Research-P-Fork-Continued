@@ -15,7 +15,10 @@ namespace CM_Semi_Random_Research
     // (window class name, DrawGraphControls layout, foundation/emergence extensions)
     // can be reviewed in one file.
 
-    [StaticConstructorOnStartup]
+    // Deliberately has no static constructor. A static constructor runs on the first access to
+    // any member of the class, and the settings migration and WriteSettings both reach in here
+    // from the Mod constructor - which would spend the startup Apply() before defs exist, and
+    // then StaticConstructorOnStartup would not call it again. ResearchTabStartup owns that call.
     public static class ResearchTabWindowSwitcher
     {
         public const string PackageId = "ferny.noderesearch";
@@ -36,11 +39,6 @@ namespace CM_Semi_Random_Research
 
         // One window instance per research tree, kept alive across swaps. See SetResearchWindowClass.
         private static readonly Dictionary<Type, MainTabWindow> parkedWindows = new Dictionary<Type, MainTabWindow>();
-
-        static ResearchTabWindowSwitcher()
-        {
-            Apply();
-        }
 
         private static MainButtonDef ResearchMainButton =>
             DefDatabase<MainButtonDef>.GetNamedSilentFail("Research");
@@ -92,17 +90,66 @@ namespace CM_Semi_Random_Research
         public static bool AnyTreeInstalled =>
             NodeResearchInstalled || YartInstalled || SleekInstalled || NiceResearchTabInstalled || OrganizedInstalled;
 
-        public static void SetUsingNodeResearch(bool value)
+        // Which window the Research main tab button opens. This is a setting of its own on
+        // purpose. It used to fall out of featureEnabled ("Prohibit normal project selection"),
+        // which is a research rule and nothing to do with the UI: turning that rule off handed
+        // the tab to whatever redressed the vanilla window, and reasserted it on every load,
+        // which is how Node Research kept losing the tab it claims at startup.
+        public static bool IsTabOwnerAvailable(ResearchTabOwner owner)
         {
-            if (SemiRandomResearchMod.settings != null)
+            switch (owner)
             {
-                SemiRandomResearchMod.settings.usingNodeResearch = value;
+                case ResearchTabOwner.SemiRandom:
+                    return true;
+                // Sleek Research Tab and Research: Organized redress the vanilla window rather
+                // than replacing it, so when either is installed it *is* the vanilla entry and
+                // listing both would be two labels for one window.
+                case ResearchTabOwner.Vanilla:
+                    return !SleekInstalled && !OrganizedInstalled;
+                case ResearchTabOwner.NodeResearch:
+                    return IsTreeAvailable(PreferredResearchTree.NodeResearch);
+                case ResearchTabOwner.YART:
+                    return IsTreeAvailable(PreferredResearchTree.YART);
+                case ResearchTabOwner.Sleek:
+                    return IsTreeAvailable(PreferredResearchTree.Sleek);
+                case ResearchTabOwner.NiceResearchTab:
+                    return IsTreeAvailable(PreferredResearchTree.NiceResearchTab);
+                case ResearchTabOwner.Organized:
+                    return IsTreeAvailable(PreferredResearchTree.Organized);
+                default:
+                    return false;
             }
+        }
 
-            ResearchTracker tracker = Current.Game?.World?.GetComponent<ResearchTracker>();
-            if (tracker != null)
+        // Uninstalling a tree mod must not leave the tab pointing at a window that is gone.
+        public static ResearchTabOwner GetEffectiveTabOwner()
+        {
+            ResearchTabOwner owner = SemiRandomResearchMod.settings != null
+                ? SemiRandomResearchMod.settings.researchTabOwner
+                : ResearchTabOwner.SemiRandom;
+
+            return IsTabOwnerAvailable(owner) ? owner : ResearchTabOwner.SemiRandom;
+        }
+
+        public static bool SemiRandomOwnsResearchTab =>
+            GetEffectiveTabOwner() == ResearchTabOwner.SemiRandom;
+
+        private static Type ResolveWindowType(ResearchTabOwner owner)
+        {
+            switch (owner)
             {
-                tracker.usingNodeResearch = value;
+                case ResearchTabOwner.NodeResearch:
+                    return NodeResearchWindowType;
+                case ResearchTabOwner.YART:
+                    return YartWindowType;
+                case ResearchTabOwner.NiceResearchTab:
+                    return NiceWindowType;
+                case ResearchTabOwner.Vanilla:
+                case ResearchTabOwner.Sleek:
+                case ResearchTabOwner.Organized:
+                    return typeof(MainTabWindow_Research);
+                default:
+                    return typeof(MainTabWindow_NextResearch);
             }
         }
 
@@ -114,18 +161,13 @@ namespace CM_Semi_Random_Research
                 return;
             }
 
-            Type windowType;
-            if (SemiRandomResearchMod.settings.usingNodeResearch && NodeResearchWindowType != null)
+            // A tree's assembly can still be loading the first time this runs, which leaves its
+            // window type null. Leave the tab alone rather than falling back to a window the
+            // player did not ask for; the next Apply resolves it.
+            Type windowType = ResolveWindowType(GetEffectiveTabOwner());
+            if (windowType == null)
             {
-                windowType = NodeResearchWindowType;
-            }
-            else if (SemiRandomResearchMod.settings.featureEnabled)
-            {
-                windowType = typeof(MainTabWindow_NextResearch);
-            }
-            else
-            {
-                windowType = typeof(MainTabWindow_Research);
+                return;
             }
 
             SetResearchWindowClass(researchTab, windowType);
@@ -165,6 +207,9 @@ namespace CM_Semi_Random_Research
             TabWindowIntField?.SetValue(researchTab, parked);
         }
 
+        // Swapping trees from a button is a move within the session, not a settings change:
+        // the "Research tab opens" choice is reasserted by Apply on the next load. Writing the
+        // setting from a button is what used to make the tab owner drift on its own.
         public static void OpenResearchWindow(Type windowType, Window windowToClose)
         {
             MainButtonDef researchTab = ResearchMainButton;
@@ -231,7 +276,6 @@ namespace CM_Semi_Random_Research
                 return;
             }
 
-            SetUsingNodeResearch(false);
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
             {
                 ShowHandoverMessage("CM_Semi_Random_Research_Handover_Nice_Restricted".Translate());
@@ -247,7 +291,6 @@ namespace CM_Semi_Random_Research
 
         public static void SwitchToSemiRandomResearch(Window windowToClose)
         {
-            SetUsingNodeResearch(false);
             if (AnyTreeInstalled)
             {
                 if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
@@ -281,7 +324,6 @@ namespace CM_Semi_Random_Research
                 return;
             }
 
-            SetUsingNodeResearch(false);
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
             {
                 ShowHandoverMessage("CM_Semi_Random_Research_Handover_Yart_Restricted".Translate());
@@ -302,7 +344,6 @@ namespace CM_Semi_Random_Research
                 return;
             }
 
-            SetUsingNodeResearch(false);
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
             {
                 ShowHandoverMessage("CM_Semi_Random_Research_Handover_Sleek_Restricted".Translate());
@@ -323,7 +364,6 @@ namespace CM_Semi_Random_Research
                 return;
             }
 
-            SetUsingNodeResearch(false);
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
             {
                 ShowHandoverMessage("CM_Semi_Random_Research_Handover_Organized_Restricted".Translate());
@@ -425,6 +465,16 @@ namespace CM_Semi_Random_Research
 
             OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose);
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
+        }
+    }
+
+    // Runs once defs are loaded, which is the earliest point the Research MainButtonDef exists.
+    [StaticConstructorOnStartup]
+    public static class ResearchTabStartup
+    {
+        static ResearchTabStartup()
+        {
+            ResearchTabWindowSwitcher.Apply();
         }
     }
 

@@ -182,7 +182,6 @@ namespace CM_Semi_Random_Research
         private Dictionary<string, bool> lastPicked = new Dictionary<string, bool>();
         private Dictionary<string, string> loggedMessages = new Dictionary<string, string>();
 
-        public bool usingNodeResearch;
 
         private List<string> all_typeKeys;
 
@@ -266,15 +265,6 @@ namespace CM_Semi_Random_Research
         {
             base.FinalizeInit(fromLoad);
 
-            if (!fromLoad)
-            {
-                usingNodeResearch = SemiRandomResearchMod.settings.usingNodeResearch;
-            }
-            else
-            {
-                SemiRandomResearchMod.settings.usingNodeResearch = usingNodeResearch;
-            }
-
             ResearchTabWindowSwitcher.Apply();
 
             // CostApparent / RestrictToFactionTechLevel need Faction.OfPlayer.
@@ -330,8 +320,6 @@ namespace CM_Semi_Random_Research
             else
                 completedHistory.RemoveAll(entry => entry == null || entry.project == null);
 
-            bool defaultUsingNodeResearch = SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.usingNodeResearch;
-            Scribe_Values.Look(ref usingNodeResearch, "usingNodeResearch", defaultUsingNodeResearch);
             Scribe_Values.Look(ref researchPaused, "researchPaused", false);
         }
 
@@ -584,9 +572,9 @@ namespace CM_Semi_Random_Research
             researchTabOpened = true;
         }
 
-        // With the UI delegated to Node Research our tab never opens, so there would be nothing
-        // to arm the gate with - auto behaves as it always did for those players.
-        private bool AutoPickArmed => researchTabOpened || usingNodeResearch;
+        // When another tree owns the Research tab our window never opens, so there would be
+        // nothing to arm the gate with - auto behaves as it always did for those players.
+        private bool AutoPickArmed => researchTabOpened || !ResearchTabWindowSwitcher.SemiRandomOwnsResearchTab;
 
         // Auto mode's pick. Called when the research tab closes, so the player always gets a
         // chance to choose first. Picks the cheapest of the offered cards per category.

@@ -39,6 +39,19 @@ namespace CM_Semi_Random_Research
         Organized
     }
 
+    // Which window the Research main tab button opens. Separate from PreferredResearchTree,
+    // which is only where the tree button at the bottom of this mod's window sends you.
+    public enum ResearchTabOwner
+    {
+        SemiRandom,
+        Vanilla,
+        NodeResearch,
+        YART,
+        Sleek,
+        NiceResearchTab,
+        Organized
+    }
+
     // =========================================================================
     // MOD SETTINGS CLASS
     // =========================================================================
@@ -63,9 +76,14 @@ namespace CM_Semi_Random_Research
         public int reofferAfterAmountOfRerolls = 3;
         public bool equalizeCost = false;
         public bool verboseLogging = false;
-        public bool usingNodeResearch = false;
+        public ResearchTabOwner researchTabOwner = ResearchTabOwner.SemiRandom;
         public PreferredResearchTree preferredResearchTree = PreferredResearchTree.NodeResearch;
         public int settingsVersion;
+
+        // Read once by MigrateResearchTabOwner and never again. Kept in the config only so an
+        // upgrade from a version that had the "Delegate UI to Node Research" checkbox can carry
+        // that choice over.
+        private bool legacyUsingNodeResearch = false;
         public bool suppressHandoverMessages = false;
         public bool colorAndGroupByTechLevel = true;
 
@@ -99,7 +117,8 @@ namespace CM_Semi_Random_Research
             Scribe_Values.Look(ref showCompletionLetter, "showCompletionLetter", true);
             Scribe_Values.Look(ref autoOpenOnCompletion, "autoOpenOnCompletion", true);
             Scribe_Values.Look(ref autoPickNextResearch, "autoPickNextResearch", false);
-            Scribe_Values.Look(ref usingNodeResearch, "usingNodeResearch", false);
+            Scribe_Values.Look(ref researchTabOwner, "researchTabOwner", ResearchTabOwner.SemiRandom);
+            Scribe_Values.Look(ref legacyUsingNodeResearch, "usingNodeResearch", false);
             Scribe_Values.Look(ref preferredResearchTree, "preferredResearchTree", PreferredResearchTree.NodeResearch);
             Scribe_Values.Look(ref settingsVersion, "settingsVersion", 0);
             Scribe_Values.Look(ref suppressHandoverMessages, "suppressHandoverMessages", false);
@@ -165,11 +184,32 @@ namespace CM_Semi_Random_Research
             Checkbox(listing, "ColorGroup", ref colorAndGroupByTechLevel);
             Checkbox(listing, "ShowGraph", ref showResearchRateGraph);
 
+            listing.GapLine();
+            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Trees");
+
+            string tabTooltip = "CM_Semi_Random_Research_Setting_ResearchTabOpens_Description".Translate();
+            listing.Label("CM_Semi_Random_Research_Setting_ResearchTabOpens_Label".Translate(), -1, tabTooltip);
+
+            List<FloatMenuOption> tabOptions = new List<FloatMenuOption>();
+            AddTabOwnerOption(tabOptions, ResearchTabOwner.SemiRandom);
+            AddTabOwnerOption(tabOptions, ResearchTabOwner.Vanilla);
+            AddTabOwnerOption(tabOptions, ResearchTabOwner.NodeResearch);
+            AddTabOwnerOption(tabOptions, ResearchTabOwner.YART);
+            AddTabOwnerOption(tabOptions, ResearchTabOwner.Sleek);
+            AddTabOwnerOption(tabOptions, ResearchTabOwner.NiceResearchTab);
+            AddTabOwnerOption(tabOptions, ResearchTabOwner.Organized);
+
+            if (!ResearchTabWindowSwitcher.IsTabOwnerAvailable(researchTabOwner))
+                researchTabOwner = ResearchTabWindowSwitcher.GetEffectiveTabOwner();
+
+            Rect tabOwnerOptionRect = listing.GetRect(26);
+            DoButtonOption(tabOwnerOptionRect,
+                TabOwnerLabel(ResearchTabWindowSwitcher.GetEffectiveTabOwner()),
+                tabTooltip,
+                tabOptions, tabOwnerOptionRect.width / 10, tabOwnerOptionRect.width / 10);
+
             if (ResearchTabWindowSwitcher.AnyTreeInstalled)
             {
-                listing.GapLine();
-                SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Trees");
-
                 string treeTooltip = "CM_Semi_Random_Research_Setting_TreeButtonOpens_Description".Translate();
                 listing.Label("CM_Semi_Random_Research_Setting_TreeButtonOpens_Label".Translate(), -1, treeTooltip);
 
@@ -188,9 +228,6 @@ namespace CM_Semi_Random_Research
                     PreferredTreeLabel(ResearchTabWindowSwitcher.GetEffectivePreferredTree()),
                     treeTooltip,
                     treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10);
-
-                if (ResearchTabWindowSwitcher.NodeResearchInstalled)
-                    Checkbox(listing, "DelegateNode", ref usingNodeResearch);
 
                 Checkbox(listing, "SuppressHandover", ref suppressHandoverMessages);
             }
@@ -376,8 +413,35 @@ namespace CM_Semi_Random_Research
         private void SetPreferredTree(PreferredResearchTree tree)
         {
             preferredResearchTree = tree;
-            if (tree != PreferredResearchTree.NodeResearch)
-                ResearchTabWindowSwitcher.SetUsingNodeResearch(false);
+        }
+
+        private void AddTabOwnerOption(List<FloatMenuOption> options, ResearchTabOwner owner)
+        {
+            if (!ResearchTabWindowSwitcher.IsTabOwnerAvailable(owner))
+                return;
+
+            options.Add(new FloatMenuOption(TabOwnerLabel(owner), () => { researchTabOwner = owner; }));
+        }
+
+        private static string TabOwnerLabel(ResearchTabOwner owner)
+        {
+            switch (owner)
+            {
+                case ResearchTabOwner.Vanilla:
+                    return "CM_Semi_Random_Research_Tree_Vanilla".Translate();
+                case ResearchTabOwner.NodeResearch:
+                    return "CM_Semi_Random_Research_Tree_NodeResearch".Translate();
+                case ResearchTabOwner.YART:
+                    return "CM_Semi_Random_Research_Tree_YART".Translate();
+                case ResearchTabOwner.Sleek:
+                    return "CM_Semi_Random_Research_Tree_Sleek".Translate();
+                case ResearchTabOwner.NiceResearchTab:
+                    return "CM_Semi_Random_Research_Tree_Nice".Translate();
+                case ResearchTabOwner.Organized:
+                    return "CM_Semi_Random_Research_Tree_Organized".Translate();
+                default:
+                    return "CM_Semi_Random_Research_Tree_SemiRandom".Translate();
+            }
         }
 
         private static string PreferredTreeLabel(PreferredResearchTree preferred)
@@ -422,22 +486,64 @@ namespace CM_Semi_Random_Research
             ResearchTracker researchTracker = Current.Game?.World?.GetComponent<ResearchTracker>();
             if (researchTracker != null)
             {
-                researchTracker.usingNodeResearch = usingNodeResearch;
                 researchTracker.SettingsChanged();
             }
             ResearchTabWindowSwitcher.Apply();
             DumpSettingToLog();
         }
 
+        public bool MigrateSettings()
+        {
+            bool changed = MigrateTreeButtonDefaultToNode();
+            changed |= MigrateResearchTabOwner();
+            return changed;
+        }
+
         // One-time: old configs saved Sleek as the tree button target. Reset to Node Research.
         // Users can still pick Sleek or YART after this version is written.
-        public bool MigrateTreeButtonDefaultToNode()
+        private bool MigrateTreeButtonDefaultToNode()
         {
             if (settingsVersion >= 1)
                 return false;
 
             preferredResearchTree = PreferredResearchTree.NodeResearch;
             settingsVersion = 1;
+            return true;
+        }
+
+        // One-time: which window the Research tab opens used to be two things at once - the
+        // "Delegate UI to Node Research" checkbox, and, as an unintended side effect, the
+        // "Prohibit normal project selection" research rule. Carry both over to the setting
+        // that now says it outright, so nobody's research tab changes under them on upgrade.
+        //
+        // Only package ids are consulted here: this runs from the Mod constructor, where a tree
+        // mod's assembly may not be loaded yet and its window type would read as missing.
+        private bool MigrateResearchTabOwner()
+        {
+            if (settingsVersion >= 2)
+                return false;
+
+            if (legacyUsingNodeResearch)
+            {
+                researchTabOwner = ResearchTabOwner.NodeResearch;
+            }
+            else if (!featureEnabled)
+            {
+                // The rule being off pointed the tab at the vanilla window, which is what Sleek
+                // and Research: Organized dress up. That is what these players see today.
+                if (ResearchTabWindowSwitcher.SleekInstalled)
+                    researchTabOwner = ResearchTabOwner.Sleek;
+                else if (ResearchTabWindowSwitcher.OrganizedInstalled)
+                    researchTabOwner = ResearchTabOwner.Organized;
+                else
+                    researchTabOwner = ResearchTabOwner.Vanilla;
+            }
+            else
+            {
+                researchTabOwner = ResearchTabOwner.SemiRandom;
+            }
+
+            settingsVersion = 2;
             return true;
         }
 
