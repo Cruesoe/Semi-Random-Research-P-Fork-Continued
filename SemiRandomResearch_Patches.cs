@@ -135,7 +135,7 @@ namespace CM_Semi_Random_Research
                     if (!isFinishingResearch)
                     {
                         isFinishingResearch = true;
-                        Current.Game?.World?.GetComponent<ResearchTracker>()?.ConsiderProjectFinished(proj);
+                        SemiRandomResearchUtility.Tracker?.ConsiderProjectFinished(proj);
                     }
                     return;
                 }
@@ -146,7 +146,7 @@ namespace CM_Semi_Random_Research
                 if (isFinishingResearch) return;
                 isFinishingResearch = true;
 
-                ResearchTracker researchTracker = Current.Game?.World?.GetComponent<ResearchTracker>();
+                ResearchTracker researchTracker = SemiRandomResearchUtility.Tracker;
                 if (researchTracker != null)
                 {
                     researchTracker.ConsiderProjectFinished(proj);
@@ -156,63 +156,13 @@ namespace CM_Semi_Random_Research
                     Current.Game.World.worldObjects == null || LongEventHandler.AnyEventNowOrWaiting)
                     return;
 
-                var rateTracker = Current.Game.World.GetComponent<ResearchRateTracker>();
-                var rateInfo = rateTracker?.GetResearchRateInfo(proj);
-
-                StringBuilder letterText = new StringBuilder();
-                letterText.AppendLine("CM_Semi_Random_Research_LetterCompleted".Translate(proj.LabelCap));
-
-                if (rateInfo != null && rateInfo.TotalSamples > 0)
-                {
-                    letterText.AppendLine();
-                    letterText.AppendLine("CM_Semi_Random_Research_LetterAverageRate".Translate(rateInfo.AverageRateFormatted));
-                }
-
-                if (researcher != null)
-                {
-                    letterText.AppendLine();
-                    letterText.AppendLine("CM_Semi_Random_Research_LetterCompletedBy".Translate(researcher.LabelShort));
-                }
-
-                List<string> unlockedItems = new List<string>();
-
-                if (proj.UnlockedDefs != null)
-                {
-                    foreach (Def unlockedDef in proj.UnlockedDefs)
-                    {
-                        unlockedItems.Add(unlockedDef.LabelCap);
-                    }
-                }
-
-                foreach (ThingDef thingDef in DefDatabase<ThingDef>.AllDefsListForReading)
-                {
-                    if (thingDef.plant != null && thingDef.plant.sowResearchPrerequisites != null)
-                    {
-                        if (thingDef.plant.sowResearchPrerequisites.Contains(proj))
-                        {
-                            if (!unlockedItems.Contains(thingDef.LabelCap))
-                            {
-                                unlockedItems.Add(thingDef.LabelCap);
-                            }
-                        }
-                    }
-                }
-
-                if (unlockedItems.Count > 0)
-                {
-                    letterText.AppendLine();
-                    letterText.AppendLine("Unlocks".Translate() + ":");
-                    foreach (string item in unlockedItems)
-                    {
-                        letterText.AppendLine($"  - {item}");
-                    }
-                }
-
+                // Building the letter walks every ThingDef looking for sow prerequisites, so none
+                // of it runs when the letter is switched off.
                 if (SemiRandomResearchMod.settings.showCompletionLetter)
                 {
                     var letter = LetterMaker.MakeLetter(
                         "CM_Semi_Random_Research_LetterTitle".Translate(proj.LabelCap),
-                        letterText.ToString(),
+                        BuildCompletionLetterText(proj, researcher),
                         LetterDefOf.PositiveEvent,
                         researcher != null ? new LookTargets(researcher) : null);
 
@@ -239,6 +189,94 @@ namespace CM_Semi_Random_Research
                         Log.Error($"[Semi Random Research] Error in queued UI update: {ex}");
                     }
                 });
+            }
+
+            // Plants that a project unlocks for sowing are not in UnlockedDefs, so they used to be
+            // found by walking every ThingDef on each completion. The mapping is fixed once defs
+            // are loaded, so it is built once on the first completion of a session instead.
+            private static Dictionary<ResearchProjectDef, List<ThingDef>> sowUnlocksByProject;
+
+            private static List<ThingDef> SowUnlocksFor(ResearchProjectDef proj)
+            {
+                if (sowUnlocksByProject == null)
+                {
+                    sowUnlocksByProject = new Dictionary<ResearchProjectDef, List<ThingDef>>();
+                    List<ThingDef> allThings = DefDatabase<ThingDef>.AllDefsListForReading;
+                    for (int i = 0; i < allThings.Count; i++)
+                    {
+                        ThingDef thingDef = allThings[i];
+                        List<ResearchProjectDef> prerequisites = thingDef.plant?.sowResearchPrerequisites;
+                        if (prerequisites == null)
+                            continue;
+
+                        for (int j = 0; j < prerequisites.Count; j++)
+                        {
+                            ResearchProjectDef prerequisite = prerequisites[j];
+                            if (prerequisite == null)
+                                continue;
+
+                            if (!sowUnlocksByProject.TryGetValue(prerequisite, out List<ThingDef> unlocked))
+                            {
+                                unlocked = new List<ThingDef>();
+                                sowUnlocksByProject[prerequisite] = unlocked;
+                            }
+                            if (!unlocked.Contains(thingDef))
+                                unlocked.Add(thingDef);
+                        }
+                    }
+                }
+
+                return sowUnlocksByProject.TryGetValue(proj, out List<ThingDef> result) ? result : null;
+            }
+
+            private static string BuildCompletionLetterText(ResearchProjectDef proj, Pawn researcher)
+            {
+                var rateInfo = SemiRandomResearchUtility.RateTracker?.GetResearchRateInfo(proj);
+
+                StringBuilder letterText = new StringBuilder();
+                letterText.AppendLine("CM_Semi_Random_Research_LetterCompleted".Translate(proj.LabelCap));
+
+                if (rateInfo != null && rateInfo.TotalSamples > 0)
+                {
+                    letterText.AppendLine();
+                    letterText.AppendLine("CM_Semi_Random_Research_LetterAverageRate".Translate(rateInfo.AverageRateFormatted));
+                }
+
+                if (researcher != null)
+                {
+                    letterText.AppendLine();
+                    letterText.AppendLine("CM_Semi_Random_Research_LetterCompletedBy".Translate(researcher.LabelShort));
+                }
+
+                List<string> unlockedItems = new List<string>();
+
+                List<Def> unlockedDefs = proj.UnlockedDefs;
+                if (unlockedDefs != null)
+                {
+                    for (int i = 0; i < unlockedDefs.Count; i++)
+                        unlockedItems.Add(unlockedDefs[i].LabelCap);
+                }
+
+                List<ThingDef> sowUnlocks = SowUnlocksFor(proj);
+                if (sowUnlocks != null)
+                {
+                    for (int i = 0; i < sowUnlocks.Count; i++)
+                    {
+                        string label = sowUnlocks[i].LabelCap;
+                        if (!unlockedItems.Contains(label))
+                            unlockedItems.Add(label);
+                    }
+                }
+
+                if (unlockedItems.Count > 0)
+                {
+                    letterText.AppendLine();
+                    letterText.AppendLine("Unlocks".Translate() + ":");
+                    for (int i = 0; i < unlockedItems.Count; i++)
+                        letterText.AppendLine($"  - {unlockedItems[i]}");
+                }
+
+                return letterText.ToString();
             }
 
             [HarmonyFinalizer]
@@ -280,22 +318,44 @@ namespace CM_Semi_Random_Research
         [HarmonyPatch("AddProgress", MethodType.Normal)]
         public static class ResearchManager_AddProgress
         {
+            // Runs for every point of research a pawn produces, so the cheap, purely static checks
+            // are made first and the work that touches the world - the component lookup, the offer
+            // list scan and CanStartNow - only happens for the rare call that can still qualify.
             [HarmonyPrefix]
             public static void Prefix(ResearchProjectDef proj, float amount, Pawn source)
             {
-                ResearchTracker researchTracker = Current.Game?.World?.GetComponent<ResearchTracker>();
-                if (researchTracker != null &&
-                    (proj.ProgressReal == 0 || SemiRandomResearchMod.settings.progressAddsChoice == ProgressAddsChoice.AddChoiceOnlyOnGain) &&
-                    SemiRandomResearchMod.settings.progressAddsChoice != ProgressAddsChoice.Never &&
-                    !researchTracker.PeekAvailableProjects().Contains(proj) &&
-                    proj.CanStartNow)
+                if (proj == null)
+                    return;
+
+                SemiRandomResearchSettings settings = SemiRandomResearchMod.settings;
+                if (settings == null || settings.progressAddsChoice == ProgressAddsChoice.Never)
+                    return;
+
+                if (settings.progressAddsChoice != ProgressAddsChoice.AddChoiceOnlyOnGain && proj.ProgressReal != 0)
+                    return;
+
+                ResearchTracker researchTracker = SemiRandomResearchUtility.Tracker;
+                if (researchTracker == null)
+                    return;
+
+                List<ResearchProjectDef> offers = researchTracker.PeekAvailableProjects();
+                if (offers != null && offers.Contains(proj))
+                    return;
+
+                if (!proj.CanStartNow)
+                    return;
+
+                if (!settings.allowSwitchingResearch)
                 {
-                    if (!researchTracker.CurrentProject.Any(x => x.knowledgeCategory == proj.knowledgeCategory) ||
-                        SemiRandomResearchMod.settings.allowSwitchingResearch)
+                    List<ResearchProjectDef> current = researchTracker.CurrentProject;
+                    for (int i = 0; i < current.Count; i++)
                     {
-                        researchTracker.AddProjectToAvailableProjects(proj);
+                        if (current[i] != null && current[i].knowledgeCategory == proj.knowledgeCategory)
+                            return;
                     }
                 }
+
+                researchTracker.AddProjectToAvailableProjects(proj);
             }
         }
     }
@@ -324,7 +384,7 @@ namespace CM_Semi_Random_Research
                 if (Current.ProgramState != ProgramState.Playing || Find.World == null)
                     return true;
 
-                ResearchTracker tracker = Find.World.GetComponent<ResearchTracker>();
+                ResearchTracker tracker = SemiRandomResearchUtility.Tracker;
                 if (tracker == null || !tracker.ResearchPaused)
                     return true;
 
@@ -386,7 +446,7 @@ namespace CM_Semi_Random_Research
             if (Current.ProgramState != ProgramState.Playing || Find.World == null)
                 return true;
 
-            ResearchTracker tracker = Find.World.GetComponent<ResearchTracker>();
+            ResearchTracker tracker = SemiRandomResearchUtility.Tracker;
             if (tracker == null || !tracker.ResearchPaused)
                 return true;
 

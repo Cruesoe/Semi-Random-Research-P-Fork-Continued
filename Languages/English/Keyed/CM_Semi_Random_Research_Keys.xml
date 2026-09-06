@@ -105,7 +105,7 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_Setting_DelegateNode_Label>Delegate UI to Node Research</CM_Semi_Random_Research_Setting_DelegateNode_Label>
   <CM_Semi_Random_Research_Setting_DelegateNode_Description>Use Node Research as the Research tab. This does not change Prohibit normal project selection.</CM_Semi_Random_Research_Setting_DelegateNode_Description>
   <CM_Semi_Random_Research_Setting_TreeButtonOpens_Label>Tree button opens</CM_Semi_Random_Research_Setting_TreeButtonOpens_Label>
-  <CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>Which research tree the Research Tree button at the bottom of the research tab opens. Only trees you have installed are listed. Defaults to Node Research when it is installed, then YART, then Sleek Research Tab, then Nice Research Tab.</CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>
+  <CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>Which research tree the Research Tree button at the bottom of the research tab opens. Only trees you have installed are listed. Defaults to Node Research when it is installed, then YART, then Sleek Research Tab, then Nice Research Tab, then Research: Organized.</CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>
   <CM_Semi_Random_Research_Setting_SuppressHandover_Label>Suppress handover messages</CM_Semi_Random_Research_Setting_SuppressHandover_Label>
   <CM_Semi_Random_Research_Setting_SuppressHandover_Description>Hide the messages shown when switching between Semi-Random Research, Node Research, YART, and Sleek Research Tab.</CM_Semi_Random_Research_Setting_SuppressHandover_Description>
   <CM_Semi_Random_Research_Setting_RestrictFaction_LockedTip>Locked on while Node Research is installed. Node Research controls tech-level progression.</CM_Semi_Random_Research_Setting_RestrictFaction_LockedTip>
@@ -114,6 +114,7 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_Tree_YART>YART</CM_Semi_Random_Research_Tree_YART>
   <CM_Semi_Random_Research_Tree_Sleek>Sleek Research Tab</CM_Semi_Random_Research_Tree_Sleek>
   <CM_Semi_Random_Research_Tree_Nice>Nice Research Tab</CM_Semi_Random_Research_Tree_Nice>
+  <CM_Semi_Random_Research_Tree_Organized>Research: Organized</CM_Semi_Random_Research_Tree_Organized>
 
   <!-- Research tab -->
   <CM_Semi_Random_Research_CurrentlyResearching>Currently researching</CM_Semi_Random_Research_CurrentlyResearching>
@@ -190,6 +191,8 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_UnifiedProgressTooltip>{0}/{1} ({2}%)\n{3}/{4}\n{5}</CM_Semi_Random_Research_UnifiedProgressTooltip>
   <CM_Semi_Random_Research_ReadyToAdvance>Ready to Advance!</CM_Semi_Random_Research_ReadyToAdvance>
   <CM_Semi_Random_Research_AdvanceTechLevel>Advance Tech Level</CM_Semi_Random_Research_AdvanceTechLevel>
+  <CM_Semi_Random_Research_NodeResearchTechLimit>Node Research: this era is the limit of what your tech level can research. Advance by finishing its Emergence project.</CM_Semi_Random_Research_NodeResearchTechLimit>
+  <CM_Semi_Random_Research_GenesisTechLimit>Genesis: this era is the limit of what your tech level can research until your colony advances to the next era.</CM_Semi_Random_Research_GenesisTechLimit>
   <CM_Semi_Random_Research_ProgressionCoreTooltip>Progression Core: {0}% of {1}% required to advance</CM_Semi_Random_Research_ProgressionCoreTooltip>
   <CM_Semi_Random_Research_ProgressionCoreReady>Ready to advance to next tech level!</CM_Semi_Random_Research_ProgressionCoreReady>
   <CM_Semi_Random_Research_ProgressionCoreNeedMore>Need {0} more research project(s)</CM_Semi_Random_Research_ProgressionCoreNeedMore>
@@ -213,4 +216,6 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_Handover_Sleek>Switched to Sleek Research Tab.</CM_Semi_Random_Research_Handover_Sleek>
   <CM_Semi_Random_Research_Handover_Nice_Restricted>Switched to Nice Research Tab. Prohibit normal project selection is still on.</CM_Semi_Random_Research_Handover_Nice_Restricted>
   <CM_Semi_Random_Research_Handover_Nice>Switched to Nice Research Tab.</CM_Semi_Random_Research_Handover_Nice>
+  <CM_Semi_Random_Research_Handover_Organized_Restricted>Switched to Research: Organized. Prohibit normal project selection is still on.</CM_Semi_Random_Research_Handover_Organized_Restricted>
+  <CM_Semi_Random_Research_Handover_Organized>Switched to Research: Organized.</CM_Semi_Random_Research_Handover_Organized>
 </LanguageData>

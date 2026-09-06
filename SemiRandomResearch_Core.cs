@@ -1,9 +1,11 @@
 ﻿using HarmonyLib;
 using RimWorld;
+using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Verse;
 
 namespace CM_Semi_Random_Research
@@ -25,6 +27,56 @@ namespace CM_Semi_Random_Research
         public static bool IsCurrentProject(ResearchProjectDef rpd)
         {
             return !IsControllingResearchSelection && Find.ResearchManager.IsCurrentProject(rpd);
+        }
+
+        // World.GetComponent<T> walks the whole component list on every call, and both of these
+        // are looked up from tick-rate code - the AddProgress patch runs for every point of
+        // research a pawn produces. Keyed on the world instance, so loading a save or starting a
+        // new colony can never hand back the previous world's component.
+        private static World cachedWorld;
+        private static ResearchTracker cachedResearchTracker;
+        private static ResearchRateTracker cachedRateTracker;
+
+        private static World CurrentWorld()
+        {
+            World world = Current.Game?.World;
+            if (world == null)
+            {
+                cachedWorld = null;
+                cachedResearchTracker = null;
+                cachedRateTracker = null;
+                return null;
+            }
+
+            if (!ReferenceEquals(world, cachedWorld))
+            {
+                cachedWorld = world;
+                cachedResearchTracker = null;
+                cachedRateTracker = null;
+            }
+            return world;
+        }
+
+        public static ResearchTracker Tracker
+        {
+            get
+            {
+                World world = CurrentWorld();
+                if (world == null)
+                    return null;
+                return cachedResearchTracker ?? (cachedResearchTracker = world.GetComponent<ResearchTracker>());
+            }
+        }
+
+        public static ResearchRateTracker RateTracker
+        {
+            get
+            {
+                World world = CurrentWorld();
+                if (world == null)
+                    return null;
+                return cachedRateTracker ?? (cachedRateTracker = world.GetComponent<ResearchRateTracker>());
+            }
         }
     }
 
@@ -112,7 +164,7 @@ namespace CM_Semi_Random_Research
 
             if (enabled_SoS2 && rpd.tab?.defName == "ResearchTabArchotech")
             {
-                return !SaveOurShip2ArchotechUplinkUnlocked(rpd);
+                return !SaveOurShip2ArchotechUplinkUnlocked();
             }
 
             return false;
@@ -145,31 +197,61 @@ namespace CM_Semi_Random_Research
             return false;
         }
 
-        private static bool SaveOurShip2ArchotechUplinkUnlocked(ResearchProjectDef rpd)
+        // The uplink is a colony-wide flag, not a per-project one, and IsHiddenResearch asks about
+        // every archotech project many times a second while the research tab is open.
+        // AccessTools.TypeByName scans every loaded assembly, so both the reflection handles and
+        // the answer are cached. The answer is re-read at most once a second, and once the uplink
+        // exists it never goes away, so that case stops re-reading entirely.
+        private static bool sos2HandlesResolved;
+        private static FieldInfo sos2WorldCompField;
+        private static FieldInfo sos2UnlocksField;
+        private static Type sos2UnlocksOwnerType;
+        private static bool sos2UplinkUnlocked;
+        private static int sos2UplinkCheckedTick = int.MinValue;
+
+        private static bool SaveOurShip2ArchotechUplinkUnlocked()
         {
+            if (sos2UplinkUnlocked)
+                return true;
+
+            int tick = Find.TickManager?.TicksGame ?? 0;
+            if (sos2UplinkCheckedTick != int.MinValue && tick - sos2UplinkCheckedTick < 60)
+                return false;
+            sos2UplinkCheckedTick = tick;
+
             try
             {
-                // Use Harmony reflection so we don't need a hard compile-time reference to the SOS2 DLL
-                Type modType = AccessTools.TypeByName("SaveOurShip2.ShipInteriorMod2");
-                if (modType != null)
+                if (!sos2HandlesResolved)
                 {
-                    object worldComp = AccessTools.Field(modType, "WorldComp")?.GetValue(null);
-                    if (worldComp != null)
-                    {
-                        object unlocks = AccessTools.Field(worldComp.GetType(), "Unlocks")?.GetValue(worldComp);
-
-                        // Check if it's a HashSet or List and contains our string
-                        if (unlocks is HashSet<string> hashSet) return hashSet.Contains("ArchotechUplink");
-                        if (unlocks is List<string> list) return list.Contains("ArchotechUplink");
-                    }
+                    sos2HandlesResolved = true;
+                    // Use Harmony reflection so we don't need a hard compile-time reference to the SOS2 DLL
+                    Type modType = AccessTools.TypeByName("SaveOurShip2.ShipInteriorMod2");
+                    sos2WorldCompField = modType != null ? AccessTools.Field(modType, "WorldComp") : null;
                 }
+
+                object worldComp = sos2WorldCompField?.GetValue(null);
+                if (worldComp == null)
+                    return false;
+
+                Type ownerType = worldComp.GetType();
+                if (sos2UnlocksField == null || sos2UnlocksOwnerType != ownerType)
+                {
+                    sos2UnlocksOwnerType = ownerType;
+                    sos2UnlocksField = AccessTools.Field(ownerType, "Unlocks");
+                }
+
+                object unlocks = sos2UnlocksField?.GetValue(worldComp);
+
+                // Check if it's a HashSet or List and contains our string
+                if (unlocks is HashSet<string> hashSet) sos2UplinkUnlocked = hashSet.Contains("ArchotechUplink");
+                else if (unlocks is List<string> list) sos2UplinkUnlocked = list.Contains("ArchotechUplink");
             }
             catch (Exception ex)
             {
                 Log.Warning("[CM_Semi_Random_Research] Error checking SOS2 compatibility: " + ex);
             }
 
-            return false;
+            return sos2UplinkUnlocked;
         }
     }
 

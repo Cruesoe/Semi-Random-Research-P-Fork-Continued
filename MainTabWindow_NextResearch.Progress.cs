@@ -10,6 +10,7 @@ namespace CM_Semi_Random_Research
     public partial class MainTabWindow_NextResearch
     {
         private static bool? progressionCoreActiveCached;
+        private static bool? genesisActiveCached;
         private static bool? vfeTribalsActiveCached;
 
         private static bool ProgressionCoreActive
@@ -19,6 +20,16 @@ namespace CM_Semi_Random_Research
                 if (progressionCoreActiveCached == null)
                     progressionCoreActiveCached = GenTypes.GetTypeInAnyAssembly("ProgressionCore.ProgressionCoreMod") != null;
                 return progressionCoreActiveCached.Value;
+            }
+        }
+
+        private static bool GenesisActive
+        {
+            get
+            {
+                if (genesisActiveCached == null)
+                    genesisActiveCached = GenTypes.GetTypeInAnyAssembly("Genesis.GenesisEra") != null;
+                return genesisActiveCached.Value;
             }
         }
 
@@ -41,48 +52,119 @@ namespace CM_Semi_Random_Research
                 .Max();
         }
 
+        // Runs over the whole research database, so everything that does not depend on the def is
+        // hoisted out of the loop and the totals live in an array indexed by tech level rather
+        // than a dictionary. Every entry is still visited, so a mod that changes costs at runtime
+        // is picked up exactly as before.
         private void RebuildTechLevelStats()
         {
-            cachedTechLevelStats = new Dictionary<TechLevel, (int completed, int total, float remainingCost, float spentCost)>
-            {
-                { TechLevel.Animal, (0, 0, 0f, 0f) },
-                { TechLevel.Neolithic, (0, 0, 0f, 0f) },
-                { TechLevel.Medieval, (0, 0, 0f, 0f) },
-                { TechLevel.Industrial, (0, 0, 0f, 0f) },
-                { TechLevel.Spacer, (0, 0, 0f, 0f) },
-                { TechLevel.Ultra, (0, 0, 0f, 0f) },
-                { TechLevel.Archotech, (0, 0, 0f, 0f) }
-            };
+            if (cachedTechLevelStats == null || cachedTechLevelStats.Length != TechLevelCount)
+                cachedTechLevelStats = new (int completed, int total, float remainingCost, float spentCost)[TechLevelCount];
+
+            var stats = cachedTechLevelStats;
+            for (int i = 0; i < stats.Length; i++)
+                stats[i] = (0, 0, 0f, 0f);
+
+            bool countCosts = Faction.OfPlayerSilentFail != null;
             List<ResearchProjectDef> allDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading;
             for (int i = 0; i < allDefs.Count; i++)
             {
                 ResearchProjectDef def = allDefs[i];
-                if (!cachedTechLevelStats.TryGetValue(def.techLevel, out var stats))
-                    stats = (0, 0, 0f, 0f);
-                stats.total++;
-                if (def.IsFinished)
+                int level = (int)def.techLevel;
+                if (level < 0 || level >= stats.Length)
+                    continue;
+
+                bool finished = def.IsFinished;
+                stats[level].total++;
+                if (finished)
                 {
-                    stats.completed++;
+                    stats[level].completed++;
                 }
-                if (Faction.OfPlayerSilentFail != null &&
+                if (countCosts &&
                     !Compatibility.IsDummyResearch(def) &&
                     !Compatibility.IsHiddenResearch(def))
                 {
-                    if (def.IsFinished)
+                    if (finished)
                     {
-                        stats.spentCost += def.CostApparent;
+                        stats[level].spentCost += def.CostApparent;
                     }
                     else
                     {
-                        stats.spentCost += def.ProgressApparent;
-                        float remaining = def.CostApparent - def.ProgressApparent;
+                        float progress = def.ProgressApparent;
+                        stats[level].spentCost += progress;
+                        float remaining = def.CostApparent - progress;
                         if (remaining > 0f)
-                            stats.remainingCost += remaining;
+                            stats[level].remainingCost += remaining;
                     }
                 }
-                cachedTechLevelStats[def.techLevel] = stats;
             }
             cachedTechLevelStatsTick = Find.TickManager.TicksGame;
+            techLevelStatsVersion++;
+        }
+
+        // "Industrial (42/97)" and the two text measurements behind it were rebuilt for every band
+        // on every OnGUI pass. Nothing in them moves until the stats do, so they are built once per
+        // stats rebuild - roughly once a game second - instead.
+        private struct TechLevelLabel
+        {
+            public string name;
+            public string stats;
+            public float nameWidth;
+            public float fullWidth;
+        }
+
+        private TechLevelLabel[] cachedTechLevelLabels;
+        private int cachedTechLevelLabelsVersion = -1;
+        private int techLevelStatsVersion;
+
+        private void EnsureTechLevelLabels()
+        {
+            if (cachedTechLevelLabels != null && cachedTechLevelLabelsVersion == techLevelStatsVersion)
+                return;
+
+            cachedTechLevelLabelsVersion = techLevelStatsVersion;
+            if (cachedTechLevelLabels == null || cachedTechLevelLabels.Length != TechLevelCount)
+                cachedTechLevelLabels = new TechLevelLabel[TechLevelCount];
+
+            GameFont previousFont = Text.Font;
+            Text.Font = GameFont.Small;
+            for (int i = 0; i < TechLevelCount; i++)
+            {
+                // Undefined is never one of the drawn bands, and asking it for a human-readable
+                // name is not something the old per-frame code ever did.
+                if (i == (int)TechLevel.Undefined)
+                {
+                    cachedTechLevelLabels[i] = new TechLevelLabel { name = string.Empty, stats = string.Empty };
+                    continue;
+                }
+
+                TryGetTechLevelStats((TechLevel)i, out var stats);
+                string name = ((TechLevel)i).ToStringHuman().CapitalizeFirst();
+                string statsText = $" ({stats.completed}/{stats.total})";
+                cachedTechLevelLabels[i] = new TechLevelLabel
+                {
+                    name = name,
+                    stats = statsText,
+                    nameWidth = Text.CalcSize(name).x,
+                    fullWidth = Text.CalcSize(name + statsText).x
+                };
+            }
+            Text.Font = previousFont;
+        }
+
+        // Bounds-checked read, so an unexpected tech level cannot throw mid-draw.
+        private bool TryGetTechLevelStats(TechLevel techLevel,
+            out (int completed, int total, float remainingCost, float spentCost) stats)
+        {
+            int level = (int)techLevel;
+            if (cachedTechLevelStats != null && level >= 0 && level < cachedTechLevelStats.Length)
+            {
+                stats = cachedTechLevelStats[level];
+                return true;
+            }
+
+            stats = (0, 0, 0f, 0f);
+            return false;
         }
 
         private int cachedTechLevelStatsTick = -1;
@@ -144,9 +226,21 @@ namespace CM_Semi_Random_Research
                 return;
             }
 
+            EnsureTechLevelLabels();
+
             TechLevel[] techLevels = VfeTribalsActive ? ProgressTechLevelsWithAnimal : ProgressTechLevels;
+            TechLevel playerTechLevel = Faction.OfPlayer.def.techLevel;
+            bool nodeResearchActive = ResearchTabWindowSwitcher.NodeResearchInstalled;
             bool progressionCoreActive = ProgressionCoreActive;
-            float requiredProgress = cachedRequiredProgress;
+            bool genesisActive = GenesisActive;
+            // Node Research advances the era through its own Emergence projects, so Progression
+            // Core's percentage says nothing about when you level up. With it installed the marker
+            // instead shows the ceiling of what the current tech level can research: the end of
+            // this era's segment. Genesis has no completion-percentage mechanic either, so it
+            // shares that same no-percentage marker.
+            bool noPercentageThreshold = nodeResearchActive || genesisActive;
+            float requiredProgress = noPercentageThreshold ? 1f : cachedRequiredProgress;
+            bool showThresholdMarker = noPercentageThreshold || progressionCoreActive;
 
             // Two rows for labels with staggered positioning - more brick wall like
             float topLabelY = rect.y - 49f;   // Further row - moved even further away
@@ -164,11 +258,10 @@ namespace CM_Semi_Random_Research
                 Widgets.DrawBoxSolid(barRect, new Color(0.1f, 0.1f, 0.1f));
             }
 
-            Dictionary<TechLevel, (int completed, int total, float remainingCost, float spentCost)> techLevelStats = cachedTechLevelStats;
             float totalTechs = 0f;
             for (int i = 0; i < techLevels.Length; i++)
             {
-                if (techLevelStats.TryGetValue(techLevels[i], out var levelStats))
+                if (TryGetTechLevelStats(techLevels[i], out var levelStats))
                     totalTechs += levelStats.total;
             }
 
@@ -186,7 +279,7 @@ namespace CM_Semi_Random_Research
 
             foreach (TechLevel techLevel in techLevels)
             {
-                if (!techLevelStats.TryGetValue(techLevel, out var stats) || stats.total == 0)
+                if (!TryGetTechLevelStats(techLevel, out var stats) || stats.total == 0)
                     continue;
 
                 float segmentWidth = (float)stats.total / totalTechs * barWidth;
@@ -202,7 +295,7 @@ namespace CM_Semi_Random_Research
                     Widgets.DrawBox(segmentRect);
                 }
 
-                if (progressionCoreActive && techLevel == Faction.OfPlayer.def.techLevel)
+                if (showThresholdMarker && techLevel == playerTechLevel)
                 {
                     advancementThresholdX = segmentRect.x + (segmentWidth * requiredProgress);
                     thresholdFound = true;
@@ -216,15 +309,14 @@ namespace CM_Semi_Random_Research
                 Text.Font = GameFont.Small;
                 Text.Anchor = TextAnchor.MiddleCenter;
 
-                string techLevelName = techLevel.ToStringHuman().CapitalizeFirst();
-                string statsText = $" ({stats.completed}/{stats.total})";
-                string fullLabel = techLevelName + statsText;
-                Vector2 labelSize = Text.CalcSize(fullLabel);
+                TechLevelLabel label = cachedTechLevelLabels[(int)techLevel];
+                string techLevelName = label.name;
+                string statsText = label.stats;
 
                 Rect labelRect = new Rect(
-                    centerX - (labelSize.x / 2),
+                    centerX - (label.fullWidth / 2),
                     labelY,
-                    labelSize.x,
+                    label.fullWidth,
                     labelHeight
                 );
                 if (labelRect.x < barRect.x)
@@ -243,7 +335,7 @@ namespace CM_Semi_Random_Research
 
                 GUI.color = GetTechLevelColor(techLevel);
                 Rect techNameRect = new Rect(labelRect);
-                techNameRect.width = Text.CalcSize(techLevelName).x;
+                techNameRect.width = label.nameWidth;
                 Widgets.Label(techNameRect, techLevelName);
 
                 GUI.color = new Color(0.95f, 0.95f, 0.95f);
@@ -294,19 +386,37 @@ namespace CM_Semi_Random_Research
 
                 Text.Font = GameFont.Tiny;
                 Text.Anchor = TextAnchor.UpperCenter;
-                Rect labelRect = new Rect(advancementThresholdX - 60f, barRect.yMax + lineExtension + 4f, 120f, 20f);
                 GUI.color = Color.white;
 
-                TechLevel currentTechLevel = Faction.OfPlayer.def.techLevel;
+                TechLevel currentTechLevel = playerTechLevel;
                 float progress = 0f;
-                if (techLevelStats.TryGetValue(currentTechLevel, out var currentStats) && currentStats.total > 0)
+                if (TryGetTechLevelStats(currentTechLevel, out var currentStats) && currentStats.total > 0)
                     progress = (float)currentStats.completed / currentStats.total;
 
-                string thresholdLabel = progress >= requiredProgress
-                    ? "CM_Semi_Random_Research_ReadyToAdvance".Translate()
-                    : "CM_Semi_Random_Research_AdvanceTechLevel".Translate();
+                // The arrow marks the boundary on its own; a no-percentage threshold (Node
+                // Research / Genesis) has no label worth reading, just the line and arrow.
+                if (!noPercentageThreshold)
+                {
+                    string thresholdLabel = progress >= requiredProgress
+                        ? "CM_Semi_Random_Research_ReadyToAdvance".Translate()
+                        : "CM_Semi_Random_Research_AdvanceTechLevel".Translate();
 
-                Widgets.Label(labelRect, thresholdLabel);
+                    // Sized to the label and clamped inside the bar: the old fixed 120f box wrapped
+                    // "Advance Tech Level" onto a second line that the 20f row height cut off, and
+                    // near the left edge the box started outside the bar.
+                    float thresholdLabelWidth = Text.CalcSize(thresholdLabel).x + 4f;
+                    Rect labelRect = new Rect(
+                        advancementThresholdX - (thresholdLabelWidth / 2f),
+                        barRect.yMax + lineExtension + 4f,
+                        thresholdLabelWidth,
+                        20f);
+                    if (labelRect.x < barRect.x)
+                        labelRect.x = barRect.x;
+                    else if (labelRect.xMax > barRect.xMax)
+                        labelRect.x = barRect.xMax - labelRect.width;
+
+                    Widgets.Label(labelRect, thresholdLabel);
+                }
             }
 
             Text.Anchor = TextAnchor.UpperLeft;
@@ -320,7 +430,7 @@ namespace CM_Semi_Random_Research
 
         private string BuildEraTooltip(TechLevel techLevel)
         {
-            if (cachedTechLevelStats == null || !cachedTechLevelStats.TryGetValue(techLevel, out var stats) || stats.total == 0)
+            if (!TryGetTechLevelStats(techLevel, out var stats) || stats.total == 0)
                 return string.Empty;
 
             float progress = (float)stats.completed / stats.total;
@@ -333,7 +443,20 @@ namespace CM_Semi_Random_Research
                 (stats.spentCost + stats.remainingCost).ToString("N0"),
                 FormatRemainingEta(stats.remainingCost));
 
-            if (ProgressionCoreActive && techLevel == Faction.OfPlayer.def.techLevel)
+            if (techLevel == Faction.OfPlayer.def.techLevel && ResearchTabWindowSwitcher.NodeResearchInstalled)
+            {
+                // Progression Core's percentage only gates the Vanilla Tribals ritual; under Node
+                // Research the era ends at its Emergence project, so quoting a percentage here
+                // would describe a threshold the colony never has to meet.
+                tooltip += "\n\n" + "CM_Semi_Random_Research_NodeResearchTechLimit".Translate();
+            }
+            else if (GenesisActive && techLevel == Faction.OfPlayer.def.techLevel)
+            {
+                // Genesis has no completion-percentage mechanic, so - like Node Research above -
+                // this just marks the era boundary rather than quoting a threshold to meet.
+                tooltip += "\n\n" + "CM_Semi_Random_Research_GenesisTechLimit".Translate();
+            }
+            else if (ProgressionCoreActive && techLevel == Faction.OfPlayer.def.techLevel)
             {
                 float requiredProgress = cachedRequiredProgress;
                 tooltip += "\n\n" + "CM_Semi_Random_Research_ProgressionCoreTooltip".Translate(
@@ -381,8 +504,9 @@ namespace CM_Semi_Random_Research
             if (cachedTechLevelStats == null)
                 return;
 
-            foreach (var stats in cachedTechLevelStats.Values)
+            for (int i = 0; i < cachedTechLevelStats.Length; i++)
             {
+                var stats = cachedTechLevelStats[i];
                 completed += stats.completed;
                 total += stats.total;
                 remainingCost += stats.remainingCost;

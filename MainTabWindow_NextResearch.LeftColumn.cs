@@ -14,6 +14,8 @@ namespace CM_Semi_Random_Research
         {
             cachedLeftListsRevision = -1;
             cachedLeftCurrentHash = int.MinValue;
+            // A debug finish or a fresh roll can move progress without the tick advancing.
+            InvalidateCostTextCache();
         }
 
         // Paused still counts as busy: the project keeps the category until it is resumed or cancelled.
@@ -54,11 +56,14 @@ namespace CM_Semi_Random_Research
             ResearchProjectDef activeAnomalyProjectAdvanced = null;
             ResearchProjectDef activeGravshipProject = null;
 
+            bool anomalyOn = AnomalyContentEnabled();
+
             if (researchTracker != null && researchTracker.CurrentProject != null)
             {
-                for (int i = 0; i < researchTracker.CurrentProject.Count; i++)
+                List<ResearchProjectDef> current = researchTracker.CurrentProject;
+                for (int i = 0; i < current.Count; i++)
                 {
-                    ResearchProjectDef p = researchTracker.CurrentProject[i];
+                    ResearchProjectDef p = current[i];
                     if (p == null)
                         continue;
 
@@ -67,9 +72,9 @@ namespace CM_Semi_Random_Research
                         activeNonAnomalyProject = p;
                     else if (key == "Gravship" && activeGravshipProject == null)
                         activeGravshipProject = p;
-                    else if (AnomalyContentEnabled() && p.knowledgeCategory == KnowledgeCategoryDefOf.Basic && activeAnomalyProjectBasic == null)
+                    else if (anomalyOn && p.knowledgeCategory == KnowledgeCategoryDefOf.Basic && activeAnomalyProjectBasic == null)
                         activeAnomalyProjectBasic = p;
-                    else if (AnomalyContentEnabled() && p.knowledgeCategory == KnowledgeCategoryDefOf.Advanced && activeAnomalyProjectAdvanced == null)
+                    else if (anomalyOn && p.knowledgeCategory == KnowledgeCategoryDefOf.Advanced && activeAnomalyProjectAdvanced == null)
                         activeAnomalyProjectAdvanced = p;
                 }
             }
@@ -109,7 +114,6 @@ namespace CM_Semi_Random_Research
             bool gravshipBusy = hideBusyCategoryOffers && IsCategoryBusy(activeGravshipProject);
 
             var standardByLevel = new Dictionary<TechLevel, List<ResearchProjectDef>>();
-            bool anomalyOn = AnomalyContentEnabled();
             for (int i = 0; i < currentAvailableProjects.Count; i++)
             {
                 ResearchProjectDef p = currentAvailableProjects[i];
@@ -214,6 +218,7 @@ namespace CM_Semi_Random_Research
             float buttonHeight = 48f;
             float techLevelHeaderHeight = 28f;
 
+            bool anomalyOn = AnomalyContentEnabled();
             bool hasAnomalyToShowBasic = cachedAnomalyBasic.Count > 0;
             bool hasAnomalyToShowAdvanced = cachedAnomalyAdvanced.Count > 0;
             bool hasGravshipToShow = cachedGravshipProjects.Count > 0;
@@ -308,9 +313,7 @@ namespace CM_Semi_Random_Research
                 if (techGroup.Second == null || techGroup.Second.Count == 0)
                     continue;
 
-                float headerAnimProgress = 1f;
-                if (techLevelHeaderProgress.TryGetValue(techGroup.First, out float progress))
-                    headerAnimProgress = progress;
+                float headerAnimProgress = GetHeaderProgress(techGroup.First);
 
                 if (headerAnimProgress <= 0.01f) continue;
 
@@ -345,7 +348,7 @@ namespace CM_Semi_Random_Research
             // ==========================================
             // AVAILABLE ANOMALY / GRAVSHIP PROJECTS
             // ==========================================
-            if ((AnomalyContentEnabled() && (hasAnomalyToShowBasic || hasAnomalyToShowAdvanced)) || hasGravshipToShow)
+            if ((anomalyOn && (hasAnomalyToShowBasic || hasAnomalyToShowAdvanced)) || hasGravshipToShow)
             {
                 if (currentY > 0)
                 {
@@ -357,7 +360,7 @@ namespace CM_Semi_Random_Research
                 }
             }
 
-            if (AnomalyContentEnabled() && hasAnomalyToShowBasic)
+            if (anomalyOn && hasAnomalyToShowBasic)
             {
                 Text.Font = GameFont.Small;
                 Text.Anchor = TextAnchor.MiddleLeft;
@@ -376,7 +379,7 @@ namespace CM_Semi_Random_Research
                 }
             }
 
-            if (AnomalyContentEnabled() && hasAnomalyToShowAdvanced)
+            if (anomalyOn && hasAnomalyToShowAdvanced)
             {
                 if (hasAnomalyToShowBasic) currentY += gapHeight;
 
@@ -656,7 +659,7 @@ namespace CM_Semi_Random_Research
         private void DrawResearchButton(ref Rect drawRect, ResearchProjectDef projectDef, float costColumnWidth)
         {
             float animProgress = 1f;
-            if (animationProgress.TryGetValue(projectDef.defName, out float progress))
+            if (animationProgress.TryGetValue(projectDef, out float progress))
                 animProgress = progress;
 
             if (animProgress <= 0.01f)

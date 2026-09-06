@@ -103,14 +103,40 @@ namespace CM_Semi_Random_Research
             return null;
         }
 
-        private static string GetProjectCostText(ResearchProjectDef project)
+        // "889/13,840" is rebuilt for every visible card on every pass of OnGUI, which is dozens of
+        // formatted strings a frame for a value that cannot change more than once a game tick.
+        // Keyed on the tick, so the label still updates as fast as the number behind it does.
+        private readonly Dictionary<ResearchProjectDef, string> costTextCache =
+            new Dictionary<ResearchProjectDef, string>();
+        private int costTextCacheTick = int.MinValue;
+
+        private void InvalidateCostTextCache()
+        {
+            costTextCache.Clear();
+            costTextCacheTick = int.MinValue;
+        }
+
+        private string GetProjectCostText(ResearchProjectDef project)
         {
             if (project == null)
                 return string.Empty;
 
-            return project.ProgressApparent > 0
+            int tick = Find.TickManager?.TicksGame ?? 0;
+            if (tick != costTextCacheTick)
+            {
+                costTextCache.Clear();
+                costTextCacheTick = tick;
+            }
+            else if (costTextCache.TryGetValue(project, out string cached))
+            {
+                return cached;
+            }
+
+            string text = project.ProgressApparent > 0
                 ? $"{project.ProgressApparent:N0}/{project.CostApparent:N0}"
                 : project.CostApparent.ToString("N0");
+            costTextCache[project] = text;
+            return text;
         }
 
         private float MeasureCostColumnWidth(IEnumerable<ResearchProjectDef> projects)

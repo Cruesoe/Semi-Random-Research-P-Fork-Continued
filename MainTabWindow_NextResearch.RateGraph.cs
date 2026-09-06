@@ -196,7 +196,8 @@ namespace CM_Semi_Random_Research
 
                 float statsLineHeight = 38f;
                 Rect statsRowRect = new Rect(rect.x, currentY, rect.width, statsLineHeight);
-                Widgets.DrawBoxSolid(statsRowRect, new Color(0.1f, 0.1f, 0.1f, 0.2f));
+                if (IsRepaint)
+                    Widgets.DrawBoxSolid(statsRowRect, new Color(0.1f, 0.1f, 0.1f, 0.2f));
 
                 float sectionWidth = statsRowRect.width / 3;
 

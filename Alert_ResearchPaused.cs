@@ -17,7 +17,7 @@ namespace CM_Semi_Random_Research
             if (Current.ProgramState != ProgramState.Playing || Find.World == null)
                 return false;
 
-            ResearchTracker tracker = Find.World.GetComponent<ResearchTracker>();
+            ResearchTracker tracker = SemiRandomResearchUtility.Tracker;
             return tracker != null && tracker.ResearchPaused;
         }
 

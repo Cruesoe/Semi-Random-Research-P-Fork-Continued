@@ -25,6 +25,7 @@ namespace CM_Semi_Random_Research
         public const string SleekPackageId = "squishyjellyfish.SleekResearchTab";
         public const string NicePackageId = "Andromeda.NiceResearchTab";
         public const string NiceWindowTypeName = "NiceResearchTab.MainTabWindow_ResearchTree";
+        public const string OrganizedPackageId = "cruesoe.research.organized";
 
         private static Type cachedNodeResearchWindowType;
         private static Type cachedYartWindowType;
@@ -44,32 +45,52 @@ namespace CM_Semi_Random_Research
         private static MainButtonDef ResearchMainButton =>
             DefDatabase<MainButtonDef>.GetNamedSilentFail("Research");
 
+        // GetActiveModWithIdentifier walks the whole active mod list comparing package id strings.
+        // The set of active mods cannot change without restarting the game, and the footer, the
+        // progress bar and the era tooltips ask these questions several times per frame, so each
+        // answer is resolved once.
+        private static bool? nodeResearchInstalledCached;
+        private static bool? yartInstalledCached;
+        private static bool? sleekInstalledCached;
+        private static bool? niceResearchTabInstalledCached;
+        private static bool? organizedInstalledCached;
+
+        private static bool IsInstalled(ref bool? cache, string packageId)
+        {
+            if (cache == null)
+                cache = ModLister.GetActiveModWithIdentifier(packageId) != null;
+            return cache.Value;
+        }
+
         public static Type NodeResearchWindowType =>
             cachedNodeResearchWindowType
             ?? (cachedNodeResearchWindowType = AccessTools.TypeByName(WindowTypeName));
 
         public static bool NodeResearchInstalled =>
-            ModLister.GetActiveModWithIdentifier(PackageId) != null;
+            IsInstalled(ref nodeResearchInstalledCached, PackageId);
 
         public static Type YartWindowType =>
             cachedYartWindowType
             ?? (cachedYartWindowType = AccessTools.TypeByName(YartWindowTypeName));
 
         public static bool YartInstalled =>
-            ModLister.GetActiveModWithIdentifier(YartPackageId) != null;
+            IsInstalled(ref yartInstalledCached, YartPackageId);
 
         public static bool SleekInstalled =>
-            ModLister.GetActiveModWithIdentifier(SleekPackageId) != null;
+            IsInstalled(ref sleekInstalledCached, SleekPackageId);
 
         public static Type NiceWindowType =>
             cachedNiceWindowType
             ?? (cachedNiceWindowType = AccessTools.TypeByName(NiceWindowTypeName));
 
         public static bool NiceResearchTabInstalled =>
-            ModLister.GetActiveModWithIdentifier(NicePackageId) != null;
+            IsInstalled(ref niceResearchTabInstalledCached, NicePackageId);
+
+        public static bool OrganizedInstalled =>
+            IsInstalled(ref organizedInstalledCached, OrganizedPackageId);
 
         public static bool AnyTreeInstalled =>
-            NodeResearchInstalled || YartInstalled || SleekInstalled || NiceResearchTabInstalled;
+            NodeResearchInstalled || YartInstalled || SleekInstalled || NiceResearchTabInstalled || OrganizedInstalled;
 
         public static void SetUsingNodeResearch(bool value)
         {
@@ -295,6 +316,27 @@ namespace CM_Semi_Random_Research
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
 
+        public static void SwitchToOrganized(Window windowToClose)
+        {
+            if (!OrganizedInstalled)
+            {
+                return;
+            }
+
+            SetUsingNodeResearch(false);
+            if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.featureEnabled)
+            {
+                ShowHandoverMessage("CM_Semi_Random_Research_Handover_Organized_Restricted".Translate());
+            }
+            else
+            {
+                ShowHandoverMessage("CM_Semi_Random_Research_Handover_Organized".Translate());
+            }
+
+            OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose);
+            SoundDefOf.TabOpen.PlayOneShotOnCamera();
+        }
+
         public static bool IsTreeAvailable(PreferredResearchTree tree)
         {
             switch (tree)
@@ -307,13 +349,16 @@ namespace CM_Semi_Random_Research
                     return SleekInstalled;
                 case PreferredResearchTree.NiceResearchTab:
                     return NiceResearchTabInstalled && NiceWindowType != null;
+                case PreferredResearchTree.Organized:
+                    return OrganizedInstalled;
                 default:
                     return false;
             }
         }
 
-        // Node Research first, then YART, then Sleek, then Nice Research Tab, then vanilla.
-        // Nice Research Tab is last so installing it never changes an existing preference.
+        // Node Research first, then YART, then Sleek, then Nice Research Tab, then Research:
+        // Organized, then vanilla. Each new addition goes last so installing it never changes
+        // an existing preference.
         public static PreferredResearchTree GetEffectivePreferredTree()
         {
             PreferredResearchTree preferred = SemiRandomResearchMod.settings != null
@@ -331,6 +376,8 @@ namespace CM_Semi_Random_Research
                 return PreferredResearchTree.Sleek;
             if (IsTreeAvailable(PreferredResearchTree.NiceResearchTab))
                 return PreferredResearchTree.NiceResearchTab;
+            if (IsTreeAvailable(PreferredResearchTree.Organized))
+                return PreferredResearchTree.Organized;
 
             return PreferredResearchTree.NodeResearch;
         }
@@ -364,6 +411,13 @@ namespace CM_Semi_Random_Research
                     if (IsTreeAvailable(PreferredResearchTree.NiceResearchTab))
                     {
                         SwitchToNiceResearchTab(windowToClose);
+                        return;
+                    }
+                    break;
+                case PreferredResearchTree.Organized:
+                    if (IsTreeAvailable(PreferredResearchTree.Organized))
+                    {
+                        SwitchToOrganized(windowToClose);
                         return;
                     }
                     break;
@@ -454,20 +508,51 @@ namespace CM_Semi_Random_Research
 
     public static class NodeResearch
     {
+        // Mod extensions are fixed once defs are loaded, so the two tags are resolved per def and
+        // then answered from the cache - the offer list asks about both for every card it rebuilds.
+        private const int TagFoundation = 1;
+        private const int TagEmergence = 2;
+
+        private static readonly Dictionary<ResearchProjectDef, int> tagCache =
+            new Dictionary<ResearchProjectDef, int>();
+
+        private static int GetTags(ResearchProjectDef def)
+        {
+            if (def == null)
+                return 0;
+            if (tagCache.TryGetValue(def, out int cached))
+                return cached;
+
+            int tags = 0;
+            List<DefModExtension> extensions = def.modExtensions;
+            if (extensions != null)
+            {
+                for (int i = 0; i < extensions.Count; i++)
+                {
+                    DefModExtension extension = extensions[i];
+                    if (extension == null)
+                        continue;
+
+                    string name = extension.GetType().Name;
+                    if (name == "ResearchFoundationExtension")
+                        tags |= TagFoundation;
+                    else if (name == "EmergenceExtension")
+                        tags |= TagEmergence;
+                }
+            }
+
+            tagCache[def] = tags;
+            return tags;
+        }
+
         public static bool IsFoundationTech(ResearchProjectDef def)
         {
-            if (def == null || def.modExtensions == null)
-                return false;
-
-            return def.modExtensions.Any(ext => ext.GetType().Name == "ResearchFoundationExtension");
+            return (GetTags(def) & TagFoundation) != 0;
         }
 
         public static bool IsEmergenceTech(ResearchProjectDef def)
         {
-            if (def == null || def.modExtensions == null)
-                return false;
-
-            return def.modExtensions.Any(ext => ext.GetType().Name == "EmergenceExtension");
+            return (GetTags(def) & TagEmergence) != 0;
         }
     }
 }

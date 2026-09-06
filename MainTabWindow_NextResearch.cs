@@ -47,14 +47,20 @@ namespace CM_Semi_Random_Research
 
         private KnowledgeCategoryDef rerollButtonType = null;
 
-        private Dictionary<string, float> animationProgress = new Dictionary<string, float>();
+        // Keyed on the def rather than its defName: the offer cards look their animation progress
+        // up every frame, and hashing a string for each one is pure overhead.
+        private Dictionary<ResearchProjectDef, float> animationProgress = new Dictionary<ResearchProjectDef, float>();
         private float lastRerollTime = -1f;
         private const float ANIMATION_DURATION = 0.25f; // Quarter second per item
         private const float ITEM_DELAY = 0.05f; // Very short delay between items
-        private List<string> animationOrder = new List<string>();
+        private List<ResearchProjectDef> animationOrder = new List<ResearchProjectDef>();
 
-        private Dictionary<TechLevel, float> techLevelHeaderProgress = new Dictionary<TechLevel, float>();
-        private Dictionary<TechLevel, (int completed, int total, float remainingCost, float spentCost)> cachedTechLevelStats;
+        // TechLevel is a small contiguous enum, so both of these are flat arrays indexed by it.
+        // As dictionaries they cost two lookups per research def per rebuild, which is a scan of
+        // the whole database once a second while the tab is open.
+        internal static readonly int TechLevelCount = (int)TechLevel.Archotech + 1;
+        private float[] techLevelHeaderProgress = new float[TechLevelCount];
+        private (int completed, int total, float remainingCost, float spentCost)[] cachedTechLevelStats;
         private TechLevel cachedWorldTech = TechLevel.Undefined;
         private int cachedOffersRevision = -1;
         private Dictionary<ResearchProjectDef, Def> cachedFirstUnlockable = new Dictionary<ResearchProjectDef, Def>();
@@ -461,6 +467,10 @@ namespace CM_Semi_Random_Research
 
         public MainTabWindow_NextResearch()
         {
+            // Fully faded in until a reroll says otherwise. As a dictionary a missing entry read
+            // as 1f; an array starts at 0f, which would hide every tech level header.
+            SetAllHeaderProgress(1f);
+
             this.def = MainButtonDefOf.Research;
             this.doCloseX = false;
             this.doCloseButton = false;
@@ -478,8 +488,8 @@ namespace CM_Semi_Random_Research
             selectionBeforeHistory = null;
 
             currentRandomSeed = Rand.Int;
-            cachedTracker = Current.Game.World.GetComponent<ResearchTracker>();
-            cachedRateTracker = Current.Game.World.GetComponent<ResearchRateTracker>();
+            cachedTracker = SemiRandomResearchUtility.Tracker;
+            cachedRateTracker = SemiRandomResearchUtility.RateTracker;
 
             // Arms auto research. Until the tab has been opened once, a freshly started or
             // freshly loaded colony picks nothing on its own.
@@ -505,13 +515,7 @@ namespace CM_Semi_Random_Research
 
                 RebuildAnimationOrder(currentAvailableProjects, 1f);
 
-                techLevelHeaderProgress[TechLevel.Animal] = 1f;
-                techLevelHeaderProgress[TechLevel.Neolithic] = 1f;
-                techLevelHeaderProgress[TechLevel.Medieval] = 1f;
-                techLevelHeaderProgress[TechLevel.Industrial] = 1f;
-                techLevelHeaderProgress[TechLevel.Spacer] = 1f;
-                techLevelHeaderProgress[TechLevel.Ultra] = 1f;
-                techLevelHeaderProgress[TechLevel.Archotech] = 1f;
+                SetAllHeaderProgress(1f);
 
                 RebuildTechLevelStats();
                 RefreshWorldTech();
@@ -597,34 +601,27 @@ namespace CM_Semi_Random_Research
 
                 for (int i = 0; i < animationOrder.Count; i++)
                 {
-                    string defName = animationOrder[i];
+                    ResearchProjectDef project = animationOrder[i];
                     float startTime = i * ITEM_DELAY;
                     float endTime = startTime + ANIMATION_DURATION;
 
                     if (timeSinceReroll >= startTime && timeSinceReroll <= endTime)
                     {
-                        animationProgress[defName] = (timeSinceReroll - startTime) / ANIMATION_DURATION;
+                        animationProgress[project] = (timeSinceReroll - startTime) / ANIMATION_DURATION;
                         allComplete = false;
                     }
                     else if (timeSinceReroll < startTime)
                     {
-                        animationProgress[defName] = 0f;
+                        animationProgress[project] = 0f;
                         allComplete = false;
                     }
                     else
                     {
-                        animationProgress[defName] = 1f;
+                        animationProgress[project] = 1f;
                     }
                 }
 
-                float headerProgress = Mathf.Clamp01(timeSinceReroll / ANIMATION_DURATION * 1.2f);
-                techLevelHeaderProgress[TechLevel.Animal] = headerProgress;
-                techLevelHeaderProgress[TechLevel.Neolithic] = headerProgress;
-                techLevelHeaderProgress[TechLevel.Medieval] = headerProgress;
-                techLevelHeaderProgress[TechLevel.Industrial] = headerProgress;
-                techLevelHeaderProgress[TechLevel.Spacer] = headerProgress;
-                techLevelHeaderProgress[TechLevel.Ultra] = headerProgress;
-                techLevelHeaderProgress[TechLevel.Archotech] = headerProgress;
+                SetAllHeaderProgress(Mathf.Clamp01(timeSinceReroll / ANIMATION_DURATION * 1.2f));
 
                 if (allComplete)
                     lastRerollTime = -1f;
@@ -675,33 +672,43 @@ namespace CM_Semi_Random_Research
                 currentAvailableProjects.Add(source[i]);
         }
 
+        // The tech level bands all animate together, so they are only ever written as a set.
+        private void SetAllHeaderProgress(float progress)
+        {
+            for (int i = 0; i < techLevelHeaderProgress.Length; i++)
+                techLevelHeaderProgress[i] = progress;
+        }
+
+        private float GetHeaderProgress(TechLevel techLevel)
+        {
+            int index = (int)techLevel;
+            return index >= 0 && index < techLevelHeaderProgress.Length ? techLevelHeaderProgress[index] : 1f;
+        }
+
+        private static readonly Comparison<ResearchProjectDef> AnimationOrderComparison = (a, b) =>
+        {
+            int tech = ((int)a.techLevel).CompareTo((int)b.techLevel);
+            if (tech != 0)
+                return tech;
+            return a.CostApparent.CompareTo(b.CostApparent);
+        };
+
         private void RebuildAnimationOrder(IEnumerable<ResearchProjectDef> projects, float initialProgress)
         {
             animationOrder.Clear();
             if (projects == null)
                 return;
 
-            List<ResearchProjectDef> sorted = new List<ResearchProjectDef>();
             foreach (ResearchProjectDef projectDef in projects)
             {
                 if (projectDef != null)
-                    sorted.Add(projectDef);
+                    animationOrder.Add(projectDef);
             }
 
-            sorted.Sort((a, b) =>
-            {
-                int tech = ((int)a.techLevel).CompareTo((int)b.techLevel);
-                if (tech != 0)
-                    return tech;
-                return a.CostApparent.CompareTo(b.CostApparent);
-            });
+            animationOrder.Sort(AnimationOrderComparison);
 
-            for (int i = 0; i < sorted.Count; i++)
-            {
-                string defName = sorted[i].defName;
-                animationOrder.Add(defName);
-                animationProgress[defName] = initialProgress;
-            }
+            for (int i = 0; i < animationOrder.Count; i++)
+                animationProgress[animationOrder[i]] = initialProgress;
         }
 
         public override void DoWindowContents(Rect canvas)
@@ -1006,15 +1013,12 @@ namespace CM_Semi_Random_Research
             if (lastRerollTime <= 0f)
                 return;
 
-            foreach (string defName in animationOrder)
+            for (int i = 0; i < animationOrder.Count; i++)
             {
-                animationProgress[defName] = 1f;
+                animationProgress[animationOrder[i]] = 1f;
             }
 
-            foreach (TechLevel techLevel in Enum.GetValues(typeof(TechLevel)))
-            {
-                techLevelHeaderProgress[techLevel] = 1f;
-            }
+            SetAllHeaderProgress(1f);
 
             lastRerollTime = -1f;
         }

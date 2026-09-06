@@ -325,12 +325,26 @@ namespace CM_Semi_Random_Research
 
         private void DrawResearchBenchFacilityRequirement(ThingDef requiredFacility, CompAffectedByFacilities bestMatchingBench, ResearchProjectDef project, ref Rect rect)
         {
+            // Plain loop: this is drawn every frame, and List.Find with these two capturing
+            // lambdas allocated a closure and a delegate per facility per pass.
             Thing thing = null;
             Thing thing2 = null;
             if (bestMatchingBench != null)
             {
-                thing = bestMatchingBench.LinkedFacilitiesListForReading.Find((Thing x) => x.def == requiredFacility);
-                thing2 = bestMatchingBench.LinkedFacilitiesListForReading.Find((Thing x) => x.def == requiredFacility && bestMatchingBench.IsFacilityActive(x));
+                List<Thing> linked = bestMatchingBench.LinkedFacilitiesListForReading;
+                for (int i = 0; i < linked.Count; i++)
+                {
+                    Thing facility = linked[i];
+                    if (facility.def != requiredFacility)
+                        continue;
+
+                    if (thing == null)
+                        thing = facility;
+                    if (thing2 == null && bestMatchingBench.IsFacilityActive(facility))
+                        thing2 = facility;
+                    if (thing2 != null)
+                        break;
+                }
             }
             GUI.color = FulfilledPrerequisiteColor;
             string text = SafeDefLabel(requiredFacility);
@@ -344,24 +358,66 @@ namespace CM_Semi_Random_Research
 
         private float GetResearchBenchRequirementsScore(Building_ResearchBench bench, List<ThingDef> requiredFacilities)
         {
+            // The comp lookup was repeated per required facility, and each of the two Find calls
+            // built a closure over both loop variables. One lookup, plain loops.
+            CompAffectedByFacilities benchComp = bench.GetComp<CompAffectedByFacilities>();
+            if (benchComp == null)
+                return 0f;
+
+            List<Thing> linkedFacilities = benchComp.LinkedFacilitiesListForReading;
             float num = 0f;
             for (int i = 0; i < requiredFacilities.Count; i++)
             {
-                CompAffectedByFacilities benchComp = bench.GetComp<CompAffectedByFacilities>();
-                if (benchComp != null)
+                ThingDef required = requiredFacilities[i];
+                bool present = false;
+                bool active = false;
+                for (int j = 0; j < linkedFacilities.Count; j++)
                 {
-                    List<Thing> linkedFacilitiesListForReading = benchComp.LinkedFacilitiesListForReading;
-                    if (linkedFacilitiesListForReading.Find((Thing x) => x.def == requiredFacilities[i] && benchComp.IsFacilityActive(x)) != null)
+                    Thing facility = linkedFacilities[j];
+                    if (facility.def != required)
+                        continue;
+
+                    present = true;
+                    if (benchComp.IsFacilityActive(facility))
                     {
-                        num += 1f;
-                    }
-                    else if (linkedFacilitiesListForReading.Find((Thing x) => x.def == requiredFacilities[i]) != null)
-                    {
-                        num += 0.6f;
+                        active = true;
+                        break;
                     }
                 }
+
+                if (active)
+                    num += 1f;
+                else if (present)
+                    num += 0.6f;
             }
             return num;
+        }
+
+        // Package id to expansion, resolved once per mod. The Find below ran every frame with a
+        // fresh closure over the project just to draw one icon.
+        private static readonly Dictionary<string, ExpansionDef> expansionByPackageId =
+            new Dictionary<string, ExpansionDef>();
+
+        private static ExpansionDef ExpansionForPackageId(string packageId)
+        {
+            if (packageId == null)
+                return null;
+            if (expansionByPackageId.TryGetValue(packageId, out ExpansionDef cached))
+                return cached;
+
+            ExpansionDef found = null;
+            List<ExpansionDef> expansions = ModLister.AllExpansions;
+            for (int i = 0; i < expansions.Count; i++)
+            {
+                if (expansions[i].linkedMod == packageId)
+                {
+                    found = expansions[i];
+                    break;
+                }
+            }
+
+            expansionByPackageId[packageId] = found;
+            return found;
         }
 
         private float DrawContentSource(Rect rect, ResearchProjectDef project)
@@ -373,7 +429,7 @@ namespace CM_Semi_Random_Research
             float yMin = rect.yMin;
             TaggedString taggedString = "Stat_Source_Label".Translate() + ":  " + project.modContentPack.Name;
             Widgets.LabelCacheHeight(ref rect, taggedString.Colorize(Color.grey));
-            ExpansionDef expansionDef = ModLister.AllExpansions.Find((ExpansionDef e) => e.linkedMod == project.modContentPack.PackageId);
+            ExpansionDef expansionDef = ExpansionForPackageId(project.modContentPack.PackageId);
             if (expansionDef != null)
             {
                 GUI.DrawTexture(new Rect(Text.CalcSize(taggedString).x + 4f, rect.y, 20f, 20f), expansionDef.IconFromStatus);

@@ -67,64 +67,81 @@ namespace CM_Semi_Random_Research
             }
         }
         
+        // Scratch buffers, reused between samples rather than reallocated every hour of game time.
+        private readonly List<ResearchProjectDef> activeProjectsBuffer = new List<ResearchProjectDef>();
+        private readonly HashSet<string> activeDefNamesBuffer = new HashSet<string>();
+        private readonly List<string> trackedDefNamesBuffer = new List<string>();
+        private readonly Dictionary<string, ResearchProjectDef> defsByName = new Dictionary<string, ResearchProjectDef>();
+
         // Take a sample of the current research rate for all active projects
         private void SampleCurrentResearchRate()
         {
             ResearchManager researchManager = Find.ResearchManager;
             if (researchManager == null) return;
-            
+
             // Find all active research projects
-            List<ResearchProjectDef> activeProjects = new List<ResearchProjectDef>();
-            
+            List<ResearchProjectDef> activeProjects = activeProjectsBuffer;
+            activeProjects.Clear();
+            activeDefNamesBuffer.Clear();
+
             // Get the standard active project using the GetProject method
             ResearchProjectDef currentProject = researchManager.GetProject();
             if (currentProject != null)
             {
                 activeProjects.Add(currentProject);
             }
-            
+
             // Get any projects from Semi-Random Research mod (using knowledge categories)
-            ResearchTracker researchTracker = Current.Game.World.GetComponent<ResearchTracker>();
+            ResearchTracker researchTracker = SemiRandomResearchUtility.Tracker;
             if (researchTracker != null && researchTracker.CurrentProject != null)
             {
-                foreach (var proj in researchTracker.CurrentProject)
+                List<ResearchProjectDef> tracked = researchTracker.CurrentProject;
+                for (int i = 0; i < tracked.Count; i++)
                 {
+                    ResearchProjectDef proj = tracked[i];
                     if (proj != null && !activeProjects.Contains(proj))
                     {
                         activeProjects.Add(proj);
                     }
                 }
             }
-            
+
             // Total progress change for this sample
             float totalProgressChange = 0f;
-            
+
             // Process each active project
-            foreach (var project in activeProjects)
+            for (int i = 0; i < activeProjects.Count; i++)
             {
+                ResearchProjectDef project = activeProjects[i];
                 float progressChange = SampleProjectRate(project);
                 totalProgressChange += progressChange;
-                
+
                 // Add to previously sampled projects
                 previousProjectDefNames.Add(project.defName);
+                activeDefNamesBuffer.Add(project.defName);
             }
-            
+
             // Compute global rate and add it to the global samples, including idle hours
             // so the 10-day average matches the per-project card (which records zeros).
             float globalRatePerDay = totalProgressChange * SAMPLES_PER_DAY;
             globalRateSamples.Add(globalRatePerDay);
             TrimSamples(globalRateSamples);
-            
+
             // Also continue tracking previously researched projects
-            // even if they're not currently selected
-            foreach (string projectDefName in previousProjectDefNames.ToList())
+            // even if they're not currently selected. The names are copied out first because the
+            // loop can remove finished projects from the set it is walking.
+            trackedDefNamesBuffer.Clear();
+            trackedDefNamesBuffer.AddRange(previousProjectDefNames);
+            for (int i = 0; i < trackedDefNamesBuffer.Count; i++)
             {
+                string projectDefName = trackedDefNamesBuffer[i];
+
                 // Skip if already processed as active
-                if (activeProjects.Any(p => p.defName == projectDefName))
+                if (activeDefNamesBuffer.Contains(projectDefName))
                     continue;
-                
+
                 // Find the project def
-                ResearchProjectDef projectDef = DefDatabase<ResearchProjectDef>.GetNamed(projectDefName, false);
+                ResearchProjectDef projectDef = ProjectByName(projectDefName);
                 if (projectDef != null && !projectDef.IsFinished)
                 {
                     // Add an empty sample to maintain continuous data
@@ -147,6 +164,18 @@ namespace CM_Semi_Random_Research
             }
         }
         
+        // Name lookups are memoised: DefDatabase.GetNamed was called once per tracked project on
+        // every sample, and the tracked list grows to every project the colony has ever started.
+        private ResearchProjectDef ProjectByName(string defName)
+        {
+            if (defsByName.TryGetValue(defName, out ResearchProjectDef cached))
+                return cached;
+
+            ResearchProjectDef projectDef = DefDatabase<ResearchProjectDef>.GetNamed(defName, false);
+            defsByName[defName] = projectDef;
+            return projectDef;
+        }
+
         // Sample the rate for a specific project and return the progress change
         private float SampleProjectRate(ResearchProjectDef project)
         {
