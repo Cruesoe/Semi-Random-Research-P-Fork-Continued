@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <CM_Semi_Random_Research_HistoryToSnoozedTip>Show snoozed projects that will not be offered.</CM_Semi_Random_Research_HistoryToSnoozedTip>
+  <CM_Semi_Random_Research_SnoozedHeader>Snoozed projects</CM_Semi_Random_Research_SnoozedHeader>
+  <CM_Semi_Random_Research_SnoozedEmpty>No snoozed projects. Right-click an offered project to snooze it.</CM_Semi_Random_Research_SnoozedEmpty>
+  <CM_Semi_Random_Research_SnoozedBackTip>Return to the current and available projects.</CM_Semi_Random_Research_SnoozedBackTip>
+  <CM_Semi_Random_Research_SnoozeTip>Right-click to snooze this project. It will not be offered again until you unsnooze it.</CM_Semi_Random_Research_SnoozeTip>
+  <CM_Semi_Random_Research_UnsnoozeTip>Click to unsnooze this project and allow it to be offered again.</CM_Semi_Random_Research_UnsnoozeTip>
+  <CM_Semi_Random_Research_Snoozed>Snoozed {0}. It will not be offered again.</CM_Semi_Random_Research_Snoozed>
+  <CM_Semi_Random_Research_Unsnoozed>Unsnoozed {0}.</CM_Semi_Random_Research_Unsnoozed>
+  <CM_Semi_Random_Research_SnoozeMissing>That project no longer exists.</CM_Semi_Random_Research_SnoozeMissing>
+  <CM_Semi_Random_Research_SnoozeFinished>{0} is already finished.</CM_Semi_Random_Research_SnoozeFinished>
+  <CM_Semi_Random_Research_SnoozeFoundation>{0} is a Node Research foundation and cannot be snoozed.</CM_Semi_Random_Research_SnoozeFoundation>
+  <CM_Semi_Random_Research_SnoozeEmergence>{0} is an emergence project and cannot be snoozed.</CM_Semi_Random_Research_SnoozeEmergence>
+</LanguageData>
