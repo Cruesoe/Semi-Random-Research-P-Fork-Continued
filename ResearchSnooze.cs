@@ -160,6 +160,23 @@ namespace CM_Semi_Random_Research
     [HarmonyPatch(nameof(ResearchTracker.GetCurrentlyAvailableProjects))]
     public static class ResearchTracker_GetCurrentlyAvailableProjects_Snooze
     {
+        // currentAvailableProjects still holding a snoozed def is what stops the slot from
+        // being backfilled: the original method sizes "how many more do I need" off that field,
+        // so a Postfix stripping only __result shrinks the list instead of replacing the entry.
+        // Removing the snoozed defs here, before the original runs, makes it see the gap.
+        private static readonly FieldInfo currentAvailableProjectsField =
+            AccessTools.Field(typeof(ResearchTracker), "currentAvailableProjects");
+
+        public static void Prefix(ResearchTracker __instance)
+        {
+            ResearchSnoozeTracker snooze = ResearchSnoozeTracker.Get();
+            if (snooze == null || currentAvailableProjectsField == null)
+                return;
+
+            List<ResearchProjectDef> current = currentAvailableProjectsField.GetValue(__instance) as List<ResearchProjectDef>;
+            current?.RemoveAll(snooze.IsSnoozed);
+        }
+
         public static void Postfix(List<ResearchProjectDef> __result)
         {
             ResearchSnoozeTracker snooze = ResearchSnoozeTracker.Get();

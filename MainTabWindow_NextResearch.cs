@@ -26,13 +26,31 @@ namespace CM_Semi_Random_Research
 
         private static readonly Color FulfilledPrerequisiteColor = Color.green;
 
-        private static readonly Texture2D SettingsIcon = ContentFinder<Texture2D>.Get("UI/Settings", true);
-        private static readonly Texture2D PlusIcon = ContentFinder<Texture2D>.Get("UI/Plus", true);
-        private static readonly Texture2D TotalIcon = ContentFinder<Texture2D>.Get("UI/Total", true);
-        private static readonly Texture2D PacingIcon = ContentFinder<Texture2D>.Get("UI/Pacing", true);
-        private static readonly Texture2D HistoryIcon = ContentFinder<Texture2D>.Get("UI/History", true);
-        private static readonly Texture2D ToggleOnIcon = ContentFinder<Texture2D>.Get("UI/ToggleOn", true);
-        private static readonly Texture2D ToggleOffIcon = ContentFinder<Texture2D>.Get("UI/ToggleOff", true);
+        // Loaded lazily by EnsureIconsLoaded() rather than here: Harmony's PatchAll() JIT-compiles
+        // patch methods that statically reference this class from a background thread during mod
+        // construction, which forces this beforefieldinit type's static ctor to run there too -
+        // triggering "loaded from a different thread" errors if the textures load eagerly.
+        private static Texture2D SettingsIcon;
+        private static Texture2D PlusIcon;
+        private static Texture2D TotalIcon;
+        private static Texture2D PacingIcon;
+        private static Texture2D HistoryIcon;
+        private static Texture2D ToggleOnIcon;
+        private static Texture2D ToggleOffIcon;
+
+        private static void EnsureIconsLoaded()
+        {
+            if (SettingsIcon != null)
+                return;
+
+            SettingsIcon = ContentFinder<Texture2D>.Get("UI/Settings", true);
+            PlusIcon = ContentFinder<Texture2D>.Get("UI/Plus", true);
+            TotalIcon = ContentFinder<Texture2D>.Get("UI/Total", true);
+            PacingIcon = ContentFinder<Texture2D>.Get("UI/Pacing", true);
+            HistoryIcon = ContentFinder<Texture2D>.Get("UI/History", true);
+            ToggleOnIcon = ContentFinder<Texture2D>.Get("UI/ToggleOn", true);
+            ToggleOffIcon = ContentFinder<Texture2D>.Get("UI/ToggleOff", true);
+        }
 
         private static readonly Color AutoToggleOnColor = new Color(0.35f, 0.8f, 0.42f);
 
@@ -63,6 +81,7 @@ namespace CM_Semi_Random_Research
         private (int completed, int total, float remainingCost, float spentCost)[] cachedTechLevelStats;
         private TechLevel cachedWorldTech = TechLevel.Undefined;
         private int cachedOffersRevision = -1;
+        private int cachedCompletionRevision = -1;
         private Dictionary<ResearchProjectDef, Def> cachedFirstUnlockable = new Dictionary<ResearchProjectDef, Def>();
         private Building_ResearchBench cachedMatchingBench;
         private ResearchProjectDef cachedMatchingBenchProject;
@@ -520,6 +539,7 @@ namespace CM_Semi_Random_Research
                 RebuildTechLevelStats();
                 RefreshWorldTech();
                 cachedOffersRevision = cachedTracker.OffersRevision;
+                cachedCompletionRevision = cachedTracker.CompletionRevision;
             }
 
             cachedFirstUnlockable.Clear();
@@ -579,6 +599,15 @@ namespace CM_Semi_Random_Research
                 InvalidateLeftColumnCache();
                 RebuildLeftColumnLists(researchTracker);
                 WarmUnlockCaches();
+            }
+
+            // Driven by real-time WindowUpdate rather than the tick-throttled RefreshTechLevelStats
+            // below, so a completion that auto-pauses the game (frozen ticks) still refreshes the
+            // progress bar right away instead of waiting for the window to be reopened.
+            if (researchTracker.CompletionRevision != cachedCompletionRevision)
+            {
+                cachedCompletionRevision = researchTracker.CompletionRevision;
+                RebuildTechLevelStats();
             }
 
             // The history view intentionally keeps a finished project selected so the right
@@ -716,6 +745,8 @@ namespace CM_Semi_Random_Research
             EventType eventType = Event.current.type;
             if (eventType == EventType.Ignore || eventType == EventType.MouseMove)
                 return;
+
+            EnsureIconsLoaded();
 
             try
             {
