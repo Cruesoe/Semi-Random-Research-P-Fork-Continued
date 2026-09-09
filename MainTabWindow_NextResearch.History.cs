@@ -7,9 +7,6 @@ using Verse.Sound;
 
 namespace CM_Semi_Random_Research
 {
-    // The history view replaces the left column with the most recently finished projects.
-    // It is deliberately a snapshot: no scrolling, no grouping, no headers - just as many
-    // cards as fit, so a player who missed the completion letter can still see what landed.
     public partial class MainTabWindow_NextResearch
     {
         private const float HistoryCardHeight = 48f;
@@ -54,8 +51,24 @@ namespace CM_Semi_Random_Research
             RefreshCanStartNow(Find.TickManager.TicksGame);
         }
 
+        private static bool RightClicked(Rect rect)
+        {
+            if (Event.current.type != EventType.MouseDown || Event.current.button != 1)
+                return false;
+            if (!Mouse.IsOver(rect))
+                return false;
+            Event.current.Use();
+            return true;
+        }
+
         private void DrawHistoryColumn(Rect leftRect)
         {
+            if (showingSnoozed)
+            {
+                DrawSnoozedColumn(leftRect);
+                return;
+            }
+
             List<ResearchHistoryEntry> history = drawTracker?.CompletedHistory;
 
             float footerPaddingTop = 12f;
@@ -89,7 +102,6 @@ namespace CM_Semi_Random_Research
                 {
                     int maxCards = Mathf.FloorToInt((listHeight + HistoryCardGap) / (HistoryCardHeight + HistoryCardGap));
                     int shown = Mathf.Clamp(maxCards, 0, history.Count);
-
                     float costColumnWidth = MeasureHistoryCostWidth(history, shown);
 
                     for (int i = 0; i < shown; i++)
@@ -97,9 +109,7 @@ namespace CM_Semi_Random_Research
                         ResearchHistoryEntry entry = history[i];
                         if (entry?.project == null)
                             continue;
-
                         CacheFirstUnlockable(entry.project);
-
                         Rect cardRect = new Rect(0f, currentY, listWidth, HistoryCardHeight);
                         DrawHistoryCard(cardRect, entry, costColumnWidth);
                         currentY += HistoryCardHeight + HistoryCardGap;
@@ -123,7 +133,6 @@ namespace CM_Semi_Random_Research
                 ResearchProjectDef project = history[i]?.project;
                 if (project == null)
                     continue;
-
                 width = Mathf.Max(width, Text.CalcSize(project.CostApparent.ToString("N0")).x + 12f);
             }
             return width;
@@ -132,9 +141,7 @@ namespace CM_Semi_Random_Research
         private void DrawHistoryFooter(Rect leftRect, float totalFooterHeight, float footerPaddingTop, float footerHeight)
         {
             Text.Font = GameFont.Small;
-
             Rect footerContainerRect = new Rect(leftRect.x, leftRect.yMax - totalFooterHeight, leftRect.width, totalFooterHeight);
-
             if (IsRepaint)
             {
                 GUI.color = new Color(0.4f, 0.4f, 0.4f, 0.6f);
@@ -165,24 +172,18 @@ namespace CM_Semi_Random_Research
         private void DrawHistoryCard(Rect drawRect, ResearchHistoryEntry entry, float costColumnWidth)
         {
             ResearchProjectDef projectDef = entry.project;
-
             Color originalColor = GUI.color;
             TextAnchor startingTextAnchor = Text.Anchor;
             Text.Font = GameFont.Small;
-
             drawRect.width -= 8f;
-
             bool isMouseOver = Mouse.IsOver(drawRect);
             bool isSelected = selectedProject == projectDef;
-
             CardRowLayout layout = ComputeCardRowLayout(drawRect, HistoryCardHeight, costColumnWidth);
-
             Color techColor = GetCategoryColor(projectDef);
             Color structureAccent = GetCardStructureAccent(projectDef, techColor);
             Color backgroundColor = isMouseOver
                 ? Color.Lerp(TexUI.AvailResearchColor, techColor, 0.4f)
                 : Color.Lerp(TexUI.AvailResearchColor, techColor, 0.3f);
-
             Color borderColor = structureAccent;
             if (isSelected)
                 borderColor = Color.Lerp(structureAccent, Color.white, 0.3f);
@@ -192,66 +193,44 @@ namespace CM_Semi_Random_Research
             if (IsRepaint)
             {
                 Widgets.DrawBoxSolid(drawRect, backgroundColor);
-
                 if (isMouseOver)
                 {
                     Color glowColor = structureAccent;
                     glowColor.a = 0.1f;
                     Widgets.DrawBoxSolid(drawRect.ExpandedBy(2f), glowColor);
                 }
-
                 GUI.color = borderColor;
                 Widgets.DrawBox(drawRect);
                 GUI.color = Color.white;
-
                 Def firstUnlockable = GetFirstUnlockable(projectDef);
                 if (firstUnlockable != null)
                 {
-                    try
-                    {
-                        Widgets.DefIcon(layout.IconRect, firstUnlockable);
-                    }
-                    catch (Exception)
-                    {
-                    }
+                    try { Widgets.DefIcon(layout.IconRect, firstUnlockable); }
+                    catch (Exception) { }
                 }
-
-                Widgets.DrawLine(
-                    new Vector2(layout.FirstSeparator.x, layout.FirstSeparator.y),
-                    new Vector2(layout.FirstSeparator.x, layout.FirstSeparator.yMax),
-                    structureAccent,
-                    1f);
-                Widgets.DrawLine(
-                    new Vector2(layout.SecondSeparator.x, layout.SecondSeparator.y),
-                    new Vector2(layout.SecondSeparator.x, layout.SecondSeparator.yMax),
-                    structureAccent,
-                    1f);
+                Widgets.DrawLine(new Vector2(layout.FirstSeparator.x, layout.FirstSeparator.y), new Vector2(layout.FirstSeparator.x, layout.FirstSeparator.yMax), structureAccent, 1f);
+                Widgets.DrawLine(new Vector2(layout.SecondSeparator.x, layout.SecondSeparator.y), new Vector2(layout.SecondSeparator.x, layout.SecondSeparator.yMax), structureAccent, 1f);
             }
 
             Rect nameRect = layout.NameRect;
             Rect topTextRect = new Rect(nameRect.x, nameRect.y + 2f, nameRect.width, 24f);
             Rect bottomTextRect = new Rect(nameRect.x, nameRect.y + 24f, nameRect.width, 20f);
-
             GUI.color = isMouseOver ? Color.white : new Color(0.95f, 0.95f, 0.95f);
             Text.Anchor = TextAnchor.LowerLeft;
             Widgets.Label(topTextRect, SafeLabel(projectDef));
-
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Tiny;
             GUI.color = new Color(0.72f, 0.72f, 0.72f);
             Widgets.Label(bottomTextRect, FormatCompletedAgo(entry.tick));
             Text.Font = GameFont.Small;
-
             GUI.color = originalColor;
             Text.Anchor = TextAnchor.MiddleCenter;
             bool wordWrap = Text.WordWrap;
             Text.WordWrap = false;
             Widgets.Label(layout.CostRect, projectDef.CostApparent.ToString("N0"));
             Text.WordWrap = wordWrap;
-
             if (isSelected && IsRepaint)
                 DrawTransparentBox(drawRect, Color.Lerp(structureAccent, Color.white, 0.3f), 2f);
-
             if (Clicked(drawRect))
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
@@ -259,10 +238,8 @@ namespace CM_Semi_Random_Research
                 WarmSelectedUnlocks();
                 RecacheMatchingBenchIfNeeded();
             }
-
             if (isMouseOver)
                 TooltipHandler.TipRegion(drawRect, SafeLabel(projectDef));
-
             GUI.color = originalColor;
             Text.Anchor = startingTextAnchor;
         }
@@ -272,10 +249,8 @@ namespace CM_Semi_Random_Research
             int ticksSince = Find.TickManager.TicksGame - completedTick;
             if (ticksSince < 0)
                 ticksSince = 0;
-
             if (ticksSince < GenDate.TicksPerHour)
                 return "CM_Semi_Random_Research_HistoryJustNow".Translate();
-
             return "CM_Semi_Random_Research_HistoryAgo".Translate(ticksSince.ToStringTicksToPeriod(false, false, false));
         }
 
@@ -288,7 +263,7 @@ namespace CM_Semi_Random_Research
 
         private void DrawSnoozedColumn(Rect leftRect)
         {
-            ResearchTracker tracker = drawTracker ?? cachedTracker;
+            ResearchSnoozeTracker tracker = ResearchSnoozeTracker.Get();
             List<ResearchProjectDef> snoozed = tracker != null
                 ? new List<ResearchProjectDef>(tracker.SnoozedProjects)
                 : new List<ResearchProjectDef>();
@@ -303,17 +278,14 @@ namespace CM_Semi_Random_Research
             {
                 float currentY = 0f;
                 float headerHeight = 40f;
-
                 Text.Font = GameFont.Medium;
                 GenUI.SetLabelAlign(TextAnchor.MiddleLeft);
                 Widgets.Label(new Rect(0f, currentY, leftRect.width, headerHeight), "CM_Semi_Random_Research_SnoozedHeader".Translate());
                 GenUI.ResetLabelAlign();
                 Text.Font = GameFont.Small;
                 currentY += headerHeight + 4f;
-
                 float listHeight = leftRect.height - totalFooterHeight - currentY;
                 float listWidth = leftRect.width;
-
                 if (snoozed.Count == 0)
                 {
                     GUI.color = new Color(0.7f, 0.7f, 0.7f);
@@ -324,13 +296,11 @@ namespace CM_Semi_Random_Research
                 {
                     int maxCards = Mathf.FloorToInt((listHeight + HistoryCardGap) / (HistoryCardHeight + HistoryCardGap));
                     int shown = Mathf.Clamp(maxCards, 0, snoozed.Count);
-
                     for (int i = 0; i < shown; i++)
                     {
                         ResearchProjectDef projectDef = snoozed[i];
                         if (projectDef == null)
                             continue;
-
                         CacheFirstUnlockable(projectDef);
                         Rect cardRect = new Rect(0f, currentY, listWidth, HistoryCardHeight);
                         DrawSnoozedCard(cardRect, projectDef, tracker);
@@ -342,18 +312,16 @@ namespace CM_Semi_Random_Research
             {
                 GUI.EndGroup();
             }
-
             DrawHistoryFooter(leftRect, totalFooterHeight, footerPaddingTop, footerHeight);
         }
 
-        private void DrawSnoozedCard(Rect drawRect, ResearchProjectDef projectDef, ResearchTracker tracker)
+        private void DrawSnoozedCard(Rect drawRect, ResearchProjectDef projectDef, ResearchSnoozeTracker tracker)
         {
             Color originalColor = GUI.color;
             TextAnchor startingTextAnchor = Text.Anchor;
             bool isMouseOver = Mouse.IsOver(drawRect);
             Color techColor = GetCategoryColor(projectDef);
             Color structureAccent = GetCardStructureAccent(projectDef, techColor);
-
             if (IsRepaint)
             {
                 Widgets.DrawBoxSolid(drawRect, Color.Lerp(TexUI.AvailResearchColor, techColor, 0.25f));
@@ -361,23 +329,19 @@ namespace CM_Semi_Random_Research
                 Widgets.DrawBox(drawRect);
                 GUI.color = Color.white;
             }
-
             Text.Font = GameFont.Small;
             Text.Anchor = TextAnchor.MiddleLeft;
             Widgets.Label(new Rect(drawRect.x + 8f, drawRect.y, drawRect.width - 16f, drawRect.height), SafeLabel(projectDef));
-
             if (RightClicked(drawRect) || Clicked(drawRect))
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 tracker?.Unsnooze(projectDef);
-                CopyAvailableProjects(tracker?.PeekAvailableProjects());
+                CopyAvailableProjects((drawTracker ?? cachedTracker)?.PeekAvailableProjects());
                 InvalidateLeftColumnCache();
                 Messages.Message("CM_Semi_Random_Research_Unsnoozed".Translate(SafeLabel(projectDef)), MessageTypeDefOf.NeutralEvent, false);
             }
-
             if (isMouseOver)
                 TooltipHandler.TipRegion(drawRect, "CM_Semi_Random_Research_UnsnoozeTip".Translate());
-
             GUI.color = originalColor;
             Text.Anchor = startingTextAnchor;
         }
