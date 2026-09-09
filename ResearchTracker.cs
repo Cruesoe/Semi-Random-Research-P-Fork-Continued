@@ -57,6 +57,12 @@ namespace CM_Semi_Random_Research
 
         public int OffersRevision { get; private set; }
 
+        // Bumped whenever a project finishes, independent of OffersRevision (which only changes
+        // when the offer list's contents change). The progress bar's tech-level stats are keyed
+        // off game ticks, which freeze while paused - a completion letter's auto-pause would
+        // otherwise leave the bar stale until the window is closed and reopened.
+        public int CompletionRevision { get; private set; }
+
         public List<ResearchProjectDef> PeekAvailableProjects() => lastOfferedProjects ?? currentAvailableProjects;
 
         private void PublishOffers(List<ResearchProjectDef> offers)
@@ -1287,6 +1293,7 @@ namespace CM_Semi_Random_Research
             RecordCompletedProject(def);
             SetRerolledByKey(typeKey, false);
             ForceAutoReseachCheckNextTick();
+            CompletionRevision++;
 
             // Clear current project
             if (currentProjects.Contains(def))

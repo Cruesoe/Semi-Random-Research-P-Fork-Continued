@@ -498,6 +498,11 @@ namespace CM_Semi_Random_Research
 
             if (showRerollButton)
             {
+                // Recomputed every draw rather than trusting the PreOpen-time cache: a reroll
+                // setting changed while this window stays open (mod settings doesn't force a
+                // reopen) would otherwise never take effect until the tab was closed and reopened.
+                cachedCanReroll = researchTracker.CanReroll(rerollButtonType);
+
                 if (cachedCanReroll)
                 {
                     if (ColoredButtonText(rerollButtonRect, "CM_Semi_Random_Research_Reroll_Label".Translate(), FooterRerollButtonColor))

@@ -144,7 +144,7 @@ Prevents being offered only high cost projects while low cost projects are avail
   <!-- Research history -->
   <CM_Semi_Random_Research_HistoryHeader>Recently completed</CM_Semi_Random_Research_HistoryHeader>
   <CM_Semi_Random_Research_HistoryEmpty>No research has been completed yet.</CM_Semi_Random_Research_HistoryEmpty>
-  <CM_Semi_Random_Research_HistoryTip>Show recently completed research. Pick a project to see what it unlocked.</CM_Semi_Random_Research_HistoryTip>
+  <CM_Semi_Random_Research_HistoryTip>Click to cycle through recently completed research and snoozed projects. Pick a completed project to see what it unlocked.</CM_Semi_Random_Research_HistoryTip>
   <CM_Semi_Random_Research_HistoryBack>Back</CM_Semi_Random_Research_HistoryBack>
   <CM_Semi_Random_Research_HistoryBackTip>Return to the current and available projects.</CM_Semi_Random_Research_HistoryBackTip>
   <CM_Semi_Random_Research_HistoryAgo>{0} ago</CM_Semi_Random_Research_HistoryAgo>
