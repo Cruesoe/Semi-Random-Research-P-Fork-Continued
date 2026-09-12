@@ -57,13 +57,13 @@ namespace CM_Semi_Random_Research
                 }
 
                 currentY += DrawResearchPrereqs(rect: new Rect(0f, currentY, viewRect.width, outRect.height), project: selectedProject);
-                currentY += DrawDependentResearch(rect: new Rect(0f, currentY, viewRect.width, outRect.height), project: selectedProject);
                 currentY += DrawResearchBenchRequirements(rect: new Rect(0f, currentY, viewRect.width, outRect.height), project: selectedProject);
                 currentY += DrawStudyRequirements(rect: new Rect(0f, currentY, viewRect.width, outRect.height), project: selectedProject);
 
                 Rect projectUnlockablesRect = new Rect(0f, currentY, viewRect.width, outRect.height);
                 currentY += DrawUnlockableHyperlinks(projectUnlockablesRect, selectedProject);
                 currentY += DrawContentSource(rect: new Rect(0f, currentY, viewRect.width, outRect.height), selectedProject);
+                currentY += DrawDependentResearch(rect: new Rect(0f, currentY, viewRect.width, outRect.height), project: selectedProject);
                 currentY += 3f;
                 if (Event.current.type == EventType.Layout)
                     rightScrollViewHeight = currentY;
