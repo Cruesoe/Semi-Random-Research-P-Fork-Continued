@@ -1,19 +1,20 @@
 # Semi Random Research: P-Fork Continued
 
-A RimWorld 1.6 continuation of Semi Random Research: P-Fork. It adds random research-project selection and visual research analytics to make progression less predictable and more informative.
+Make research progression less predictable without giving up meaningful choices. Instead of selecting freely from the entire research tree, choose from a smaller set of offered projects and adapt your colony's plans as new options appear.
 
-## Repository layout
+## Features
 
-- `1.6/`, `About/`, `Languages/`, and `Textures/` contain the distributable mod.
-- `Source/` contains the C# project and source code.
-- `SemiRandomResearchProgressionContinued.slnx` is the Visual Studio solution entry point.
+- Configure how many projects are offered and when they reroll.
+- Snooze unwanted projects, switch between current choices, or let auto-research pick for you.
+- Restrict offers by tech level and balance them by research cost.
+- Track progress with completion history, research-rate graphs, and time estimates.
+- Works alongside popular research-tree and tech-progression mods.
 
-## Building
+## Requirements
 
-The project targets .NET Framework 4.7.2 and references a local RimWorld installation plus Harmony. By default it uses the standard Steam paths. Set `RIMWORLD_DIR` or `HARMONY_DLL` to override them.
+- RimWorld 1.6
+- Harmony
 
-```powershell
-dotnet build .\SemiRandomResearchProgressionContinued.slnx -c Release
-```
+Not compatible with Research: Auto.
 
-Successful builds copy the mod assembly to `1.6/Assemblies`.
+Continued from the original mod by Captain Muscles and the P-Fork by Arodoid.
