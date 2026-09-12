@@ -127,6 +127,7 @@ namespace CM_Semi_Random_Research
         private ResearchProjectDef cachedUnlocksProject;
         private readonly Dictionary<ResearchProjectDef, List<ResearchProjectDef>> cachedDependentResearch =
             new Dictionary<ResearchProjectDef, List<ResearchProjectDef>>();
+        private readonly Stack<ResearchProjectDef> relatedProjectHistory = new Stack<ResearchProjectDef>();
         private bool browsingRelatedProject;
         private float cachedRequiredProgress = 1f;
         private bool loggedDrawError;
@@ -217,12 +218,14 @@ namespace CM_Semi_Random_Research
             if (project != null)
             {
                 selectedProject = project;
+                relatedProjectHistory.Clear();
                 browsingRelatedProject = false;
             }
         }
 
         private void SelectDefaultProject()
         {
+            relatedProjectHistory.Clear();
             browsingRelatedProject = false;
             ResearchProjectDef mainProject = null;
             if (cachedTracker != null)
@@ -454,11 +457,26 @@ namespace CM_Semi_Random_Research
 
         private void SelectRelatedProject(ResearchProjectDef project)
         {
-            if (project == null)
+            if (project == null || project == selectedProject)
                 return;
 
+            if (selectedProject != null)
+                relatedProjectHistory.Push(selectedProject);
             selectedProject = project;
-            browsingRelatedProject = true;
+            browsingRelatedProject = relatedProjectHistory.Count > 0;
+            rightScrollPosition = Vector2.zero;
+            cachedCanStartNowTick = -1;
+            WarmSelectedUnlocks();
+            RecacheMatchingBenchIfNeeded();
+        }
+
+        private void ReturnToPreviousRelatedProject()
+        {
+            if (relatedProjectHistory.Count == 0)
+                return;
+
+            selectedProject = relatedProjectHistory.Pop();
+            browsingRelatedProject = relatedProjectHistory.Count > 0;
             rightScrollPosition = Vector2.zero;
             cachedCanStartNowTick = -1;
             WarmSelectedUnlocks();

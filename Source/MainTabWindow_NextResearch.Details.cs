@@ -31,6 +31,21 @@ namespace CM_Semi_Random_Research
                 try
                 {
 
+                if (relatedProjectHistory.Count > 0)
+                {
+                    const float backButtonHeight = 32f;
+                    ResearchProjectDef previousProject = relatedProjectHistory.Peek();
+                    Rect backButtonRect = new Rect(0f, currentY, viewRect.width, backButtonHeight);
+                    if (ColoredButtonText(backButtonRect,
+                        "CM_Semi_Random_Research_BackToResearch".Translate(SafeLabel(previousProject)),
+                        FooterTreeButtonColor))
+                    {
+                        SoundDefOf.Click.PlayOneShotOnCamera();
+                        ReturnToPreviousRelatedProject();
+                    }
+                    currentY += backButtonHeight + 8f;
+                }
+
                 Text.Font = GameFont.Medium;
                 GenUI.SetLabelAlign(TextAnchor.MiddleLeft);
                 Rect projectNameRect = new Rect(0f, currentY, viewRect.width, projectNameHeight);

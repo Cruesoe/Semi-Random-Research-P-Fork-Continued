@@ -882,6 +882,7 @@ namespace CM_Semi_Random_Research
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 selectedProject = projectDef;
+                relatedProjectHistory.Clear();
                 browsingRelatedProject = false;
                 cachedCanStartNowTick = -1;
                 RefreshCanStartNow(Find.TickManager.TicksGame);

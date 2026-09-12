@@ -167,6 +167,7 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_MoreResearch>+{0} more</CM_Semi_Random_Research_MoreResearch>
   <CM_Semi_Random_Research_FinalResearchPrerequisite>Completing this project satisfies the remaining research prerequisite. Click to inspect.</CM_Semi_Random_Research_FinalResearchPrerequisite>
   <CM_Semi_Random_Research_AlsoRequires>Also requires: {0}. Click to inspect.</CM_Semi_Random_Research_AlsoRequires>
+  <CM_Semi_Random_Research_BackToResearch>Back to {0}</CM_Semi_Random_Research_BackToResearch>
 
   <!-- Rate graph and ETA -->
   <CM_Semi_Random_Research_Current>Current</CM_Semi_Random_Research_Current>

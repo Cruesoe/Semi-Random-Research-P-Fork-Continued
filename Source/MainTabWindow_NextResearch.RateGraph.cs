@@ -185,6 +185,8 @@ namespace CM_Semi_Random_Research
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 selectedProject = project;
+                relatedProjectHistory.Clear();
+                browsingRelatedProject = false;
             }
 
             // ==========================================
