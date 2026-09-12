@@ -1,6 +1,7 @@
 ﻿using RimWorld;
 using System;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 using Verse;
 using Verse.Sound;
@@ -124,6 +125,9 @@ namespace CM_Semi_Random_Research
         }
         private List<Def> cachedSelectedUnlocks;
         private ResearchProjectDef cachedUnlocksProject;
+        private readonly Dictionary<ResearchProjectDef, List<ResearchProjectDef>> cachedDependentResearch =
+            new Dictionary<ResearchProjectDef, List<ResearchProjectDef>>();
+        private bool browsingRelatedProject;
         private float cachedRequiredProgress = 1f;
         private bool loggedDrawError;
 
@@ -211,11 +215,15 @@ namespace CM_Semi_Random_Research
         internal void SelectFromExternal(ResearchProjectDef project)
         {
             if (project != null)
+            {
                 selectedProject = project;
+                browsingRelatedProject = false;
+            }
         }
 
         private void SelectDefaultProject()
         {
+            browsingRelatedProject = false;
             ResearchProjectDef mainProject = null;
             if (cachedTracker != null)
             {
@@ -343,6 +351,118 @@ namespace CM_Semi_Random_Research
                 for (int i = 0; i < selectedProject.hiddenPrerequisites.Count; i++)
                     CacheFirstUnlockable(selectedProject.hiddenPrerequisites[i]);
             }
+
+            List<ResearchProjectDef> dependents = GetDependentResearch(selectedProject);
+            if (dependents != null)
+            {
+                for (int i = 0; i < dependents.Count; i++)
+                    CacheFirstUnlockable(dependents[i]);
+            }
+        }
+
+        private void RebuildDependentResearchCache()
+        {
+            cachedDependentResearch.Clear();
+
+            List<ResearchProjectDef> allProjects = DefDatabase<ResearchProjectDef>.AllDefsListForReading;
+            for (int i = 0; i < allProjects.Count; i++)
+            {
+                ResearchProjectDef dependent = allProjects[i];
+                if (dependent == null || Compatibility.IsDummyResearch(dependent) || Compatibility.IsHiddenResearch(dependent))
+                    continue;
+
+                AddDependentResearch(dependent.prerequisites, dependent);
+                AddDependentResearch(dependent.hiddenPrerequisites, dependent);
+            }
+
+            foreach (List<ResearchProjectDef> dependents in cachedDependentResearch.Values)
+            {
+                dependents.Sort((left, right) => string.Compare(
+                    SafeLabel(left), SafeLabel(right), StringComparison.CurrentCultureIgnoreCase));
+            }
+        }
+
+        private void AddDependentResearch(List<ResearchProjectDef> prerequisites, ResearchProjectDef dependent)
+        {
+            if (prerequisites.NullOrEmpty())
+                return;
+
+            for (int i = 0; i < prerequisites.Count; i++)
+            {
+                ResearchProjectDef prerequisite = prerequisites[i];
+                if (prerequisite == null)
+                    continue;
+
+                if (!cachedDependentResearch.TryGetValue(prerequisite, out List<ResearchProjectDef> dependents))
+                {
+                    dependents = new List<ResearchProjectDef>();
+                    cachedDependentResearch.Add(prerequisite, dependents);
+                }
+
+                if (!dependents.Contains(dependent))
+                    dependents.Add(dependent);
+            }
+        }
+
+        private List<ResearchProjectDef> GetDependentResearch(ResearchProjectDef project)
+        {
+            if (project != null && cachedDependentResearch.TryGetValue(project, out List<ResearchProjectDef> dependents))
+                return dependents;
+            return null;
+        }
+
+        private string GetDependentResearchTooltip(ResearchProjectDef project)
+        {
+            List<ResearchProjectDef> dependents = GetDependentResearch(project);
+            if (dependents.NullOrEmpty())
+                return SafeLabel(project);
+
+            int unfinishedCount = 0;
+            for (int i = 0; i < dependents.Count; i++)
+            {
+                if (dependents[i] != null && !dependents[i].IsFinished)
+                    unfinishedCount++;
+            }
+            if (unfinishedCount == 0)
+                return SafeLabel(project);
+
+            StringBuilder tooltip = new StringBuilder(SafeLabel(project));
+            tooltip.Append("\n\n");
+            tooltip.Append("CM_Semi_Random_Research_RequiredForResearchCount".Translate(unfinishedCount));
+
+            const int maxListed = 5;
+            int listed = 0;
+            for (int i = 0; i < dependents.Count && listed < maxListed; i++)
+            {
+                ResearchProjectDef dependent = dependents[i];
+                if (dependent == null || dependent.IsFinished)
+                    continue;
+
+                tooltip.Append("\n• ");
+                tooltip.Append(SafeLabel(dependent));
+                listed++;
+            }
+
+            if (unfinishedCount > listed)
+            {
+                tooltip.Append("\n");
+                tooltip.Append("CM_Semi_Random_Research_MoreResearch".Translate(unfinishedCount - listed));
+            }
+
+            return tooltip.ToString();
+        }
+
+        private void SelectRelatedProject(ResearchProjectDef project)
+        {
+            if (project == null)
+                return;
+
+            selectedProject = project;
+            browsingRelatedProject = true;
+            rightScrollPosition = Vector2.zero;
+            cachedCanStartNowTick = -1;
+            WarmSelectedUnlocks();
+            RecacheMatchingBenchIfNeeded();
         }
 
         private void RecacheMatchingBenchIfNeeded()
@@ -554,6 +674,7 @@ namespace CM_Semi_Random_Research
             cachedCanStartNowTick = -1;
             cachedUnlocksProject = null;
             cachedSelectedUnlocks = null;
+            RebuildDependentResearchCache();
             InvalidateLeftColumnCache();
             RebuildLeftColumnLists(cachedTracker);
             WarmUnlockCaches();
@@ -614,7 +735,7 @@ namespace CM_Semi_Random_Research
             // column can show what it unlocked. Outside it, a selection whose card is no longer
             // drawn falls back to the default, so the right column never describes a card that
             // is not on screen.
-            if (!showingHistory &&
+            if (!showingHistory && !browsingRelatedProject &&
                 (selectedProject == null || selectedProject.IsFinished ||
                 (currentAvailableProjects != null && !currentAvailableProjects.Contains(selectedProject) &&
                  (cachedTracker == null || !cachedTracker.CurrentProject.Contains(selectedProject))) ||

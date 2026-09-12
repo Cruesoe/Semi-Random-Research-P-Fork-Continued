@@ -57,6 +57,7 @@ namespace CM_Semi_Random_Research
                 }
 
                 currentY += DrawResearchPrereqs(rect: new Rect(0f, currentY, viewRect.width, outRect.height), project: selectedProject);
+                currentY += DrawDependentResearch(rect: new Rect(0f, currentY, viewRect.width, outRect.height), project: selectedProject);
                 currentY += DrawResearchBenchRequirements(rect: new Rect(0f, currentY, viewRect.width, outRect.height), project: selectedProject);
                 currentY += DrawStudyRequirements(rect: new Rect(0f, currentY, viewRect.width, outRect.height), project: selectedProject);
 
@@ -168,10 +169,123 @@ namespace CM_Semi_Random_Research
             if (Clicked(prereqRect))
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
-                selectedProject = prereq;
+                SelectRelatedProject(prereq);
             }
 
             rect.yMin += itemHeight + 4f;
+        }
+
+        private float DrawDependentResearch(ResearchProjectDef project, Rect rect)
+        {
+            List<ResearchProjectDef> dependents = GetDependentResearch(project);
+            if (dependents.NullOrEmpty())
+                return 0f;
+
+            int unfinishedCount = 0;
+            for (int i = 0; i < dependents.Count; i++)
+            {
+                if (dependents[i] != null && !dependents[i].IsFinished)
+                    unfinishedCount++;
+            }
+            if (unfinishedCount == 0)
+                return 0f;
+
+            float yMin = rect.yMin;
+            Text.Font = GameFont.Medium;
+            Widgets.LabelCacheHeight(ref rect, "CM_Semi_Random_Research_RequiredForResearch".Translate() + ":");
+            rect.yMin += rect.height + 6f;
+
+            Text.Font = GameFont.Small;
+            for (int i = 0; i < dependents.Count; i++)
+            {
+                ResearchProjectDef dependent = dependents[i];
+                if (dependent == null || dependent.IsFinished)
+                    continue;
+
+                DrawDependentResearchRow(project, dependent, ref rect);
+            }
+
+            rect.yMin += 6f;
+            return rect.yMin - yMin;
+        }
+
+        private void DrawDependentResearchRow(ResearchProjectDef prerequisite, ResearchProjectDef dependent, ref Rect rect)
+        {
+            const float itemHeight = 42f;
+            const float iconSize = 28f;
+            const float iconPadding = 8f;
+            Rect rowRect = new Rect(rect.xMin + 6f, rect.yMin, rect.width - 6f, itemHeight);
+
+            Color techColor = GetCategoryColor(dependent);
+            Color bgColor = Color.Lerp(TexUI.AvailResearchColor, techColor, 0.3f);
+            if (IsRepaint)
+            {
+                Widgets.DrawBoxSolid(rowRect, bgColor);
+                DrawTransparentBox(rowRect, techColor, 1f);
+            }
+
+            Rect iconRect = new Rect(rowRect.x + 6f, rowRect.y + (itemHeight - iconSize) / 2f, iconSize, iconSize);
+            Rect labelRect = new Rect(iconRect.xMax + iconPadding, rowRect.y,
+                rowRect.width - iconRect.width - (iconPadding * 2f) - 6f, itemHeight);
+
+            if (IsRepaint)
+            {
+                Def firstUnlockable = GetFirstUnlockable(dependent);
+                if (firstUnlockable != null)
+                {
+                    try
+                    {
+                        Widgets.DefIcon(iconRect, firstUnlockable);
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
+            }
+
+            Text.Anchor = TextAnchor.MiddleLeft;
+            GUI.color = Color.white;
+            Widgets.Label(labelRect, SafeLabel(dependent));
+            Text.Anchor = TextAnchor.UpperLeft;
+
+            if (Clicked(rowRect))
+            {
+                SoundDefOf.Click.PlayOneShotOnCamera();
+                SelectRelatedProject(dependent);
+            }
+
+            string remaining = GetOtherUnfinishedPrerequisites(dependent, prerequisite);
+            TooltipHandler.TipRegion(rowRect, remaining.NullOrEmpty()
+                ? "CM_Semi_Random_Research_FinalResearchPrerequisite".Translate()
+                : "CM_Semi_Random_Research_AlsoRequires".Translate(remaining));
+
+            rect.yMin += itemHeight + 4f;
+        }
+
+        private string GetOtherUnfinishedPrerequisites(ResearchProjectDef dependent, ResearchProjectDef shownPrerequisite)
+        {
+            List<string> labels = new List<string>();
+            AddOtherUnfinishedPrerequisites(dependent.prerequisites, shownPrerequisite, labels);
+            AddOtherUnfinishedPrerequisites(dependent.hiddenPrerequisites, shownPrerequisite, labels);
+            return string.Join(", ", labels.ToArray());
+        }
+
+        private void AddOtherUnfinishedPrerequisites(List<ResearchProjectDef> prerequisites,
+            ResearchProjectDef shownPrerequisite, List<string> labels)
+        {
+            if (prerequisites.NullOrEmpty())
+                return;
+
+            for (int i = 0; i < prerequisites.Count; i++)
+            {
+                ResearchProjectDef prerequisite = prerequisites[i];
+                if (prerequisite == null || prerequisite == shownPrerequisite || prerequisite.IsFinished)
+                    continue;
+
+                string label = SafeLabel(prerequisite);
+                if (!labels.Contains(label))
+                    labels.Add(label);
+            }
         }
 
         private float DrawResearchBenchRequirements(ResearchProjectDef project, Rect rect)

@@ -882,6 +882,7 @@ namespace CM_Semi_Random_Research
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 selectedProject = projectDef;
+                browsingRelatedProject = false;
                 cachedCanStartNowTick = -1;
                 RefreshCanStartNow(Find.TickManager.TicksGame);
             }
@@ -894,7 +895,7 @@ namespace CM_Semi_Random_Research
             }
 
             if (isMouseOver)
-                TooltipHandler.TipRegion(drawRect, SafeLabel(projectDef));
+                TooltipHandler.TipRegion(drawRect, GetDependentResearchTooltip(projectDef));
 
             GUI.color = originalColor;
             Text.Anchor = startingTextAnchor;

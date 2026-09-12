@@ -162,6 +162,11 @@ Prevents being offered only high cost projects while low cost projects are avail
   <CM_Semi_Random_Research_ReturnToSemiRandom>Return to Semi-Random Research</CM_Semi_Random_Research_ReturnToSemiRandom>
   <CM_Semi_Random_Research_YartButton>Semi-Random</CM_Semi_Random_Research_YartButton>
   <CM_Semi_Random_Research_MoreUnlocks>+{0} more</CM_Semi_Random_Research_MoreUnlocks>
+  <CM_Semi_Random_Research_RequiredForResearch>Required for research</CM_Semi_Random_Research_RequiredForResearch>
+  <CM_Semi_Random_Research_RequiredForResearchCount>Required for {0} unfinished research project(s):</CM_Semi_Random_Research_RequiredForResearchCount>
+  <CM_Semi_Random_Research_MoreResearch>+{0} more</CM_Semi_Random_Research_MoreResearch>
+  <CM_Semi_Random_Research_FinalResearchPrerequisite>Completing this project satisfies the remaining research prerequisite. Click to inspect.</CM_Semi_Random_Research_FinalResearchPrerequisite>
+  <CM_Semi_Random_Research_AlsoRequires>Also requires: {0}. Click to inspect.</CM_Semi_Random_Research_AlsoRequires>
 
   <!-- Rate graph and ETA -->
   <CM_Semi_Random_Research_Current>Current</CM_Semi_Random_Research_Current>
