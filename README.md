@@ -10,11 +10,6 @@ Make research progression less predictable without giving up meaningful choices.
 - Track progress with completion history, research-rate graphs, and time estimates.
 - Works alongside popular research-tree and tech-progression mods.
 
-## Requirements
-
-- RimWorld 1.6
-- Harmony
-
 Not compatible with Research: Auto.
 
 Continued from the original mod by Captain Muscles and the P-Fork by Arodoid.
