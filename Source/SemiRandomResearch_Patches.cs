@@ -127,9 +127,18 @@ namespace CM_Semi_Random_Research
         {
             public static bool isFinishingResearch = false;
 
+            // isFinishingResearch is cleared by the first finalizer to run, which for a project
+            // with unfinished prerequisites is an inner call. This stays set until the outermost
+            // call, and every other mod's postfix on it, has returned.
+            private static int finishDepth;
+
+            public static bool InsideFinishProject => finishDepth > 0;
+
             [HarmonyPrefix]
             public static void Prefix(ResearchProjectDef proj, ref bool doCompletionDialog, Pawn researcher, ref bool doCompletionLetter)
             {
+                finishDepth++;
+
                 if (!SemiRandomResearchMod.settings.featureEnabled)
                 {
                     if (!isFinishingResearch)
@@ -283,6 +292,31 @@ namespace CM_Semi_Random_Research
             public static void Finalizer()
             {
                 isFinishingResearch = false;
+                if (finishDepth > 0)
+                    finishDepth--;
+            }
+        }
+
+        // Node Research opens the Research tab from its own FinishProject postfix, and other
+        // research mods do the same. While Semi Random owns that tab, "Auto-open on completion"
+        // is the only switch that should open it when a project finishes.
+        [HarmonyPatch(typeof(MainTabsRoot))]
+        [HarmonyPatch(nameof(MainTabsRoot.SetCurrentTab))]
+        public static class MainTabsRoot_SetCurrentTab
+        {
+            [HarmonyPrefix]
+            public static bool Prefix(MainButtonDef tab)
+            {
+                if (tab == null || tab != MainButtonDefOf.Research)
+                    return true;
+                if (!ResearchManager_FinishProject.InsideFinishProject)
+                    return true;
+
+                SemiRandomResearchSettings settings = SemiRandomResearchMod.settings;
+                if (settings == null || !settings.featureEnabled || settings.autoOpenOnCompletion)
+                    return true;
+
+                return !ResearchTabWindowSwitcher.SemiRandomOwnsResearchTab;
             }
         }
 
