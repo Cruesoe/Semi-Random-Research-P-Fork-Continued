@@ -7,6 +7,12 @@
 *.userosscache
 *.sln.docstates
 *.DotSettings.user
+*.slnx
+Directory.Build.props
+Directory.Build.targets
+
+## Local agent instructions
+AGENTS.md
 
 ## Build and test outputs
 [Bb]in/
