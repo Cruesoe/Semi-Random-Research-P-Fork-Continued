@@ -20,6 +20,11 @@ namespace CM_Semi_Random_Research
         {
         }
 
+        // Single gate for the whole feature. Snoozed defs stay saved in the world component
+        // while it is off, so switching it back on hands the list back untouched.
+        public static bool SnoozingEnabled =>
+            SemiRandomResearchMod.settings == null || SemiRandomResearchMod.settings.allowSnoozing;
+
         public static ResearchSnoozeTracker Get()
         {
             World world = Find.World;
@@ -61,6 +66,8 @@ namespace CM_Semi_Random_Research
 
         public string TrySnooze(ResearchProjectDef def)
         {
+            if (!SnoozingEnabled)
+                return "CM_Semi_Random_Research_SnoozeDisabled".Translate();
             if (def == null)
                 return "CM_Semi_Random_Research_SnoozeMissing".Translate();
             if (def.IsFinished)
@@ -169,6 +176,9 @@ namespace CM_Semi_Random_Research
 
         public static void Prefix(ResearchTracker __instance)
         {
+            if (!ResearchSnoozeTracker.SnoozingEnabled)
+                return;
+
             ResearchSnoozeTracker snooze = ResearchSnoozeTracker.Get();
             if (snooze == null || currentAvailableProjectsField == null)
                 return;
@@ -179,6 +189,9 @@ namespace CM_Semi_Random_Research
 
         public static void Postfix(List<ResearchProjectDef> __result)
         {
+            if (!ResearchSnoozeTracker.SnoozingEnabled)
+                return;
+
             ResearchSnoozeTracker snooze = ResearchSnoozeTracker.Get();
             if (snooze == null || __result == null || __result.Count == 0)
                 return;
@@ -192,7 +205,7 @@ namespace CM_Semi_Random_Research
     {
         public static void Prefix(MainTabWindow_NextResearch __instance, ref Rect drawRect, ResearchProjectDef projectDef)
         {
-            if (projectDef == null)
+            if (projectDef == null || !ResearchSnoozeTracker.SnoozingEnabled)
                 return;
             if (Event.current.type != EventType.MouseDown || Event.current.button != 1)
                 return;
@@ -225,6 +238,10 @@ namespace CM_Semi_Random_Research
     {
         public static bool Prefix(MainTabWindow_NextResearch __instance, Rect rect)
         {
+            // Off: hand the button straight back to the original two-state history toggle.
+            if (!ResearchSnoozeTracker.SnoozingEnabled)
+                return true;
+
             FieldInfo historyField = AccessTools.Field(typeof(MainTabWindow_NextResearch), "showingHistory");
             FieldInfo snoozedField = AccessTools.Field(typeof(MainTabWindow_NextResearch), "showingSnoozed");
             bool showingHistory = historyField != null && (bool)historyField.GetValue(__instance);
@@ -257,7 +274,7 @@ namespace CM_Semi_Random_Research
                 ? "CM_Semi_Random_Research_SnoozedBackTip".Translate()
                 : showingHistory
                     ? "CM_Semi_Random_Research_HistoryToSnoozedTip".Translate()
-                    : "CM_Semi_Random_Research_HistoryTip".Translate();
+                    : "CM_Semi_Random_Research_HistoryCycleTip".Translate();
             TooltipHandler.TipRegion(rect, tip);
             return false;
         }
@@ -273,8 +290,18 @@ namespace CM_Semi_Random_Research
             FieldInfo historyField = AccessTools.Field(typeof(MainTabWindow_NextResearch), "showingHistory");
             if (snoozedField == null || historyField == null)
                 return;
-            if ((bool)snoozedField.GetValue(__instance))
-                historyField.SetValue(__instance, true);
+            if (!(bool)snoozedField.GetValue(__instance))
+                return;
+
+            // Turning the setting off with the snoozed list open drops back to plain history
+            // rather than leaving a view with no way out.
+            if (!ResearchSnoozeTracker.SnoozingEnabled)
+            {
+                snoozedField.SetValue(__instance, false);
+                return;
+            }
+
+            historyField.SetValue(__instance, true);
         }
     }
 }
