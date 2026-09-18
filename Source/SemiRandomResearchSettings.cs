@@ -68,6 +68,7 @@ namespace CM_Semi_Random_Research
         public bool showCompletionLetter = true;
         public bool autoOpenOnCompletion = true;
         public bool autoPickNextResearch = false;
+        public bool allowSnoozing = true;
         public ManualReroll allowManualReroll = ManualReroll.None;
         public ChoiceAmountSelection amountSelection = ChoiceAmountSelection.Static;
         public int availableProjectCount = 3;
@@ -117,6 +118,7 @@ namespace CM_Semi_Random_Research
             Scribe_Values.Look(ref showCompletionLetter, "showCompletionLetter", true);
             Scribe_Values.Look(ref autoOpenOnCompletion, "autoOpenOnCompletion", true);
             Scribe_Values.Look(ref autoPickNextResearch, "autoPickNextResearch", false);
+            Scribe_Values.Look(ref allowSnoozing, "allowSnoozing", true);
             Scribe_Values.Look(ref researchTabOwner, "researchTabOwner", ResearchTabOwner.SemiRandom);
             Scribe_Values.Look(ref legacyUsingNodeResearch, "usingNodeResearch", false);
             Scribe_Values.Look(ref preferredResearchTree, "preferredResearchTree", PreferredResearchTree.NodeResearch);
@@ -177,6 +179,7 @@ namespace CM_Semi_Random_Research
             Checkbox(listing, "Feature_Enabled", ref featureEnabled);
             Checkbox(listing, "AutoOpen", ref autoOpenOnCompletion);
             Checkbox(listing, "ShowLetter", ref showCompletionLetter);
+            Checkbox(listing, "AllowSnoozing", ref allowSnoozing);
 
             listing.GapLine();
 
@@ -522,6 +525,7 @@ namespace CM_Semi_Random_Research
                 $"showCompletionLetter: {showCompletionLetter} " +
                 $"autoOpenOnCompletion: {autoOpenOnCompletion} " +
                 $"autoPickNextResearch: {autoPickNextResearch} " +
+                $"allowSnoozing: {allowSnoozing} " +
                 $"suppressHandoverMessages: {suppressHandoverMessages} " +
                 $"colorAndGroupByTechLevel: {colorAndGroupByTechLevel}");
         }
