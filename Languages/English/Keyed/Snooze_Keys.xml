@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
+  <CM_Semi_Random_Research_Setting_AllowSnoozing_Label>Allow snoozing projects</CM_Semi_Random_Research_Setting_AllowSnoozing_Label>
+  <CM_Semi_Random_Research_Setting_AllowSnoozing_Description>When enabled, right-clicking an offered project snoozes it so it is not offered again until you unsnooze it from the history button. When disabled, snoozing is unavailable and any already snoozed projects go back into the pool. Your snoozed list is kept, so turning this back on restores it.</CM_Semi_Random_Research_Setting_AllowSnoozing_Description>
+  <CM_Semi_Random_Research_HistoryCycleTip>Click to cycle through recently completed research and snoozed projects. Pick a completed project to see what it unlocked.</CM_Semi_Random_Research_HistoryCycleTip>
   <CM_Semi_Random_Research_HistoryToSnoozedTip>Show snoozed projects that will not be offered.</CM_Semi_Random_Research_HistoryToSnoozedTip>
   <CM_Semi_Random_Research_SnoozedHeader>Snoozed projects</CM_Semi_Random_Research_SnoozedHeader>
   <CM_Semi_Random_Research_SnoozedEmpty>No snoozed projects. Right-click an offered project to snooze it.</CM_Semi_Random_Research_SnoozedEmpty>
@@ -9,6 +12,7 @@
   <CM_Semi_Random_Research_Snoozed>Snoozed {0}. It will not be offered again.</CM_Semi_Random_Research_Snoozed>
   <CM_Semi_Random_Research_Unsnoozed>Unsnoozed {0}.</CM_Semi_Random_Research_Unsnoozed>
   <CM_Semi_Random_Research_SnoozeMissing>That project no longer exists.</CM_Semi_Random_Research_SnoozeMissing>
+  <CM_Semi_Random_Research_SnoozeDisabled>Snoozing is turned off in the mod settings.</CM_Semi_Random_Research_SnoozeDisabled>
   <CM_Semi_Random_Research_SnoozeFinished>{0} is already finished.</CM_Semi_Random_Research_SnoozeFinished>
   <CM_Semi_Random_Research_SnoozeFoundation>{0} is a Node Research foundation and cannot be snoozed.</CM_Semi_Random_Research_SnoozeFoundation>
   <CM_Semi_Random_Research_SnoozeEmergence>{0} is an emergence project and cannot be snoozed.</CM_Semi_Random_Research_SnoozeEmergence>
