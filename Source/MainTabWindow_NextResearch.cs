@@ -125,8 +125,16 @@ namespace CM_Semi_Random_Research
         }
         private List<Def> cachedSelectedUnlocks;
         private ResearchProjectDef cachedUnlocksProject;
-        private readonly Dictionary<ResearchProjectDef, List<ResearchProjectDef>> cachedDependentResearch =
-            new Dictionary<ResearchProjectDef, List<ResearchProjectDef>>();
+        // Which projects each project is a prerequisite for. The graph itself is fixed once defs
+        // are loaded, and so is the label order it is sorted into, so it is built once for the
+        // session and shared by every window instance rather than rebuilt on each tab open.
+        // Only the filter that drops hidden projects can move (anomaly study, a SoS2 uplink),
+        // which HiddenResearchStateVersion reports; the def count catches the rest.
+        private static Dictionary<ResearchProjectDef, List<ResearchProjectDef>> sharedDependentResearch;
+        private static int sharedDependentResearchState = -1;
+        private static int sharedDependentResearchDefCount = -1;
+        private static ResearchProjectDef sharedDependentResearchFirstDef;
+        private Dictionary<ResearchProjectDef, List<ResearchProjectDef>> cachedDependentResearch;
         private readonly Stack<ResearchProjectDef> relatedProjectHistory = new Stack<ResearchProjectDef>();
         private bool browsingRelatedProject;
         private float cachedRequiredProgress = 1f;
@@ -363,29 +371,57 @@ namespace CM_Semi_Random_Research
             }
         }
 
+        private static readonly Comparison<ResearchProjectDef> DependentLabelComparison = (left, right) =>
+            string.Compare(SafeLabel(left), SafeLabel(right), StringComparison.CurrentCultureIgnoreCase);
+
+        // Walking every research def, building the map and running a culture-aware sort over each
+        // bucket used to happen on every single tab open, for a result that cannot differ unless
+        // the hidden-research filter has moved. Now it is done once and handed out again.
         private void RebuildDependentResearchCache()
         {
-            cachedDependentResearch.Clear();
-
             List<ResearchProjectDef> allProjects = DefDatabase<ResearchProjectDef>.AllDefsListForReading;
+            int defCount = allProjects.Count;
+            // Reloading play data (a language change is the one that happens mid-session) rebuilds
+            // every Def, so the map would be keyed on objects nothing looks up any more while the
+            // count stayed the same. One instance is enough to notice that the database moved.
+            ResearchProjectDef firstDef = defCount > 0 ? allProjects[0] : null;
+            int hiddenState = Compatibility.HiddenResearchStateVersion;
+
+            if (sharedDependentResearch != null &&
+                sharedDependentResearchState == hiddenState &&
+                sharedDependentResearchDefCount == defCount &&
+                ReferenceEquals(sharedDependentResearchFirstDef, firstDef))
+            {
+                cachedDependentResearch = sharedDependentResearch;
+                return;
+            }
+
+            var built = new Dictionary<ResearchProjectDef, List<ResearchProjectDef>>();
+
             for (int i = 0; i < allProjects.Count; i++)
             {
                 ResearchProjectDef dependent = allProjects[i];
                 if (dependent == null || Compatibility.IsDummyResearch(dependent) || Compatibility.IsHiddenResearch(dependent))
                     continue;
 
-                AddDependentResearch(dependent.prerequisites, dependent);
-                AddDependentResearch(dependent.hiddenPrerequisites, dependent);
+                AddDependentResearch(built, dependent.prerequisites, dependent);
+                AddDependentResearch(built, dependent.hiddenPrerequisites, dependent);
             }
 
-            foreach (List<ResearchProjectDef> dependents in cachedDependentResearch.Values)
+            foreach (List<ResearchProjectDef> dependents in built.Values)
             {
-                dependents.Sort((left, right) => string.Compare(
-                    SafeLabel(left), SafeLabel(right), StringComparison.CurrentCultureIgnoreCase));
+                dependents.Sort(DependentLabelComparison);
             }
+
+            sharedDependentResearch = built;
+            sharedDependentResearchState = hiddenState;
+            sharedDependentResearchDefCount = defCount;
+            sharedDependentResearchFirstDef = firstDef;
+            cachedDependentResearch = built;
         }
 
-        private void AddDependentResearch(List<ResearchProjectDef> prerequisites, ResearchProjectDef dependent)
+        private static void AddDependentResearch(Dictionary<ResearchProjectDef, List<ResearchProjectDef>> target,
+            List<ResearchProjectDef> prerequisites, ResearchProjectDef dependent)
         {
             if (prerequisites.NullOrEmpty())
                 return;
@@ -396,10 +432,10 @@ namespace CM_Semi_Random_Research
                 if (prerequisite == null)
                     continue;
 
-                if (!cachedDependentResearch.TryGetValue(prerequisite, out List<ResearchProjectDef> dependents))
+                if (!target.TryGetValue(prerequisite, out List<ResearchProjectDef> dependents))
                 {
                     dependents = new List<ResearchProjectDef>();
-                    cachedDependentResearch.Add(prerequisite, dependents);
+                    target.Add(prerequisite, dependents);
                 }
 
                 if (!dependents.Contains(dependent))
@@ -409,8 +445,11 @@ namespace CM_Semi_Random_Research
 
         private List<ResearchProjectDef> GetDependentResearch(ResearchProjectDef project)
         {
-            if (project != null && cachedDependentResearch.TryGetValue(project, out List<ResearchProjectDef> dependents))
+            if (project != null && cachedDependentResearch != null &&
+                cachedDependentResearch.TryGetValue(project, out List<ResearchProjectDef> dependents))
+            {
                 return dependents;
+            }
             return null;
         }
 

@@ -38,25 +38,46 @@ namespace CM_Semi_Random_Research
             BindSleekSelectionGate();
         }
 
+        private static Type sleekCompatType;
+        private static PropertyInfo sleekDisabledProperty;
+        private static PropertyInfo sleekDisabledReasonProperty;
+        private static MethodInfo sleekDisabledSetter;
+
+        // AccessTools.TypeByName asks every loaded assembly for the type, which on a large mod
+        // list is not something to repeat - and this rides a method Sleek owns, so how often it
+        // runs is not ours to decide. Resolved on the first call and kept. A miss is not cached:
+        // it can only happen if Sleek is absent, in which case the postfix was never installed.
+        private static bool ResolveSleekCompat()
+        {
+            if (sleekCompatType != null)
+                return true;
+
+            sleekCompatType = AccessTools.TypeByName("SleekResearchTab.SleekCompat");
+            if (sleekCompatType == null)
+                return false;
+
+            sleekDisabledProperty = AccessTools.Property(sleekCompatType, "Disabled");
+            sleekDisabledReasonProperty = AccessTools.Property(sleekCompatType, "DisabledReason");
+            sleekDisabledSetter = AccessTools.PropertySetter(sleekCompatType, "Disabled");
+            return true;
+        }
+
         public static void EvaluatePostfix()
         {
-            Type sleekCompat = AccessTools.TypeByName("SleekResearchTab.SleekCompat");
-            if (sleekCompat == null)
+            if (!ResolveSleekCompat())
                 return;
 
-            PropertyInfo disabledProp = AccessTools.Property(sleekCompat, "Disabled");
-            if (disabledProp == null || !(bool)disabledProp.GetValue(null, null))
+            if (sleekDisabledProperty == null || !(bool)sleekDisabledProperty.GetValue(null, null))
                 return;
 
-            PropertyInfo reasonProp = AccessTools.Property(sleekCompat, "DisabledReason");
-            string reason = reasonProp?.GetValue(null, null) as string;
+            string reason = sleekDisabledReasonProperty?.GetValue(null, null) as string;
             if (string.IsNullOrEmpty(reason) ||
                 reason.IndexOf("MainTabWindow_NextResearch", StringComparison.Ordinal) < 0)
             {
                 return;
             }
 
-            AccessTools.PropertySetter(sleekCompat, "Disabled")?.Invoke(null, new object[] { false });
+            sleekDisabledSetter?.Invoke(null, new object[] { false });
             Log.Message("[Semi Random Research] Sleek Research Tab will stay active for the research tree view.");
         }
 
