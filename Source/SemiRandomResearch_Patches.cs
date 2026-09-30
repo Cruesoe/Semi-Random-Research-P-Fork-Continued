@@ -139,18 +139,12 @@ namespace CM_Semi_Random_Research
             {
                 finishDepth++;
 
-                if (!SemiRandomResearchMod.settings.featureEnabled)
-                {
-                    if (!isFinishingResearch)
-                    {
-                        isFinishingResearch = true;
-                        SemiRandomResearchUtility.Tracker?.ConsiderProjectFinished(proj);
-                    }
-                    return;
-                }
-
+                // The vanilla "Research finished" dialog is replaced by our own letter and the
+                // auto-open setting whether or not normal project selection is prohibited, so
+                // "Show completion letter" is what decides if anything pops up.
                 doCompletionDialog = false;
-                doCompletionLetter = false;
+                if (SemiRandomResearchMod.settings.featureEnabled)
+                    doCompletionLetter = false;
 
                 if (isFinishingResearch) return;
                 isFinishingResearch = true;
