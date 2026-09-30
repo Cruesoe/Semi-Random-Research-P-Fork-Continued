@@ -25,18 +25,40 @@ namespace CM_Semi_Random_Research
         public static bool SnoozingEnabled =>
             SemiRandomResearchMod.settings == null || SemiRandomResearchMod.settings.allowSnoozing;
 
+        // World.GetComponent walks the whole component list on every call, and this is asked from
+        // draw code. Keyed on the world instance, so loading a save or starting a new colony can
+        // never hand back the previous world's component.
+        private static World cachedWorld;
+        private static ResearchSnoozeTracker cachedTracker;
+
         public static ResearchSnoozeTracker Get()
         {
             World world = Find.World;
             if (world == null)
+            {
+                cachedWorld = null;
+                cachedTracker = null;
                 return null;
+            }
+
+            if (!ReferenceEquals(world, cachedWorld))
+            {
+                cachedWorld = world;
+                cachedTracker = null;
+            }
+            else if (cachedTracker != null)
+            {
+                return cachedTracker;
+            }
 
             ResearchSnoozeTracker tracker = world.GetComponent<ResearchSnoozeTracker>();
-            if (tracker != null)
-                return tracker;
+            if (tracker == null)
+            {
+                tracker = new ResearchSnoozeTracker(world);
+                world.components.Add(tracker);
+            }
 
-            tracker = new ResearchSnoozeTracker(world);
-            world.components.Add(tracker);
+            cachedTracker = tracker;
             return tracker;
         }
 
@@ -61,6 +83,25 @@ namespace CM_Semi_Random_Research
                 if (snoozedProjects == null)
                     return Enumerable.Empty<ResearchProjectDef>();
                 return snoozedProjects.Where(def => def != null && !def.IsFinished);
+            }
+        }
+
+        // Same entries, same order, into a buffer the caller owns. The snoozed view asks for this
+        // on every OnGUI pass, where the property's query object, closure, enumerator and result
+        // list were all per-pass garbage.
+        public void GetSnoozedProjects(List<ResearchProjectDef> buffer)
+        {
+            if (buffer == null)
+                return;
+
+            buffer.Clear();
+            if (snoozedProjects == null)
+                return;
+
+            foreach (ResearchProjectDef def in snoozedProjects)
+            {
+                if (def != null && !def.IsFinished)
+                    buffer.Add(def);
             }
         }
 
@@ -199,6 +240,34 @@ namespace CM_Semi_Random_Research
         }
     }
 
+    // AccessTools.Field and AccessTools.Method run a fresh reflection search on every call - they
+    // hold no cache of their own. Three of the patches below sit on draw methods, so looking these
+    // up per call meant several Type.GetField/GetMethod searches, and the garbage they allocate,
+    // for every OnGUI event the research window saw - including the MouseMove events that
+    // DoWindowContents itself discards. The handles cannot change while the game is running, so
+    // they are resolved once here instead.
+    internal static class SnoozeWindowAccess
+    {
+        internal static readonly FieldInfo ShowingHistory =
+            AccessTools.Field(typeof(MainTabWindow_NextResearch), "showingHistory");
+        internal static readonly FieldInfo ShowingSnoozed =
+            AccessTools.Field(typeof(MainTabWindow_NextResearch), "showingSnoozed");
+        internal static readonly FieldInfo HistoryIcon =
+            AccessTools.Field(typeof(MainTabWindow_NextResearch), "HistoryIcon");
+        internal static readonly FieldInfo ActiveProjectLabelColor =
+            AccessTools.Field(typeof(MainTabWindow_NextResearch), "ActiveProjectLabelColor");
+        internal static readonly MethodInfo OpenHistory =
+            AccessTools.Method(typeof(MainTabWindow_NextResearch), "OpenHistory");
+        internal static readonly MethodInfo OpenSnoozed =
+            AccessTools.Method(typeof(MainTabWindow_NextResearch), "OpenSnoozed");
+        internal static readonly MethodInfo CloseHistory =
+            AccessTools.Method(typeof(MainTabWindow_NextResearch), "CloseHistory");
+        internal static readonly MethodInfo CopyAvailableProjects =
+            AccessTools.Method(typeof(MainTabWindow_NextResearch), "CopyAvailableProjects");
+        internal static readonly MethodInfo InvalidateLeftColumnCache =
+            AccessTools.Method(typeof(MainTabWindow_NextResearch), "InvalidateLeftColumnCache");
+    }
+
     [HarmonyPatch(typeof(MainTabWindow_NextResearch))]
     [HarmonyPatch("DrawResearchButton")]
     public static class MainTabWindow_DrawResearchButton_Snooze
@@ -224,10 +293,8 @@ namespace CM_Semi_Random_Research
             }
 
             ResearchTracker research = Current.Game?.World?.GetComponent<ResearchTracker>();
-            AccessTools.Method(typeof(MainTabWindow_NextResearch), "CopyAvailableProjects")
-                ?.Invoke(__instance, new object[] { research?.PeekAvailableProjects() });
-            AccessTools.Method(typeof(MainTabWindow_NextResearch), "InvalidateLeftColumnCache")
-                ?.Invoke(__instance, null);
+            SnoozeWindowAccess.CopyAvailableProjects?.Invoke(__instance, new object[] { research?.PeekAvailableProjects() });
+            SnoozeWindowAccess.InvalidateLeftColumnCache?.Invoke(__instance, null);
             Messages.Message("CM_Semi_Random_Research_Snoozed".Translate(projectDef.LabelCap), MessageTypeDefOf.NeutralEvent, false);
         }
     }
@@ -242,17 +309,17 @@ namespace CM_Semi_Random_Research
             if (!ResearchSnoozeTracker.SnoozingEnabled)
                 return true;
 
-            FieldInfo historyField = AccessTools.Field(typeof(MainTabWindow_NextResearch), "showingHistory");
-            FieldInfo snoozedField = AccessTools.Field(typeof(MainTabWindow_NextResearch), "showingSnoozed");
+            FieldInfo historyField = SnoozeWindowAccess.ShowingHistory;
+            FieldInfo snoozedField = SnoozeWindowAccess.ShowingSnoozed;
             bool showingHistory = historyField != null && (bool)historyField.GetValue(__instance);
             bool showingSnoozed = snoozedField != null && (bool)snoozedField.GetValue(__instance);
 
-            Texture2D icon = AccessTools.Field(typeof(MainTabWindow_NextResearch), "HistoryIcon")?.GetValue(null) as Texture2D;
+            Texture2D icon = SnoozeWindowAccess.HistoryIcon?.GetValue(null) as Texture2D;
             if (Event.current.type == EventType.Repaint && icon != null)
             {
                 Color old = GUI.color;
                 GUI.color = (showingHistory || showingSnoozed)
-                    ? (Color)AccessTools.Field(typeof(MainTabWindow_NextResearch), "ActiveProjectLabelColor").GetValue(null)
+                    ? (Color)SnoozeWindowAccess.ActiveProjectLabelColor.GetValue(null)
                     : Color.white;
                 Widgets.DrawTextureFitted(rect, icon, 1f);
                 GUI.color = old;
@@ -263,11 +330,11 @@ namespace CM_Semi_Random_Research
                 Event.current.Use();
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 if (showingSnoozed)
-                    AccessTools.Method(typeof(MainTabWindow_NextResearch), "CloseHistory")?.Invoke(__instance, null);
+                    SnoozeWindowAccess.CloseHistory?.Invoke(__instance, null);
                 else if (showingHistory)
-                    AccessTools.Method(typeof(MainTabWindow_NextResearch), "OpenSnoozed")?.Invoke(__instance, null);
+                    SnoozeWindowAccess.OpenSnoozed?.Invoke(__instance, null);
                 else
-                    AccessTools.Method(typeof(MainTabWindow_NextResearch), "OpenHistory")?.Invoke(__instance, null);
+                    SnoozeWindowAccess.OpenHistory?.Invoke(__instance, null);
             }
 
             string tip = showingSnoozed
@@ -286,8 +353,8 @@ namespace CM_Semi_Random_Research
     {
         public static void Prefix(MainTabWindow_NextResearch __instance)
         {
-            FieldInfo snoozedField = AccessTools.Field(typeof(MainTabWindow_NextResearch), "showingSnoozed");
-            FieldInfo historyField = AccessTools.Field(typeof(MainTabWindow_NextResearch), "showingHistory");
+            FieldInfo snoozedField = SnoozeWindowAccess.ShowingSnoozed;
+            FieldInfo historyField = SnoozeWindowAccess.ShowingHistory;
             if (snoozedField == null || historyField == null)
                 return;
             if (!(bool)snoozedField.GetValue(__instance))

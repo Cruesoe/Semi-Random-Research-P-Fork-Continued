@@ -261,12 +261,18 @@ namespace CM_Semi_Random_Research
             selectionBeforeHistory = selectedProject;
         }
 
+        // Refilled each pass rather than reallocated: this view is drawn on every OnGUI event.
+        // Still a copy, so unsnoozing from a card cannot disturb the loop walking it.
+        private readonly List<ResearchProjectDef> snoozedDrawBuffer = new List<ResearchProjectDef>();
+
         private void DrawSnoozedColumn(Rect leftRect)
         {
             ResearchSnoozeTracker tracker = ResearchSnoozeTracker.Get();
-            List<ResearchProjectDef> snoozed = tracker != null
-                ? new List<ResearchProjectDef>(tracker.SnoozedProjects)
-                : new List<ResearchProjectDef>();
+            List<ResearchProjectDef> snoozed = snoozedDrawBuffer;
+            if (tracker != null)
+                tracker.GetSnoozedProjects(snoozed);
+            else
+                snoozed.Clear();
 
             float footerPaddingTop = 12f;
             float footerHeight = 40f;

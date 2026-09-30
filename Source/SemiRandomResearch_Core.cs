@@ -170,6 +170,24 @@ namespace CM_Semi_Random_Research
             return false;
         }
 
+        // A signature of everything IsHiddenResearch can answer differently over a single
+        // session: whether anomaly study has been enabled, and whether SaveOurShip2's archotech
+        // uplink exists yet. Everything else it looks at is fixed once defs are loaded. Callers
+        // that cache a per-def hidden/visible decision keep the value they built under and
+        // rebuild when it moves, so the cache cannot outlive the answer it was built from.
+        internal static int HiddenResearchStateVersion
+        {
+            get
+            {
+                int version = 0;
+                if (ModsConfig.AnomalyActive && AnomalyResearchUnlocked())
+                    version |= 1;
+                if (enabled_SoS2 && SaveOurShip2ArchotechUplinkUnlocked())
+                    version |= 2;
+                return version;
+            }
+        }
+
         public static bool SatisfiesAlienRaceRestriction(ResearchProjectDef rpd)
         {
             return true;
