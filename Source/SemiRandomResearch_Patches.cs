@@ -139,16 +139,7 @@ namespace CM_Semi_Random_Research
             {
                 finishDepth++;
 
-                if (!SemiRandomResearchMod.settings.featureEnabled)
-                {
-                    if (!isFinishingResearch)
-                    {
-                        isFinishingResearch = true;
-                        SemiRandomResearchUtility.Tracker?.ConsiderProjectFinished(proj);
-                    }
-                    return;
-                }
-
+                // The letter and auto-open settings replace vanilla's completion popup whether or not normal selection is prohibited.
                 doCompletionDialog = false;
                 doCompletionLetter = false;
 
@@ -313,7 +304,7 @@ namespace CM_Semi_Random_Research
                     return true;
 
                 SemiRandomResearchSettings settings = SemiRandomResearchMod.settings;
-                if (settings == null || !settings.featureEnabled || settings.autoOpenOnCompletion)
+                if (settings == null || settings.autoOpenOnCompletion)
                     return true;
 
                 return !ResearchTabWindowSwitcher.SemiRandomOwnsResearchTab;
