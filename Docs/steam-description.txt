@@ -1,0 +1,54 @@
+[h1]Make research less predictable[/h1]
+Instead of choosing freely from the entire research tree, select from a smaller set of offered projects and adapt your colony’s plans as new options appear.
+
+Designed especially for large modlists and tech-progression playthroughs.
+
+[h2]Features[/h2]
+[list]
+[*]Choose how many research projects are offered.
+[*]Configure automatic rerolling.
+[*]Snooze unwanted projects or switch between available choices.
+[*]Automatically select the next research project.
+[*]Restrict research to your faction’s tech level.
+[*]Scale the number of choices with your colonist count.
+[*]Balance offered projects by research cost.
+[*]See completion estimates, research speed, averages, and progress history.
+[*]Track completed research across each tech level.
+[*]View faction and world tech levels when supported.
+[*]See what buildings and items each project unlocks.
+[*]Optionally group projects by tech level.
+[*]Hide the research graph and disable research-complete letters or automatic window opening.
+[/list]
+
+Includes support for Anomaly dark research and Vanilla Gravship Expanded.
+
+[h2]Compatibility[/h2]
+Compatible with:
+[list]
+[*]Yet Another Research Tree
+[*]Sleek Research Tab
+[*]Node Research
+[*]Progression: Core
+[*]World Tech Level
+[/list]
+
+[b]Not compatible with Research: Auto.[/b]
+
+[h2]FAQ[/h2]
+[b]Is it safe to add to an existing save?[/b]
+Yes.
+
+[b]Does this replace older versions of Semi Random Research?[/b]
+Yes. Remove other versions of Semi Random Research from your mod list before enabling this one.
+
+[h2]History and credits[/h2]
+Semi Random Research was originally designed by Captain Muscles, maintained and expanded by GrobmotoriGER, and later forked by Arodoid in collaboration with Ferny.
+
+This continuation builds upon their excellent work with Ferny’s permission. If the original authors return, the code remains theirs to use.
+[list]
+[*]Captain Muscles — original design and C#
+[*]GrobmotoriGER — additional C#
+[*]Arodoid — P-Fork development
+[*]Sandwish — initial RimWorld 1.6 recompilation
+[*]Ferny — collaboration, management, and Workshop support
+[/list]
