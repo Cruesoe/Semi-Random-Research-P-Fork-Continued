@@ -19,6 +19,7 @@ namespace CM_Semi_Random_Research
 
         private float leftScrollViewHeight;
         private float leftScrollHeightForFrame;
+        private float leftScrollOutHeight;
 
         private Vector2 rightScrollPosition = Vector2.zero;
 
@@ -655,7 +656,10 @@ namespace CM_Semi_Random_Research
             }
         }
 
-        public override Vector2 InitialSize => new Vector2(UI.screenWidth * 0.585f, UI.screenHeight * 0.7f);
+        // Vanilla MainTabWindow sits its bottom edge this far above the screen bottom, on top of the main button bar.
+        private const float BottomBarHeight = 35f;
+
+        public override Vector2 InitialSize =>new Vector2(UI.screenWidth * 0.585f, UI.screenHeight * 0.7f);
 
         public override Vector2 RequestedTabSize => InitialSize;
 
@@ -682,6 +686,9 @@ namespace CM_Semi_Random_Research
             // The history view is never remembered between openings.
             showingHistory = false;
             selectionBeforeHistory = null;
+
+            // base.PreOpen reset the window to its normal size, so the last measurement no longer applies.
+            leftScrollOutHeight = 0f;
 
             currentRandomSeed = Rand.Int;
             cachedTracker = SemiRandomResearchUtility.Tracker;
@@ -839,6 +846,32 @@ namespace CM_Semi_Random_Research
             RefreshCanStartNow(tick);
             RefreshRateTexts(tick);
             RefreshTechLevelStats(tick);
+            ApplyAdaptiveSize();
+        }
+
+        // Grows or shrinks the window so the left column fits without a scroll bar, between the normal size and
+        // the space above the bottom button bar. Runs outside OnGUI so the new rect lands between frames.
+        private void ApplyAdaptiveSize()
+        {
+            float baseHeight = InitialSize.y;
+            float maxHeight = Mathf.Max(baseHeight, UI.screenHeight - BottomBarHeight);
+            float targetHeight = baseHeight;
+
+            if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.adaptiveSize)
+            {
+                // The history view and the first frame have no measured offer list, so they keep the current height.
+                if (showingHistory || leftScrollOutHeight <= 0f)
+                    return;
+                targetHeight = Mathf.Clamp(windowRect.height + leftScrollViewHeight - leftScrollOutHeight, baseHeight, maxHeight);
+            }
+
+            if (Mathf.Abs(targetHeight - windowRect.height) < 1f)
+                return;
+
+            windowRect.height = targetHeight;
+            windowRect.y = UI.screenHeight - BottomBarHeight - targetHeight;
+            if (targetHeight < maxHeight)
+                leftScrollPosition = Vector2.zero;
         }
 
         // True when the selected offer is one the left column hides because its category already

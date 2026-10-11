@@ -248,7 +248,10 @@ namespace CM_Semi_Random_Research
 
             Rect scrollOutRect = new Rect(0f, currentY, position.width, position.height - (totalFooterHeight + currentY));
             if (Event.current.type == EventType.Layout)
+            {
                 leftScrollHeightForFrame = leftScrollViewHeight;
+                leftScrollOutHeight = scrollOutRect.height;
+            }
             float viewHeight = Mathf.Max(leftScrollHeightForFrame, 1f);
             Rect scrollViewRect = new Rect(0f, 0f, scrollOutRect.width - 16f, viewHeight);
             bool useScroll = viewHeight > scrollOutRect.height + 1f;

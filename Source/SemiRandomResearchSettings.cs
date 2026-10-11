@@ -87,6 +87,7 @@ namespace CM_Semi_Random_Research
         private bool legacyUsingNodeResearch = false;
         public bool suppressHandoverMessages = false;
         public bool colorAndGroupByTechLevel = true;
+        public bool adaptiveSize = false;
 
         public bool AllowOneHigherTechProjectActive =>
             allowOneHigherTechProject && !ResearchTabWindowSwitcher.NodeResearchInstalled;
@@ -125,6 +126,7 @@ namespace CM_Semi_Random_Research
             Scribe_Values.Look(ref settingsVersion, "settingsVersion", 0);
             Scribe_Values.Look(ref suppressHandoverMessages, "suppressHandoverMessages", false);
             Scribe_Values.Look(ref colorAndGroupByTechLevel, "colorAndGroupByTechLevel", true);
+            Scribe_Values.Look(ref adaptiveSize, "adaptiveSize", false);
         }
 
         private static readonly Color SectionColor = new Color(0.62f, 0.72f, 0.80f);
@@ -186,6 +188,7 @@ namespace CM_Semi_Random_Research
             SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Display");
             Checkbox(listing, "ColorGroup", ref colorAndGroupByTechLevel);
             Checkbox(listing, "ShowGraph", ref showResearchRateGraph);
+            Checkbox(listing, "AdaptiveSize", ref adaptiveSize);
 
             if (ResearchTabWindowSwitcher.AnyTreeInstalled)
             {
@@ -527,7 +530,8 @@ namespace CM_Semi_Random_Research
                 $"autoPickNextResearch: {autoPickNextResearch} " +
                 $"allowSnoozing: {allowSnoozing} " +
                 $"suppressHandoverMessages: {suppressHandoverMessages} " +
-                $"colorAndGroupByTechLevel: {colorAndGroupByTechLevel}");
+                $"colorAndGroupByTechLevel: {colorAndGroupByTechLevel} " +
+                $"adaptiveSize: {adaptiveSize}");
         }
     }
 }
