@@ -1,15 +1,14 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
   <CM_Semi_Random_Research_Setting_AllowSnoozing_Label>Allow snoozing projects</CM_Semi_Random_Research_Setting_AllowSnoozing_Label>
-  <CM_Semi_Random_Research_Setting_AllowSnoozing_Description>When enabled, right-clicking an offered project snoozes it so it is not offered again until you unsnooze it from the history button. When disabled, snoozing is unavailable and any already snoozed projects go back into the pool. Your snoozed list is kept, so turning this back on restores it.</CM_Semi_Random_Research_Setting_AllowSnoozing_Description>
+  <CM_Semi_Random_Research_Setting_AllowSnoozing_Description>When enabled, right-clicking an offered project snoozes it: it leaves the offers, its place stays empty until the next reroll or completed project, and it is not offered again until you unsnooze it from the history button. When disabled, snoozing is unavailable and any snoozed projects go back into the pool. Your snoozed list is kept, so turning this back on restores it.</CM_Semi_Random_Research_Setting_AllowSnoozing_Description>
   <CM_Semi_Random_Research_HistoryCycleTip>Click to cycle through recently completed research and snoozed projects. Pick a completed project to see what it unlocked.</CM_Semi_Random_Research_HistoryCycleTip>
   <CM_Semi_Random_Research_HistoryToSnoozedTip>Show snoozed projects that will not be offered.</CM_Semi_Random_Research_HistoryToSnoozedTip>
   <CM_Semi_Random_Research_SnoozedHeader>Snoozed projects</CM_Semi_Random_Research_SnoozedHeader>
   <CM_Semi_Random_Research_SnoozedEmpty>No snoozed projects. Right-click an offered project to snooze it.</CM_Semi_Random_Research_SnoozedEmpty>
   <CM_Semi_Random_Research_SnoozedBackTip>Return to the current and available projects.</CM_Semi_Random_Research_SnoozedBackTip>
-  <CM_Semi_Random_Research_SnoozeTip>Right-click to snooze this project. It will not be offered again until you unsnooze it.</CM_Semi_Random_Research_SnoozeTip>
   <CM_Semi_Random_Research_UnsnoozeTip>Click to unsnooze this project and allow it to be offered again.</CM_Semi_Random_Research_UnsnoozeTip>
-  <CM_Semi_Random_Research_Snoozed>Snoozed {0}. It will not be offered again.</CM_Semi_Random_Research_Snoozed>
+  <CM_Semi_Random_Research_Snoozed>Snoozed {0}. It will not be offered again, and its place stays empty until the next reroll.</CM_Semi_Random_Research_Snoozed>
   <CM_Semi_Random_Research_Unsnoozed>Unsnoozed {0}.</CM_Semi_Random_Research_Unsnoozed>
   <CM_Semi_Random_Research_SnoozeMissing>That project no longer exists.</CM_Semi_Random_Research_SnoozeMissing>
   <CM_Semi_Random_Research_SnoozeDisabled>Snoozing is turned off in the mod settings.</CM_Semi_Random_Research_SnoozeDisabled>

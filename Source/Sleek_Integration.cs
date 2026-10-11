@@ -43,10 +43,7 @@ namespace CM_Semi_Random_Research
         private static PropertyInfo sleekDisabledReasonProperty;
         private static MethodInfo sleekDisabledSetter;
 
-        // AccessTools.TypeByName asks every loaded assembly for the type, which on a large mod
-        // list is not something to repeat - and this rides a method Sleek owns, so how often it
-        // runs is not ours to decide. Resolved on the first call and kept. A miss is not cached:
-        // it can only happen if Sleek is absent, in which case the postfix was never installed.
+        // Resolved once: TypeByName scans every loaded assembly, and Sleek decides how often Evaluate runs.
         private static bool ResolveSleekCompat()
         {
             if (sleekCompatType != null)

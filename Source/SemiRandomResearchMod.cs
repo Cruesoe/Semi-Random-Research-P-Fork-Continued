@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using UnityEngine;
 using Verse;
 
@@ -10,7 +10,6 @@ namespace CM_Semi_Random_Research
         public static SemiRandomResearchMod Instance => _instance;
 
         public static SemiRandomResearchSettings settings;
-        public static string version;
 
         public SemiRandomResearchMod(ModContentPack content) : base(content)
         {
@@ -22,16 +21,6 @@ namespace CM_Semi_Random_Research
             settings = GetSettings<SemiRandomResearchSettings>();
             if (settings.MigrateSettings())
                 WriteSettings();
-            string versionFromManifest = VersionFromManifest.GetVersionFromModMetaData(content.ModMetaData);
-
-            if (!versionFromManifest.NullOrEmpty())
-            {
-                version = versionFromManifest;
-            }
-            else
-            {
-                version = "?.?.?";
-            }
         }
 
         public override string SettingsCategory()
@@ -52,13 +41,10 @@ namespace CM_Semi_Random_Research
             settings.UpdateSettings();
         }
 
-        // Persist the config without the UpdateSettings pass that follows a settings-window
-        // edit. Remembering which research window was last opened must not run SettingsChanged
-        // and rebuild the offer list underneath the player.
+        // Saves the config without UpdateSettings, which would rebuild the offer list.
         public void SaveSettingsOnly()
         {
             base.WriteSettings();
         }
-
     }
 }

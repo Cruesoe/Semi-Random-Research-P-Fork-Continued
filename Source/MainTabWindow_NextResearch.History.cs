@@ -51,16 +51,6 @@ namespace CM_Semi_Random_Research
             RefreshCanStartNow(Find.TickManager.TicksGame);
         }
 
-        private static bool RightClicked(Rect rect)
-        {
-            if (Event.current.type != EventType.MouseDown || Event.current.button != 1)
-                return false;
-            if (!Mouse.IsOver(rect))
-                return false;
-            Event.current.Use();
-            return true;
-        }
-
         private void DrawHistoryColumn(Rect leftRect)
         {
             if (showingSnoozed)
@@ -213,16 +203,14 @@ namespace CM_Semi_Random_Research
             }
 
             Rect nameRect = layout.NameRect;
-            Rect topTextRect = new Rect(nameRect.x, nameRect.y + 2f, nameRect.width, 24f);
-            Rect bottomTextRect = new Rect(nameRect.x, nameRect.y + 24f, nameRect.width, 20f);
+            Rect topTextRect = new Rect(nameRect.x, nameRect.y + 2f, nameRect.width, 22f);
+            Rect bottomTextRect = new Rect(nameRect.x, nameRect.y + 24f, nameRect.width, 22f);
             GUI.color = isMouseOver ? Color.white : new Color(0.95f, 0.95f, 0.95f);
             Text.Anchor = TextAnchor.LowerLeft;
             Widgets.Label(topTextRect, SafeLabel(projectDef));
             Text.Anchor = TextAnchor.UpperLeft;
-            Text.Font = GameFont.Tiny;
             GUI.color = new Color(0.72f, 0.72f, 0.72f);
             Widgets.Label(bottomTextRect, FormatCompletedAgo(entry.tick));
-            Text.Font = GameFont.Small;
             GUI.color = originalColor;
             Text.Anchor = TextAnchor.MiddleCenter;
             bool wordWrap = Text.WordWrap;
@@ -254,15 +242,14 @@ namespace CM_Semi_Random_Research
             return "CM_Semi_Random_Research_HistoryAgo".Translate(ticksSince.ToStringTicksToPeriod(false, false, false));
         }
 
+        // The snoozed list is a sub-view of history, so showingHistory stays set and the pre-history selection is kept.
         private void OpenSnoozed()
         {
             showingSnoozed = true;
-            showingHistory = false;
-            selectionBeforeHistory = selectedProject;
+            showingHistory = true;
         }
 
-        // Refilled each pass rather than reallocated: this view is drawn on every OnGUI event.
-        // Still a copy, so unsnoozing from a card cannot disturb the loop walking it.
+        // A reused copy, so unsnoozing from a card cannot disturb the loop walking it.
         private readonly List<ResearchProjectDef> snoozedDrawBuffer = new List<ResearchProjectDef>();
 
         private void DrawSnoozedColumn(Rect leftRect)
@@ -338,7 +325,7 @@ namespace CM_Semi_Random_Research
             Text.Font = GameFont.Small;
             Text.Anchor = TextAnchor.MiddleLeft;
             Widgets.Label(new Rect(drawRect.x + 8f, drawRect.y, drawRect.width - 16f, drawRect.height), SafeLabel(projectDef));
-            if (RightClicked(drawRect) || Clicked(drawRect))
+            if (ResearchWidgets.RightClicked(drawRect) || Clicked(drawRect))
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 tracker?.Unsnooze(projectDef);

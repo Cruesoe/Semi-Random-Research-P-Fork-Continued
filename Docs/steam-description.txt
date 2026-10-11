@@ -1,54 +1,36 @@
-[h1]Make research less predictable[/h1]
-Instead of choosing freely from the entire research tree, select from a smaller set of offered projects and adapt your colony’s plans as new options appear.
+[b]Research picks from a small, changing set of offered projects instead of the whole tree.[/b]
 
-Designed especially for large modlists and tech-progression playthroughs.
+Instead of choosing freely from the entire research tree, you choose from a few offered projects and adapt your colony's plans as new options appear. Designed especially for large mod lists and tech-progression playthroughs.
 
 [h2]Features[/h2]
 [list]
-[*]Choose how many research projects are offered.
-[*]Configure automatic rerolling.
-[*]Snooze unwanted projects or switch between available choices.
-[*]Automatically select the next research project.
-[*]Restrict research to your faction’s tech level.
-[*]Scale the number of choices with your colonist count.
-[*]Balance offered projects by research cost.
-[*]See completion estimates, research speed, averages, and progress history.
-[*]Track completed research across each tech level.
-[*]View faction and world tech levels when supported.
-[*]See what buildings and items each project unlocks.
-[*]Optionally group projects by tech level.
-[*]Hide the research graph and disable research-complete letters or automatic window opening.
+[*]A small set of research projects is offered at a time, rerolled when a project is finished.
+[*]Anomaly dark research and Vanilla Gravship Expanded gravtech research get their own offers alongside standard research.
+[*]Right-click an offer to snooze it: it is not offered again until you unsnooze it, and its place stays empty until the next reroll.
+[*]Auto research starts the cheapest offer for you when the research tab closes with nothing being researched.
+[*]Research can be paused and resumed from the research tab.
+[*]The active project shows its current rate, 10-day average, time to completion and a rate graph.
+[*]A progress bar shows completed research for each tech level, with your faction's and the world's tech level.
+[*]Each project lists what it unlocks, its prerequisites, and the unfinished projects that require it.
+[*]A history view lists recently completed research and what each project unlocked.
+[*]Offers can be grouped and colored by tech level.
+[*]The window can grow to show every offer instead of using a scroll bar.
 [/list]
 
-Includes support for Anomaly dark research and Vanilla Gravship Expanded.
+[h2]Settings[/h2]
+[list]
+[*][b]Number of choices[/b]: a constant number, or more choices as the colony grows.
+[*][b]Rerolls[/b]: reroll every choice when a project is finished, and allow manual rerolls never, once per project or always.
+[*][b]Which projects are offered[/b]: restrict offers to your faction's tech level, finish the lowest tech level first, allow one higher-tech project, and balance the cost of the offers.
+[*][b]Partially researched projects[/b]: offer them normally, never, as a replacement choice or as an extra choice.
+[*][b]Display[/b]: the rate graph, the completion letter, opening the research tab on completion, and adaptive window size can each be turned off.
+[/list]
 
 [h2]Compatibility[/h2]
-Compatible with:
-[list]
-[*]Yet Another Research Tree
-[*]Sleek Research Tab
-[*]Node Research
-[*]Progression: Core
-[*]World Tech Level
-[/list]
+Works with Node Research, YART, Sleek Research Tab, Nice Research Tab and Research: Organized, with a button in each to switch back. Also supports Progression: Core, Genesis, Vanilla Factions Expanded - Tribals, Vanilla Gravship Expanded and Save Our Ship 2.
+Not compatible with Research: Auto, because both choose your research for you.
+Remove any other version of Semi Random Research before enabling this one.
+Safe to add to an existing save.
 
-[b]Not compatible with Research: Auto.[/b]
-
-[h2]FAQ[/h2]
-[b]Is it safe to add to an existing save?[/b]
-Yes.
-
-[b]Does this replace older versions of Semi Random Research?[/b]
-Yes. Remove other versions of Semi Random Research from your mod list before enabling this one.
-
-[h2]History and credits[/h2]
-Semi Random Research was originally designed by Captain Muscles, maintained and expanded by GrobmotoriGER, and later forked by Arodoid in collaboration with Ferny.
-
-This continuation builds upon their excellent work with Ferny’s permission. If the original authors return, the code remains theirs to use.
-[list]
-[*]Captain Muscles — original design and C#
-[*]GrobmotoriGER — additional C#
-[*]Arodoid — P-Fork development
-[*]Sandwish — initial RimWorld 1.6 recompilation
-[*]Ferny — collaboration, management, and Workshop support
-[/list]
+[h2]Credits[/h2]
+Thanks to [b]Captain Muscles[/b] for the original design and code, [b]GrobmotoriGER[/b] for additional code, [b]Arodoid[/b] for the P-Fork, [b]Sandwish[/b] for the initial RimWorld 1.6 recompile, and [b]Ferny[/b] for collaboration, management, Workshop support and permission to continue it.

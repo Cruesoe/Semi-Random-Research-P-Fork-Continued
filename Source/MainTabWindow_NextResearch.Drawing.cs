@@ -32,15 +32,12 @@ namespace CM_Semi_Random_Research
             }
         }
 
-        // Named colors for the special Anomaly/Gravship pseudo-categories, shared by every
-        // place that draws a category header or card (used to be three separate hardcoded copies).
+        // Colors for the Anomaly and Gravship pseudo-categories, shared by headers and cards.
         private static readonly Color AnomalyBasicColor = new Color(0.65f, 0.35f, 0.5f);
         private static readonly Color AnomalyAdvancedColor = new Color(0.45f, 0.35f, 0.5f);
         private static readonly Color GravshipColor = new Color(0.2f, 0.6f, 0.8f);
 
-        // Shared color lookup for a project's card/header color. Falls back to the plain
-        // tech-level color, but overrides it for the special Anomaly/Gravship pseudo-categories
-        // so all UI elements (list cards, section headers, dashboard cards) stay in sync.
+        // A project's card color: the Anomaly/Gravship color, else its tech level color (or neutral with grouping off).
         private Color GetCategoryColor(ResearchProjectDef projectDef)
         {
             if (projectDef.knowledgeCategory != null && projectDef.knowledgeCategory == KnowledgeCategoryDefOf.Basic)
@@ -56,9 +53,7 @@ namespace CM_Semi_Random_Research
             return GetTechLevelColor(projectDef.techLevel);
         }
 
-        // Card fill accent for research progress. When standard cards use the flat neutral
-        // category color, a plain techColor fill matches the background and disappears —
-        // lift toward white so partial progress still reads.
+        // Neutral standard cards get a lighter progress fill and structure accent so they show against the background.
         private bool UsesFlatNeutralCardColor(ResearchProjectDef projectDef)
         {
             return SemiRandomResearchMod.settings != null
@@ -69,8 +64,6 @@ namespace CM_Semi_Random_Research
                 && projectDef.tab?.defName != "VGE_GravShip";
         }
 
-        // Separators / borders on flat neutral cards need a lifted accent or the
-        // icon | name | cost sections disappear into the dark background.
         private Color GetCardStructureAccent(ResearchProjectDef projectDef, Color categoryColor)
         {
             if (UsesFlatNeutralCardColor(projectDef))
@@ -89,9 +82,7 @@ namespace CM_Semi_Random_Research
 
         private static readonly Color NodeTechTagColor = new Color(0.95f, 0.75f, 0.25f);
 
-        // Node Research marks some projects as foundation or emergence techs. The tag describes
-        // the project itself, so it has to survive the card moving from the offer list up into
-        // Currently researching, which is drawn by a different method.
+        // Node Research's Foundation/Emergence tag, shown on both offer and active cards.
         private string GetNodeTechTag(ResearchProjectDef projectDef)
         {
             if (projectDef == null)
@@ -103,9 +94,7 @@ namespace CM_Semi_Random_Research
             return null;
         }
 
-        // "889/13,840" is rebuilt for every visible card on every pass of OnGUI, which is dozens of
-        // formatted strings a frame for a value that cannot change more than once a game tick.
-        // Keyed on the tick, so the label still updates as fast as the number behind it does.
+        // "889/13,840" cost labels, cached for the current tick.
         private readonly Dictionary<ResearchProjectDef, string> costTextCache =
             new Dictionary<ResearchProjectDef, string>();
         private int costTextCacheTick = int.MinValue;
@@ -153,10 +142,7 @@ namespace CM_Semi_Random_Research
             return width;
         }
 
-        // The "icon | name | cost" card row is drawn in two places (the research list buttons
-        // and the active-project dashboard header) with slightly different proportions/margins,
-        // so this returns the shared icon/separator/name/cost geometry. costColumnWidth is the
-        // measured width of the cost/progress label so values like 889/13,840 stay on one line.
+        // "icon | name | cost" geometry shared by every card. costColumnWidth is the measured widest cost label.
         private readonly struct CardRowLayout
         {
             public readonly Rect IconRect;

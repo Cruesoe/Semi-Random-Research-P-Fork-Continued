@@ -52,10 +52,7 @@ namespace CM_Semi_Random_Research
                 .Max();
         }
 
-        // Runs over the whole research database, so everything that does not depend on the def is
-        // hoisted out of the loop and the totals live in an array indexed by tech level rather
-        // than a dictionary. Every entry is still visited, so a mod that changes costs at runtime
-        // is picked up exactly as before.
+        // Completed, total, spent and remaining cost per tech level, over the whole research database.
         private void RebuildTechLevelStats()
         {
             if (cachedTechLevelStats == null || cachedTechLevelStats.Length != TechLevelCount)
@@ -102,9 +99,7 @@ namespace CM_Semi_Random_Research
             techLevelStatsVersion++;
         }
 
-        // "Industrial (42/97)" and the two text measurements behind it were rebuilt for every band
-        // on every OnGUI pass. Nothing in them moves until the stats do, so they are built once per
-        // stats rebuild - roughly once a game second - instead.
+        // "Industrial (42/97)" labels and their widths, rebuilt with the stats.
         private struct TechLevelLabel
         {
             public string name;
@@ -130,8 +125,7 @@ namespace CM_Semi_Random_Research
             Text.Font = GameFont.Small;
             for (int i = 0; i < TechLevelCount; i++)
             {
-                // Undefined is never one of the drawn bands, and asking it for a human-readable
-                // name is not something the old per-frame code ever did.
+                // Undefined is never drawn.
                 if (i == (int)TechLevel.Undefined)
                 {
                     cachedTechLevelLabels[i] = new TechLevelLabel { name = string.Empty, stats = string.Empty };
@@ -233,16 +227,13 @@ namespace CM_Semi_Random_Research
             bool nodeResearchActive = ResearchTabWindowSwitcher.NodeResearchInstalled;
             bool progressionCoreActive = ProgressionCoreActive;
             bool genesisActive = GenesisActive;
-            // Node Research advances the era through its own Emergence projects, so Progression
-            // Core's percentage says nothing about when you level up. With it installed the marker
-            // instead shows the ceiling of what the current tech level can research: the end of
-            // this era's segment. Genesis has no completion-percentage mechanic either, so it
-            // shares that same no-percentage marker.
+            // Node Research (Emergence projects) and Genesis have no percentage threshold, so the marker sits at
+            // the end of the current era's segment instead of at Progression Core's percentage.
             bool noPercentageThreshold = nodeResearchActive || genesisActive;
             float requiredProgress = noPercentageThreshold ? 1f : cachedRequiredProgress;
             bool showThresholdMarker = noPercentageThreshold || progressionCoreActive;
 
-            // Two rows for labels with staggered positioning - more brick wall like
+            // Labels alternate between two rows so neighbors do not overlap.
             float topLabelY = rect.y - 49f;   // Further row - moved even further away
             float bottomLabelY = rect.y - 27f; // Closer row - moved slightly further from bar
             float labelHeight = 16f;
@@ -349,10 +340,7 @@ namespace CM_Semi_Random_Research
 
                 if (Mouse.IsOver(segmentRect))
                 {
-                    // The text is rebuilt on demand behind a stable id. Passing a plain string
-                    // would key the tooltip on the text's hash, so the changing research rate
-                    // inside it would register as a brand new tooltip every few ticks and the
-                    // window would restart its fade - a visible flicker while hovering.
+                    // Stable id, so the changing rate in the text does not restart the tooltip's fade.
                     TechLevel tooltipTechLevel = techLevel;
                     TooltipHandler.TipRegion(segmentRect,
                         () => BuildEraTooltip(tooltipTechLevel),
@@ -384,7 +372,7 @@ namespace CM_Semi_Random_Research
                     Widgets.DrawLine(arrowBase, arrowRight, thresholdColor, 2f);
                 }
 
-                Text.Font = GameFont.Tiny;
+                Text.Font = GameFont.Small;
                 Text.Anchor = TextAnchor.UpperCenter;
                 GUI.color = Color.white;
 
@@ -393,23 +381,21 @@ namespace CM_Semi_Random_Research
                 if (TryGetTechLevelStats(currentTechLevel, out var currentStats) && currentStats.total > 0)
                     progress = (float)currentStats.completed / currentStats.total;
 
-                // The arrow marks the boundary on its own; a no-percentage threshold (Node
-                // Research / Genesis) has no label worth reading, just the line and arrow.
+                // Node Research and Genesis have no percentage threshold, so only the line and arrow are drawn.
                 if (!noPercentageThreshold)
                 {
                     string thresholdLabel = progress >= requiredProgress
                         ? "CM_Semi_Random_Research_ReadyToAdvance".Translate()
                         : "CM_Semi_Random_Research_AdvanceTechLevel".Translate();
 
-                    // Sized to the label and clamped inside the bar: the old fixed 120f box wrapped
-                    // "Advance Tech Level" onto a second line that the 20f row height cut off, and
-                    // near the left edge the box started outside the bar.
-                    float thresholdLabelWidth = Text.CalcSize(thresholdLabel).x + 4f;
+                    // Sized to the label and clamped inside the bar.
+                    Vector2 thresholdLabelSize = Text.CalcSize(thresholdLabel);
+                    float thresholdLabelWidth = thresholdLabelSize.x + 4f;
                     Rect labelRect = new Rect(
                         advancementThresholdX - (thresholdLabelWidth / 2f),
-                        barRect.yMax + lineExtension + 4f,
+                        barRect.yMax + lineExtension + 2f,
                         thresholdLabelWidth,
-                        20f);
+                        thresholdLabelSize.y);
                     if (labelRect.x < barRect.x)
                         labelRect.x = barRect.x;
                     else if (labelRect.xMax > barRect.xMax)
@@ -423,8 +409,7 @@ namespace CM_Semi_Random_Research
             GUI.color = Color.white;
         }
 
-        // Stable tooltip ids. Anything hovering over the progress bar shares this range;
-        // the era bars offset by tech level, the unified bar takes the last slot.
+        // Tooltip ids: era bars offset by tech level, the unified bar takes the last slot.
         private const int EraTooltipIdBase = 0x5252_0100;
         private const int UnifiedTooltipId = EraTooltipIdBase + 64;
 
@@ -445,15 +430,12 @@ namespace CM_Semi_Random_Research
 
             if (techLevel == Faction.OfPlayer.def.techLevel && ResearchTabWindowSwitcher.NodeResearchInstalled)
             {
-                // Progression Core's percentage only gates the Vanilla Tribals ritual; under Node
-                // Research the era ends at its Emergence project, so quoting a percentage here
-                // would describe a threshold the colony never has to meet.
+                // Under Node Research the era ends at its Emergence project, not at a percentage.
                 tooltip += "\n\n" + "CM_Semi_Random_Research_NodeResearchTechLimit".Translate();
             }
             else if (GenesisActive && techLevel == Faction.OfPlayer.def.techLevel)
             {
-                // Genesis has no completion-percentage mechanic, so - like Node Research above -
-                // this just marks the era boundary rather than quoting a threshold to meet.
+                // Genesis has no percentage threshold either.
                 tooltip += "\n\n" + "CM_Semi_Random_Research_GenesisTechLimit".Translate();
             }
             else if (ProgressionCoreActive && techLevel == Faction.OfPlayer.def.techLevel)
@@ -518,7 +500,6 @@ namespace CM_Semi_Random_Research
         {
             try
             {
-                // Use reflection to access the settings
                 System.Type settingsType = GenTypes.GetTypeInAnyAssembly("ProgressionCore.ProgressionCoreSettings");
                 if (settingsType != null)
                 {
@@ -534,7 +515,6 @@ namespace CM_Semi_Random_Research
                 Log.Warning("[CM_Semi_Random_Research] Error accessing ProgressionCore settings: " + ex.Message);
             }
 
-            // Default value if we can't access the setting
             return 1.0f;
         }
 

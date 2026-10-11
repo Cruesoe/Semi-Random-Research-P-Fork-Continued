@@ -269,10 +269,13 @@ namespace CM_Semi_Random_Research
                 SelectRelatedProject(dependent);
             }
 
-            string remaining = GetOtherUnfinishedPrerequisites(dependent, prerequisite);
-            TooltipHandler.TipRegion(rowRect, remaining.NullOrEmpty()
-                ? "CM_Semi_Random_Research_FinalResearchPrerequisite".Translate()
-                : "CM_Semi_Random_Research_AlsoRequires".Translate(remaining));
+            if (Mouse.IsOver(rowRect))
+            {
+                string remaining = GetOtherUnfinishedPrerequisites(dependent, prerequisite);
+                TooltipHandler.TipRegion(rowRect, remaining.NullOrEmpty()
+                    ? "CM_Semi_Random_Research_FinalResearchPrerequisite".Translate()
+                    : "CM_Semi_Random_Research_AlsoRequires".Translate(remaining));
+            }
 
             rect.yMin += itemHeight + 4f;
         }
@@ -454,8 +457,7 @@ namespace CM_Semi_Random_Research
 
         private void DrawResearchBenchFacilityRequirement(ThingDef requiredFacility, CompAffectedByFacilities bestMatchingBench, ResearchProjectDef project, ref Rect rect)
         {
-            // Plain loop: this is drawn every frame, and List.Find with these two capturing
-            // lambdas allocated a closure and a delegate per facility per pass.
+            // First linked facility of this type, and the first active one.
             Thing thing = null;
             Thing thing2 = null;
             if (bestMatchingBench != null)
@@ -487,8 +489,7 @@ namespace CM_Semi_Random_Research
 
         private float GetResearchBenchRequirementsScore(Building_ResearchBench bench, List<ThingDef> requiredFacilities)
         {
-            // The comp lookup was repeated per required facility, and each of the two Find calls
-            // built a closure over both loop variables. One lookup, plain loops.
+            // One point per active required facility, 0.6 per inactive one.
             CompAffectedByFacilities benchComp = bench.GetComp<CompAffectedByFacilities>();
             if (benchComp == null)
                 return 0f;
@@ -522,8 +523,7 @@ namespace CM_Semi_Random_Research
             return num;
         }
 
-        // Package id to expansion, resolved once per mod. The Find below ran every frame with a
-        // fresh closure over the project just to draw one icon.
+        // Package id to expansion, resolved once per mod.
         private static readonly Dictionary<string, ExpansionDef> expansionByPackageId =
             new Dictionary<string, ExpansionDef>();
 

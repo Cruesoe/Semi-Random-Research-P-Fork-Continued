@@ -18,7 +18,7 @@ namespace CM_Semi_Random_Research
             InvalidateCostTextCache();
         }
 
-        // Paused still counts as busy: the project keeps the category until it is resumed or cancelled.
+        // Paused still counts as busy: the project keeps the category until it is resumed or canceled.
         private static bool IsCategoryBusy(ResearchProjectDef activeProject)
         {
             return activeProject != null && !activeProject.IsFinished;
@@ -103,10 +103,7 @@ namespace CM_Semi_Random_Research
             cachedGravshipProjects.Clear();
             cachedStandardGroups.Clear();
 
-            // "Allow switching between choices" off means nothing else can be started until the
-            // active project finishes, so the rest of that category's offers are hidden instead of
-            // being listed as locked. Only the display is filtered: the tracker still holds them,
-            // so with "Reroll all choices every time" off they come back on completion.
+            // With switching off, a busy category's other offers are hidden rather than shown locked. The tracker keeps them.
             bool hideBusyCategoryOffers = SemiRandomResearchMod.settings == null || !SemiRandomResearchMod.settings.allowSwitchingResearch;
             bool standardBusy = hideBusyCategoryOffers && IsCategoryBusy(activeNonAnomalyProject);
             bool anomalyBasicBusy = hideBusyCategoryOffers && IsCategoryBusy(activeAnomalyProjectBasic);
@@ -273,14 +270,12 @@ namespace CM_Semi_Random_Research
                 for (int i = 0; i < cachedActiveProjects.Count; i++)
                 {
                     ResearchProjectDef activeProj = cachedActiveProjects[i];
-                    // Only the Main/Standard project gets the expanded height
+                    // Only the standard project gets the expanded card with rates and graph.
                     bool isMainProject = ResearchTracker.GetCategoryKey(activeProj) == "Standard";
 
                     float baseHeight = 48f;
                     float expandedHeight = baseHeight + 16f + 38f;
                     if (SemiRandomResearchMod.settings.showResearchRateGraph) expandedHeight += 16f + 140f;
-
-                    // Apply the expanded height ONLY to the main project
                     float cardHeight = isMainProject ? expandedHeight : baseHeight;
 
                     Rect rateStatsRect = new Rect(0f, currentY, scrollViewRect.width, cardHeight);
@@ -348,9 +343,7 @@ namespace CM_Semi_Random_Research
                 }
             }
 
-            // ==========================================
-            // AVAILABLE ANOMALY / GRAVSHIP PROJECTS
-            // ==========================================
+            // Anomaly and Gravship offers.
             if ((anomalyOn && (hasAnomalyToShowBasic || hasAnomalyToShowAdvanced)) || hasGravshipToShow)
             {
                 if (currentY > 0)
@@ -501,10 +494,8 @@ namespace CM_Semi_Random_Research
 
             if (showRerollButton)
             {
-                // Recomputed every draw rather than trusting the PreOpen-time cache: a reroll
-                // setting changed while this window stays open (mod settings doesn't force a
-                // reopen) would otherwise never take effect until the tab was closed and reopened.
-                cachedCanReroll = researchTracker.CanReroll(rerollButtonType);
+                // Recomputed every draw, so a reroll setting changed while the window is open applies at once.
+                cachedCanReroll = researchTracker.CanReroll(null);
 
                 if (cachedCanReroll)
                 {
@@ -512,9 +503,9 @@ namespace CM_Semi_Random_Research
                     {
                         SoundDefOf.Click.PlayOneShotOnCamera();
                         SoundDefOf.TabOpen.PlayOneShotOnCamera();
-                        researchTracker.Reroll(rerollButtonType);
+                        researchTracker.Reroll(null);
                         lastRerollTime = Time.realtimeSinceStartup;
-                        cachedCanReroll = researchTracker.CanReroll(rerollButtonType);
+                        cachedCanReroll = researchTracker.CanReroll(null);
                         CopyAvailableProjects(researchTracker.PeekAvailableProjects());
                         InvalidateLeftColumnCache();
                     }
@@ -531,15 +522,10 @@ namespace CM_Semi_Random_Research
                     if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_StartResearch".Translate(), FooterStartButtonColor))
                     {
                         SoundDefOf.ResearchStart.PlayOneShotOnCamera();
-                        // Ungated: this button is only drawn when PlayerCanStartProject allows it,
-                        // so the selection gate (which refuses every other UI) must not re-judge it.
-                        ResearchTracker.SetVanillaProjectUngated(selectedProject);
-
-                        string categoryKey = ResearchTracker.GetCategoryKey(selectedProject);
-                        Current.Game.World.GetComponent<ResearchTracker>()?.SetCurrentProjectByKey(selectedProject, categoryKey);
+                        // Ungated: this button is only drawn when PlayerCanStartProject allows it.
+                        researchTracker.SetCurrentProjectByKey(selectedProject, ResearchTracker.GetCategoryKey(selectedProject));
                         InvalidateLeftColumnCache();
-                        if (cachedTracker != null)
-                            CopyAvailableProjects(cachedTracker.PeekAvailableProjects());
+                        CopyAvailableProjects(researchTracker.PeekAvailableProjects());
                         cachedCanStartNowTick = -1;
                         RefreshCanStartNow(Find.TickManager.TicksGame);
 
@@ -554,7 +540,7 @@ namespace CM_Semi_Random_Research
                     DrawInactiveFooterButton(researchButtonRect, "CM_Semi_Random_Research_Finished".Translate(), Color.grey);
                     break;
                 case FooterStartMode.InProgress:
-                    if (researchTracker.ResearchPaused)
+                    if (researchTracker.IsProjectPaused(selectedProject))
                     {
                         if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_ResumeResearch".Translate(), FooterStartButtonColor))
                         {
@@ -619,35 +605,7 @@ namespace CM_Semi_Random_Research
             GUI.color = Color.white;
         }
 
-        private static bool ColoredButtonText(Rect rect, string label, Color fill)
-        {
-            bool mouseOver = Mouse.IsOver(rect);
-            bool held = mouseOver && Input.GetMouseButton(0);
-
-            if (IsRepaint)
-            {
-                Color bg = fill;
-                if (held)
-                    bg = fill * 0.75f;
-                else if (mouseOver)
-                    bg = Color.Lerp(fill, Color.white, 0.16f);
-
-                Widgets.DrawBoxSolid(rect, bg);
-
-                Color old = GUI.color;
-                GUI.color = Color.Lerp(fill, Color.black, 0.4f);
-                Widgets.DrawBox(rect);
-                GUI.color = old;
-            }
-
-            GUI.color = Color.white;
-            Text.Anchor = TextAnchor.MiddleCenter;
-            Widgets.Label(rect, label);
-            Text.Anchor = TextAnchor.UpperLeft;
-            GUI.color = Color.white;
-
-            return Clicked(rect);
-        }
+        private static bool ColoredButtonText(Rect rect, string label, Color fill) => ResearchWidgets.ColoredButton(rect, label, fill);
 
         private void DrawTechLevelText(Rect rect, string prefix, TechLevel techLevel)
         {
@@ -688,7 +646,6 @@ namespace CM_Semi_Random_Research
             Text.Font = GameFont.Small;
 
             drawRect.height = buttonHeight;
-
             drawRect.width -= rightMargin;
 
             string costText = GetProjectCostText(projectDef);
@@ -706,46 +663,6 @@ namespace CM_Semi_Random_Research
             Color backgroundColor = isMouseOver
                 ? Color.Lerp(TexUI.AvailResearchColor, techColor, 0.4f)
                 : Color.Lerp(TexUI.AvailResearchColor, techColor, 0.3f);
-
-            Color borderColor = selectedProject == projectDef ?
-                TexUI.HighlightBorderResearchColor :
-                (isMouseOver ? Color.Lerp(structureAccent, Color.white, 0.2f) : structureAccent);
-
-            Color textColor = new Color(0.95f, 0.95f, 0.95f);
-
-            bool isActive = cachedActiveProjects.Contains(projectDef);
-
-            bool canCancel = SemiRandomResearchMod.settings.allowSwitchingResearch && isActive;
-
-            if (canCancel)
-            {
-                float cancelButtonSize = 20f;
-                Rect cancelRect = new Rect(
-                    drawRect.xMax - cancelButtonSize - 4f,
-                    drawRect.y + 4f,
-                    cancelButtonSize,
-                    cancelButtonSize
-                );
-
-                if (IsRepaint && (isMouseOver || Mouse.IsOver(cancelRect)))
-                    Widgets.DrawBoxSolid(cancelRect, new Color(0.9f, 0.3f, 0.3f, animProgress * 0.8f));
-
-                if (Clicked(cancelRect))
-                {
-                    SoundDefOf.Click.PlayOneShotOnCamera();
-
-                    ResearchTracker cancelTracker = cachedTracker ?? Current.Game.World.GetComponent<ResearchTracker>();
-                    if (cancelTracker != null)
-                    {
-                        string categoryKey = ResearchTracker.GetCategoryKey(projectDef);
-                        cancelTracker.SetCurrentProjectByKey(null, categoryKey);
-
-                        cancelTracker.ForceAutoReseachCheckNextTick();
-                        InvalidateLeftColumnCache();
-                        Event.current.Use();
-                    }
-                }
-            }
 
             backgroundColor.a *= animProgress;
             if (IsRepaint)
@@ -765,14 +682,10 @@ namespace CM_Semi_Random_Research
             {
                 float currentProg = projectDef.ProgressApparent;
                 if (currentProg <= 0f)
-                {
                     currentProg = Find.ResearchManager.GetProgress(projectDef);
-                }
 
                 if (currentProg > 0f)
-                {
                     progressFraction = Mathf.Clamp01(currentProg / projectDef.CostApparent);
-                }
             }
 
             if (progressFraction > 0f && IsRepaint)
@@ -780,24 +693,16 @@ namespace CM_Semi_Random_Research
                 Rect progressRect = new Rect(drawRect.x, drawRect.y, drawRect.width * progressFraction, drawRect.height);
 
                 Color progressColor = GetProgressFillAccent(projectDef, techColor);
-                progressColor.a = (isActive ? 0.6f : 0.45f) * animProgress;
+                progressColor.a = 0.45f * animProgress;
 
                 Widgets.DrawBoxSolid(progressRect, progressColor);
             }
 
             Color cardBorderColor = structureAccent;
-            if (isActive)
-            {
-                cardBorderColor = Color.Lerp(structureAccent, Color.white, 0.5f); // Bright native color for active
-            }
-            else if (selectedProject == projectDef)
-            {
-                cardBorderColor = Color.Lerp(structureAccent, Color.white, 0.3f); // Semi-bright for selected
-            }
+            if (selectedProject == projectDef)
+                cardBorderColor = Color.Lerp(structureAccent, Color.white, 0.3f);
             else if (isMouseOver)
-            {
                 cardBorderColor = Color.Lerp(structureAccent, Color.white, 0.2f);
-            }
             cardBorderColor.a *= animProgress;
 
             if (IsRepaint)
@@ -835,36 +740,30 @@ namespace CM_Semi_Random_Research
                 );
             }
 
-            Color usedTextColor = isActive ? ActiveProjectLabelColor : textColor;
-
-            if (isMouseOver && !isActive)
+            Color usedTextColor = new Color(0.95f, 0.95f, 0.95f);
+            if (isMouseOver)
             {
-                usedTextColor = Color.white;  // Pure white for best visibility
+                usedTextColor = Color.white;
                 usedTextColor.a *= animProgress;
             }
 
-            // --- NODE RESEARCH TECH INJECTIONS ---
             string nodeTag = GetNodeTechTag(projectDef);
 
             if (!nodeTag.NullOrEmpty())
             {
-                Rect topTextRect = new Rect(nameRect.x, nameRect.y + 2f, nameRect.width, 24f);
-                Rect bottomTextRect = new Rect(nameRect.x, nameRect.y + 24f, nameRect.width, 20f);
+                // Name above, Foundation/Emergence tag below, both in the small font.
+                Rect topTextRect = new Rect(nameRect.x, nameRect.y + 2f, nameRect.width, 22f);
+                Rect bottomTextRect = new Rect(nameRect.x, nameRect.y + 24f, nameRect.width, 22f);
 
                 Text.Anchor = TextAnchor.LowerLeft;
                 GUI.color = usedTextColor;
                 Widgets.Label(topTextRect, SafeLabel(projectDef));
 
                 Text.Anchor = TextAnchor.UpperLeft;
-                Text.Font = GameFont.Tiny;
-
                 Color nodeTagColor = NodeTechTagColor;
                 nodeTagColor.a *= animProgress;
                 GUI.color = nodeTagColor;
-
                 Widgets.Label(bottomTextRect, nodeTag);
-
-                Text.Font = GameFont.Small;
             }
             else
             {
@@ -881,19 +780,27 @@ namespace CM_Semi_Random_Research
             Widgets.Label(costRect, costText);
             Text.WordWrap = wordWrap;
 
-            if (animProgress >= 0.7f && Clicked(drawRect))
+            if (animProgress >= 0.7f)
             {
-                SoundDefOf.Click.PlayOneShotOnCamera();
-                selectedProject = projectDef;
-                relatedProjectHistory.Clear();
-                browsingRelatedProject = false;
-                cachedCanStartNowTick = -1;
-                RefreshCanStartNow(Find.TickManager.TicksGame);
+                if (ResearchSnoozeTracker.SnoozingEnabled && ResearchWidgets.RightClicked(drawRect))
+                {
+                    SoundDefOf.Click.PlayOneShotOnCamera();
+                    SnoozeOffer(projectDef);
+                }
+                else if (Clicked(drawRect))
+                {
+                    SoundDefOf.Click.PlayOneShotOnCamera();
+                    selectedProject = projectDef;
+                    relatedProjectHistory.Clear();
+                    browsingRelatedProject = false;
+                    cachedCanStartNowTick = -1;
+                    RefreshCanStartNow(Find.TickManager.TicksGame);
+                }
             }
 
             if (selectedProject == projectDef && IsRepaint)
             {
-                Color highlightColor = Color.Lerp(structureAccent, Color.white, isActive ? 0.5f : 0.3f);
+                Color highlightColor = Color.Lerp(structureAccent, Color.white, 0.3f);
                 highlightColor.a *= animProgress;
                 DrawTransparentBox(drawRect, highlightColor, 2f);
             }
@@ -905,6 +812,21 @@ namespace CM_Semi_Random_Research
             Text.Anchor = startingTextAnchor;
 
             drawRect = originalRect;
+        }
+
+        private void SnoozeOffer(ResearchProjectDef projectDef)
+        {
+            string blockReason = ResearchSnoozeTracker.Get()?.TrySnooze(projectDef);
+            if (blockReason != null)
+            {
+                Messages.Message(blockReason, MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            if (cachedTracker != null)
+                CopyAvailableProjects(cachedTracker.PeekAvailableProjects());
+            InvalidateLeftColumnCache();
+            Messages.Message("CM_Semi_Random_Research_Snoozed".Translate(projectDef.LabelCap), MessageTypeDefOf.NeutralEvent, false);
         }
     }
 }

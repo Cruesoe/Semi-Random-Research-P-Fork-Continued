@@ -13,19 +13,12 @@ namespace CM_Semi_Random_Research
         private static readonly Color PausedTextColor = new Color(0.62f, 0.62f, 0.64f);
         private static readonly Color PausedTagColor = new Color(0.82f, 0.70f, 0.36f);
 
-        // Paused means the tracker still holds the project as current while nothing is being
-        // researched on it. Checked per project so pausing standard research does not grey out
-        // an anomaly or gravship project that is still running.
         private bool IsProjectPaused(ResearchProjectDef project)
         {
-            return project != null
-                && drawTracker != null
-                && drawTracker.ResearchPaused
-                && !Find.ResearchManager.IsCurrentProject(project);
+            return drawTracker != null && drawTracker.IsProjectPaused(project);
         }
 
-        // Drain the colour rather than just darkening it, so a paused card reads as inactive
-        // at a glance next to the coloured offer cards below it.
+        // Desaturates as well as darkens, so a paused card reads as inactive next to the colored offers.
         private static Color PausedTint(Color color)
         {
             float grey = color.grayscale;
@@ -115,8 +108,7 @@ namespace CM_Semi_Random_Research
                 Widgets.DrawLine(new Vector2(secondSeparator.x, secondSeparator.y), new Vector2(secondSeparator.x, secondSeparator.yMax), borderColor, separatorWidth);
             }
 
-            // Foundation / Emergence follows the project up from the offer list, and pausing adds
-            // to that line rather than replacing it, so neither piece of state hides the other.
+            // The Foundation/Emergence tag and the Paused tag share the line under the name.
             string nodeTag = GetNodeTechTag(project);
             string cardTag = nodeTag;
             if (isPaused)
@@ -127,20 +119,17 @@ namespace CM_Semi_Random_Research
 
             if (!cardTag.NullOrEmpty())
             {
-                // Name moves up a line so the tag can sit under it, the same two line layout
-                // the offer cards use.
-                Rect taggedNameRect = new Rect(nameRect.x, nameRect.y + 2f, nameRect.width, 24f);
-                Rect tagRect = new Rect(nameRect.x, nameRect.y + 24f, nameRect.width, 20f);
+                // Same two-line layout as the offer cards.
+                Rect taggedNameRect = new Rect(nameRect.x, nameRect.y + 2f, nameRect.width, 22f);
+                Rect tagRect = new Rect(nameRect.x, nameRect.y + 24f, nameRect.width, 22f);
 
                 Text.Anchor = TextAnchor.LowerLeft;
                 GUI.color = isPaused ? PausedTextColor : Color.white;
                 Widgets.Label(taggedNameRect, SafeLabel(project));
 
                 Text.Anchor = TextAnchor.UpperLeft;
-                Text.Font = GameFont.Tiny;
                 GUI.color = isPaused ? PausedTagColor : NodeTechTagColor;
                 Widgets.Label(tagRect, cardTag);
-                Text.Font = GameFont.Small;
             }
             else
             {
@@ -168,7 +157,7 @@ namespace CM_Semi_Random_Research
                 {
                     SoundDefOf.Click.PlayOneShotOnCamera();
 
-                    ResearchTracker cancelTracker = cachedTracker ?? Current.Game.World.GetComponent<ResearchTracker>();
+                    ResearchTracker cancelTracker = drawTracker;
                     if (cancelTracker != null)
                     {
                         string categoryKey = ResearchTracker.GetCategoryKey(project);
@@ -189,9 +178,7 @@ namespace CM_Semi_Random_Research
                 browsingRelatedProject = false;
             }
 
-            // ==========================================
-            // ACCORDION EXPANSION LOGIC
-            // ==========================================
+            // The standard project's card also shows rates, ETA and the graph.
             if (isMainProject)
             {
                 currentY += headerHeight + sectionSpacing;
@@ -307,7 +294,7 @@ namespace CM_Semi_Random_Research
                 float avgY = graphAreaRect.yMax - (averageRate / maxValue * graphAreaRect.height);
                 Color avgColor = new Color(0.7f, 0.65f, 0.45f, 0.8f);
 
-                Text.Font = GameFont.Tiny;
+                Text.Font = GameFont.Small;
                 string avgLabel = "CM_Semi_Random_Research_GraphAverage".Translate();
                 Vector2 avgLabelSize = Text.CalcSize(avgLabel);
                 float labelWidth = avgLabelSize.x + 6f;

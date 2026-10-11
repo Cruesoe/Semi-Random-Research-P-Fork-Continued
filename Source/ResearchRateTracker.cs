@@ -1,171 +1,135 @@
-using RimWorld;    // This contains various RimWorld specific types
-using RimWorld.Planet; // Add this for WorldComponent
+using RimWorld;
+using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Verse;       // This contains the WorldComponent class
+using Verse;
 
 namespace CM_Semi_Random_Research
 {
-    /// <summary>
-    /// Tracks research rates and provides estimates for research completion
-    /// </summary>
+    // Samples research progress every game hour, per active project and overall, for rates, ETAs and the graph.
     public class ResearchRateTracker : WorldComponent
     {
-        // Constants
-        private const int SAMPLES_PER_DAY = 24; // Take a sample every hour (1/24th of a day)
-        private const int DAYS_TO_TRACK = 10;   // Track 10 days of history
-        private const int MAX_SAMPLES = SAMPLES_PER_DAY * DAYS_TO_TRACK; // Maximum samples to store
-        private const float SAMPLE_INTERVAL_TICKS = GenDate.TicksPerDay / SAMPLES_PER_DAY; // Sample interval in ticks
-        
-        // Data structures
-        // Dictionary that maps research projects to their data
+        private const int SAMPLES_PER_DAY = 24;
+        private const int DAYS_TO_TRACK = 10;
+        private const int MAX_SAMPLES = SAMPLES_PER_DAY * DAYS_TO_TRACK;
+        private const float SAMPLE_INTERVAL_TICKS = GenDate.TicksPerDay / SAMPLES_PER_DAY;
+
+        // Keyed by defName. Entries are dropped once their project is finished.
         private Dictionary<string, ProjectRateData> projectDataCache = new Dictionary<string, ProjectRateData>();
-        
-        // Global research rate tracking across all projects
+
         private List<float> globalRateSamples = new List<float>();
-        
-        // Timing variables
+
         private float nextSampleTick = 0f;
-        
-        // Keep track of previously sampled projects to maintain history
+
+        // Projects sampled before, which keep getting zero samples while not being researched.
         private HashSet<string> previousProjectDefNames = new HashSet<string>();
-        
-        // Constructor for loading
+
         public ResearchRateTracker(World world) : base(world)
         {
         }
 
-        // Called when the game is loaded
         public override void FinalizeInit(bool fromLoad)
         {
             base.FinalizeInit(fromLoad);
-            // Initialize the next sample time
             if (nextSampleTick <= 0f)
-            {
                 nextSampleTick = Find.TickManager.TicksGame + SAMPLE_INTERVAL_TICKS;
-            }
 
-            // Init the global rate samples if needed
-            if (globalRateSamples == null)
-            {
-                globalRateSamples = new List<float>();
-            }
-
+            PruneFinishedProjects();
         }
-        
-        // Called every tick by the World component
+
         public override void WorldComponentTick()
         {
             base.WorldComponentTick();
-            
-            // Check if it's time to sample the research rate
+
             if (Find.TickManager.TicksGame >= nextSampleTick)
             {
                 SampleCurrentResearchRate();
                 nextSampleTick = Find.TickManager.TicksGame + SAMPLE_INTERVAL_TICKS;
             }
         }
-        
-        // Scratch buffers, reused between samples rather than reallocated every hour of game time.
+
+        // Scratch buffers reused between samples.
         private readonly List<ResearchProjectDef> activeProjectsBuffer = new List<ResearchProjectDef>();
         private readonly HashSet<string> activeDefNamesBuffer = new HashSet<string>();
         private readonly List<string> trackedDefNamesBuffer = new List<string>();
         private readonly Dictionary<string, ResearchProjectDef> defsByName = new Dictionary<string, ResearchProjectDef>();
 
-        // Take a sample of the current research rate for all active projects
         private void SampleCurrentResearchRate()
         {
             ResearchManager researchManager = Find.ResearchManager;
             if (researchManager == null) return;
 
-            // Find all active research projects
             List<ResearchProjectDef> activeProjects = activeProjectsBuffer;
             activeProjects.Clear();
             activeDefNamesBuffer.Clear();
 
-            // Get the standard active project using the GetProject method
             ResearchProjectDef currentProject = researchManager.GetProject();
             if (currentProject != null)
-            {
                 activeProjects.Add(currentProject);
-            }
 
-            // Get any projects from Semi-Random Research mod (using knowledge categories)
             ResearchTracker researchTracker = SemiRandomResearchUtility.Tracker;
-            if (researchTracker != null && researchTracker.CurrentProject != null)
+            if (researchTracker != null)
             {
                 List<ResearchProjectDef> tracked = researchTracker.CurrentProject;
                 for (int i = 0; i < tracked.Count; i++)
                 {
                     ResearchProjectDef proj = tracked[i];
                     if (proj != null && !activeProjects.Contains(proj))
-                    {
                         activeProjects.Add(proj);
-                    }
                 }
             }
 
-            // Total progress change for this sample
             float totalProgressChange = 0f;
-
-            // Process each active project
             for (int i = 0; i < activeProjects.Count; i++)
             {
                 ResearchProjectDef project = activeProjects[i];
-                float progressChange = SampleProjectRate(project);
-                totalProgressChange += progressChange;
-
-                // Add to previously sampled projects
+                totalProgressChange += SampleProjectRate(project);
                 previousProjectDefNames.Add(project.defName);
                 activeDefNamesBuffer.Add(project.defName);
             }
 
-            // Compute global rate and add it to the global samples, including idle hours
-            // so the 10-day average matches the per-project card (which records zeros).
-            float globalRatePerDay = totalProgressChange * SAMPLES_PER_DAY;
-            globalRateSamples.Add(globalRatePerDay);
+            // Idle hours count too, so the global average matches the per-project one, which records zeros.
+            globalRateSamples.Add(totalProgressChange * SAMPLES_PER_DAY);
             TrimSamples(globalRateSamples);
 
-            // Also continue tracking previously researched projects
-            // even if they're not currently selected. The names are copied out first because the
-            // loop can remove finished projects from the set it is walking.
+            // Copied out first because finished projects are removed from the set while walking it.
             trackedDefNamesBuffer.Clear();
             trackedDefNamesBuffer.AddRange(previousProjectDefNames);
             for (int i = 0; i < trackedDefNamesBuffer.Count; i++)
             {
                 string projectDefName = trackedDefNamesBuffer[i];
-
-                // Skip if already processed as active
                 if (activeDefNamesBuffer.Contains(projectDefName))
                     continue;
 
-                // Find the project def
                 ResearchProjectDef projectDef = ProjectByName(projectDefName);
-                if (projectDef != null && !projectDef.IsFinished)
+                if (projectDef == null || projectDef.IsFinished)
                 {
-                    // Add an empty sample to maintain continuous data
-                    // (progress is 0 since it's not being actively researched)
-                    if (projectDataCache.TryGetValue(projectDef.defName, out ProjectRateData projectData))
-                    {
-                        if (projectData.rateSamples.Count > 0)
-                        {
-                            // Add a zero rate sample
-                            projectData.rateSamples.Add(0f);
-                            TrimSamples(projectData.rateSamples);
-                        }
-                    }
-                }
-                else if (projectDef != null && projectDef.IsFinished)
-                {
-                    // Remove completed projects from tracking
                     previousProjectDefNames.Remove(projectDefName);
+                    projectDataCache.Remove(projectDefName);
+                }
+                else if (projectDataCache.TryGetValue(projectDefName, out ProjectRateData projectData) && projectData.rateSamples.Count > 0)
+                {
+                    projectData.rateSamples.Add(0f);
+                    TrimSamples(projectData.rateSamples);
                 }
             }
         }
-        
-        // Name lookups are memoised: DefDatabase.GetNamed was called once per tracked project on
-        // every sample, and the tracked list grows to every project the colony has ever started.
+
+        // Drops data kept for projects that are finished or no longer exist.
+        private void PruneFinishedProjects()
+        {
+            foreach (string defName in projectDataCache.Keys.ToList())
+            {
+                ResearchProjectDef projectDef = ProjectByName(defName);
+                if (projectDef == null || projectDef.IsFinished)
+                {
+                    projectDataCache.Remove(defName);
+                    previousProjectDefNames.Remove(defName);
+                }
+            }
+        }
+
         private ResearchProjectDef ProjectByName(string defName)
         {
             if (defsByName.TryGetValue(defName, out ResearchProjectDef cached))
@@ -176,112 +140,78 @@ namespace CM_Semi_Random_Research
             return projectDef;
         }
 
-        // Sample the rate for a specific project and return the progress change
+        // Records the project's rate since the last sample and returns its progress change.
         private float SampleProjectRate(ResearchProjectDef project)
         {
             if (project == null) return 0f;
-            
-            // Get or create the rate data for this project
+
             if (!projectDataCache.TryGetValue(project.defName, out ProjectRateData projectData))
             {
                 projectData = new ProjectRateData();
                 projectDataCache[project.defName] = projectData;
             }
-            
-            // Get the current progress
+
             float currentProgress = project.ProgressApparent;
             float progressChange = 0f;
-            
-            // Calculate the rate (progress per day) if we have a previous sample
+
             if (projectData.lastSampleProgress >= 0)
             {
                 progressChange = currentProgress - projectData.lastSampleProgress;
-                
-                // Convert to rate per day (normalize by how many samples per day we take)
-                float ratePerDay = progressChange * SAMPLES_PER_DAY;
-                
-                // Only record non-zero rates if progress was made
-                if (progressChange > 0)
+
+                if (progressChange >= 0)
                 {
-                    projectData.rateSamples.Add(ratePerDay);
+                    projectData.rateSamples.Add(progressChange * SAMPLES_PER_DAY);
                     TrimSamples(projectData.rateSamples);
                 }
-                else if (progressChange == 0)
+                else
                 {
-                    projectData.rateSamples.Add(0f);
-                    TrimSamples(projectData.rateSamples);
-                }
-                else if (progressChange < 0)
-                {
-                    // Progress decreased (probably from dev mode or mod changing things)
-                    // Reset tracking for this project
+                    // Progress went down (dev mode or another mod): start this project's history again.
                     projectData.rateSamples.Clear();
-                    progressChange = 0f; // Don't count negative progress in global rate
+                    progressChange = 0f;
                 }
             }
-            
-            // Store the current progress for the next sample
+
             projectData.lastSampleProgress = currentProgress;
-            
             return progressChange;
         }
-        
-        // Get the current research rate (progress per day) for a project
+
         public float GetCurrentRate(ResearchProjectDef project)
         {
             if (project == null) return GetGlobalCurrentRate();
-            
-            if (projectDataCache.TryGetValue(project.defName, out ProjectRateData projectData))
-            {
-                // Return the most recent rate
-                if (projectData.rateSamples.Count > 0)
-                {
-                    return projectData.rateSamples[projectData.rateSamples.Count - 1];
-                }
-            }
-            
+
+            if (projectDataCache.TryGetValue(project.defName, out ProjectRateData projectData) && projectData.rateSamples.Count > 0)
+                return projectData.rateSamples[projectData.rateSamples.Count - 1];
+
             return 0f;
         }
-        
-        // Get the global current research rate (most recent sample)
+
         private float GetGlobalCurrentRate()
         {
-            if (globalRateSamples.Count > 0)
-            {
-                return globalRateSamples[globalRateSamples.Count - 1];
-            }
-            return 0f;
+            return globalRateSamples.Count > 0 ? globalRateSamples[globalRateSamples.Count - 1] : 0f;
         }
-        
-        // Get the average research rate over the specified number of days
+
+        // Falls back to the global average when the project has no samples.
         public float GetAverageRate(ResearchProjectDef project, int days = DAYS_TO_TRACK)
         {
-            if (project == null) return GetGlobalAverageRate(days);
-            
-            if (projectDataCache.TryGetValue(project.defName, out ProjectRateData projectData))
+            if (project != null &&
+                projectDataCache.TryGetValue(project.defName, out ProjectRateData projectData) &&
+                projectData.rateSamples.Count > 0)
             {
-                if (projectData.rateSamples.Count == 0) return GetGlobalAverageRate(days);
-
                 return AverageRecent(projectData.rateSamples, days);
             }
-            
+
             return GetGlobalAverageRate(days);
         }
-        
-        // Get the global average research rate across all projects
+
         public float GetGlobalAverageRate(int days = DAYS_TO_TRACK)
         {
-            if (globalRateSamples.Count == 0) return 0f;
-
             return AverageRecent(globalRateSamples, days);
         }
 
         private static void TrimSamples(List<float> samples)
         {
             if (samples.Count > MAX_SAMPLES)
-            {
                 samples.RemoveRange(0, samples.Count - MAX_SAMPLES);
-            }
         }
 
         private static float AverageRecent(List<float> samples, int days)
@@ -292,11 +222,8 @@ namespace CM_Semi_Random_Research
 
             int samplesToAverage = Math.Min(days * SAMPLES_PER_DAY, count);
             float sum = 0f;
-            int start = count - samplesToAverage;
-            for (int i = start; i < count; i++)
-            {
+            for (int i = count - samplesToAverage; i < count; i++)
                 sum += samples[i];
-            }
 
             return sum / samplesToAverage;
         }
@@ -304,66 +231,29 @@ namespace CM_Semi_Random_Research
         private static List<float> CopyRecent(List<float> samples, int maxCount)
         {
             int count = samples.Count;
-            if (count == 0)
-                return new List<float>();
-
             int samplesToGet = Math.Min(maxCount, count);
-            int start = count - samplesToGet;
             var result = new List<float>(samplesToGet);
-            for (int i = start; i < count; i++)
-            {
+            for (int i = count - samplesToGet; i < count; i++)
                 result.Add(samples[i]);
-            }
 
             return result;
         }
-        
-        // Get an estimate of days until research completion
-        public float GetEstimatedDaysToCompletion(ResearchProjectDef project)
-        {
-            if (project == null) return -1f;
-            
-            float averageRate = GetAverageRate(project);
-            if (averageRate <= 0f) 
-            {
-                // Try using global average if project-specific rate is zero
-                averageRate = GetGlobalAverageRate();
-                if (averageRate <= 0f) return -1f;
-            }
-            
-            float remainingProgress = project.CostApparent - project.ProgressApparent;
-            if (remainingProgress <= 0f) return 0f; // Already complete
-            
-            return remainingProgress / averageRate;
-        }
-        
-        // Get all rate samples for a project (for graphing)
-        public List<float> GetRateSamples(ResearchProjectDef project)
-        {
-            if (project == null) return globalRateSamples.ToList();
-            
-            if (projectDataCache.TryGetValue(project.defName, out ProjectRateData projectData))
-            {
-                return new List<float>(projectData.rateSamples);
-            }
-            
-            return new List<float>();
-        }
-        
-        // Get rate samples for specific time period (for graphing)
+
         public List<float> GetRateSamplesPeriod(ResearchProjectDef project, int days)
         {
             if (project == null) return CopyRecent(globalRateSamples, days * SAMPLES_PER_DAY);
-            
+
             if (projectDataCache.TryGetValue(project.defName, out ProjectRateData projectData))
-            {
                 return CopyRecent(projectData.rateSamples, days * SAMPLES_PER_DAY);
-            }
-            
+
             return new List<float>();
         }
-        
-        // Get the research data for display formatting
+
+        public List<float> GetGlobalRateSamplesPeriod(int days)
+        {
+            return CopyRecent(globalRateSamples, days * SAMPLES_PER_DAY);
+        }
+
         public ResearchRateInfo GetResearchRateInfo(ResearchProjectDef project)
         {
             float current = project != null ? GetCurrentRate(project) : GetGlobalCurrentRate();
@@ -379,25 +269,21 @@ namespace CM_Semi_Random_Research
                 }
             }
 
-            ResearchRateInfo info = new ResearchRateInfo
+            return new ResearchRateInfo
             {
                 CurrentRate = current,
                 AverageRate = average,
                 EstimatedDaysToCompletion = eta,
-                PercentComplete = project != null ? project.ProgressPercent * 100f : 0f,
-                TotalSamples = project != null ? 
-                    (projectDataCache.TryGetValue(project.defName, out ProjectRateData data) ? data.rateSamples.Count : 0) :
-                    globalRateSamples.Count
+                TotalSamples = project != null
+                    ? (projectDataCache.TryGetValue(project.defName, out ProjectRateData data) ? data.rateSamples.Count : 0)
+                    : globalRateSamples.Count
             };
-            
-            return info;
         }
-        
-        // Format a rate value as a string with proper units
+
         public static string FormatRate(float ratePerDay)
         {
             if (ratePerDay <= 0) return "CM_Semi_Random_Research_RatePerDay".Translate("0").ToString();
-            
+
             return "CM_Semi_Random_Research_RatePerDay".Translate(ratePerDay.ToString("F1")).ToString();
         }
 
@@ -407,8 +293,7 @@ namespace CM_Semi_Random_Research
 
             return "CM_Semi_Random_Research_RatePerDayShort".Translate(ratePerDay.ToString("F1")).ToString();
         }
-        
-        // Format ETA as a string
+
         public static string FormatETA(float daysToCompletion)
         {
             return FormatDuration(daysToCompletion);
@@ -455,98 +340,68 @@ namespace CM_Semi_Random_Research
                 return yearLabel;
             return yearLabel + " " + dayLabel;
         }
-        
-        // Override for saving data
+
         public override void ExposeData()
         {
             base.ExposeData();
-            
+
             Scribe_Values.Look(ref nextSampleTick, "nextSampleTick", 0f);
             Scribe_Collections.Look(ref globalRateSamples, "globalRateSamples", LookMode.Value);
             Scribe_Collections.Look(ref previousProjectDefNames, "previousProjectDefNames", LookMode.Value);
-            
-            // Handle dictionary serialization
+
+            // The dictionary is saved as two parallel lists.
             if (Scribe.mode == LoadSaveMode.Saving)
             {
-                // Convert dictionary to lists for saving
                 List<string> projectIds = projectDataCache.Keys.ToList();
                 List<ProjectRateData> projectDatas = projectDataCache.Values.ToList();
-                
+
                 Scribe_Collections.Look(ref projectIds, "projectIds", LookMode.Value);
                 Scribe_Collections.Look(ref projectDatas, "projectDatas", LookMode.Deep);
             }
             else if (Scribe.mode == LoadSaveMode.LoadingVars)
             {
-                // Load lists
                 List<string> projectIds = null;
                 List<ProjectRateData> projectDatas = null;
-                
+
                 Scribe_Collections.Look(ref projectIds, "projectIds", LookMode.Value);
                 Scribe_Collections.Look(ref projectDatas, "projectDatas", LookMode.Deep);
-                
-                // Initialize collections if they're null
+
                 if (globalRateSamples == null)
                     globalRateSamples = new List<float>();
-                    
                 if (previousProjectDefNames == null)
                     previousProjectDefNames = new HashSet<string>();
-                
-                // Reconstruct the dictionary
+
                 projectDataCache.Clear();
                 if (projectIds != null && projectDatas != null && projectIds.Count == projectDatas.Count)
                 {
                     for (int i = 0; i < projectIds.Count; i++)
-                    {
                         projectDataCache[projectIds[i]] = projectDatas[i];
-                    }
                 }
             }
         }
-        
-        // Inner class to store rate data for a specific project
+
         public class ProjectRateData : IExposable
         {
             public float lastSampleProgress = -1f;
             public List<float> rateSamples = new List<float>();
-            
-            // Required empty constructor for Scribe
-            public ProjectRateData()
-            {
-            }
-            
-            // Serialize/deserialize data
+
             public void ExposeData()
             {
                 Scribe_Values.Look(ref lastSampleProgress, "lastSampleProgress", -1f);
                 Scribe_Collections.Look(ref rateSamples, "rateSamples", LookMode.Value);
-                
-                // Initialize if needed
                 if (rateSamples == null)
-                {
                     rateSamples = new List<float>();
-                }
             }
         }
-        
-        // Add this method to expose global rate samples for a specific period
-        public List<float> GetGlobalRateSamplesPeriod(int days)
-        {
-            if (globalRateSamples.Count == 0) return new List<float>();
-
-            return CopyRecent(globalRateSamples, days * SAMPLES_PER_DAY);
-        }
     }
-    
-    // Helper class for displaying research rate information
+
     public class ResearchRateInfo
     {
         public float CurrentRate { get; set; }
         public float AverageRate { get; set; }
         public float EstimatedDaysToCompletion { get; set; }
-        public float PercentComplete { get; set; }
         public int TotalSamples { get; set; }
-        
-        public string CurrentRateFormatted => ResearchRateTracker.FormatRate(CurrentRate);
+
         public string AverageRateFormatted => ResearchRateTracker.FormatRate(AverageRate);
         public string ETAFormatted => ResearchRateTracker.FormatETA(EstimatedDaysToCompletion);
     }

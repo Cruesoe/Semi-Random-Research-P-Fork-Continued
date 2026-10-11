@@ -1,4 +1,4 @@
-﻿using RimWorld;
+using RimWorld;
 using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
@@ -7,9 +7,7 @@ using Verse;
 
 namespace CM_Semi_Random_Research
 {
-    // One finished project, kept so the research tab can show a short "recently completed" list.
-    // Deep-scribed (rather than two parallel lists) so a removed mod's project cannot shift the
-    // remaining entries out of sync with their completion ticks.
+    // One finished project for the history view, deep-saved so a removed mod's entry drops out with its tick.
     public class ResearchHistoryEntry : IExposable
     {
         public ResearchProjectDef project;
@@ -41,26 +39,40 @@ namespace CM_Semi_Random_Research
         private Dictionary<string, int> currentRerollState = new Dictionary<string, int>();
         private List<ResearchProjectDef> currentProjects = new List<ResearchProjectDef>();
         private HashSet<ResearchProjectDef> additionalAvailableProjects = new HashSet<ResearchProjectDef>();
-        private HashSet<KnowledgeCategoryDef> pendingResearchRerolls = new HashSet<KnowledgeCategoryDef>();
+
+        // Offer slots emptied by snoozing, per category. They stay empty until that category next rerolls or finishes a project.
+        private Dictionary<string, int> snoozeHeldSlots = new Dictionary<string, int>();
 
         public List<ResearchProjectDef> CurrentProject => currentProjects;
 
-        // Newest first. Only the tail of it is ever shown, but a few spare entries cost nothing
-        // and let the history screen stay full on tall windows.
+        // Newest first.
         private List<ResearchHistoryEntry> completedHistory = new List<ResearchHistoryEntry>();
         private const int MaxCompletedHistoryEntries = 40;
 
         public List<ResearchHistoryEntry> CompletedHistory => completedHistory;
 
+        // The paused category. A null key with the flag set comes from an older save and pauses every category.
         private bool researchPaused;
+        private string pausedTypeKey;
         public bool ResearchPaused => researchPaused;
 
+        public bool IsPaused(string typeKey)
+        {
+            return researchPaused && (pausedTypeKey == null || pausedTypeKey == typeKey);
+        }
+
+        public bool IsProjectPaused(ResearchProjectDef project)
+        {
+            return project != null &&
+                IsPaused(GetCategoryKey(project)) &&
+                currentProjects.Contains(project) &&
+                !Find.ResearchManager.IsCurrentProject(project);
+        }
+
+        // Bumped when the offer list's contents change.
         public int OffersRevision { get; private set; }
 
-        // Bumped whenever a project finishes, independent of OffersRevision (which only changes
-        // when the offer list's contents change). The progress bar's tech-level stats are keyed
-        // off game ticks, which freeze while paused - a completion letter's auto-pause would
-        // otherwise leave the bar stale until the window is closed and reopened.
+        // Bumped when a project finishes. Separate from OffersRevision, and not tied to ticks, which stop while paused.
         public int CompletionRevision { get; private set; }
 
         public List<ResearchProjectDef> PeekAvailableProjects() => lastOfferedProjects ?? currentAvailableProjects;
@@ -79,14 +91,11 @@ namespace CM_Semi_Random_Research
 
         private bool HasRerollableOffers(string typeKey)
         {
-            if (currentProjects != null)
+            for (int i = 0; i < currentProjects.Count; i++)
             {
-                for (int i = 0; i < currentProjects.Count; i++)
-                {
-                    ResearchProjectDef current = currentProjects[i];
-                    if (current != null && !current.IsFinished && GetCategoryKey(current) == typeKey)
-                        return false;
-                }
+                ResearchProjectDef current = currentProjects[i];
+                if (current != null && !current.IsFinished && GetCategoryKey(current) == typeKey)
+                    return false;
             }
 
             List<ResearchProjectDef> offers = PeekAvailableProjects();
@@ -116,9 +125,7 @@ namespace CM_Semi_Random_Research
             return true;
         }
 
-        // The tracker's own bookkeeping writes vanilla's current project constantly (restoring
-        // the tracked project, resuming, auto picking). Those writes are not player selections
-        // and must never be judged by the selection gate.
+        // Set while the tracker writes vanilla's current project itself, so the selection gate lets it through.
         private static bool applyingTrackedProject;
 
         public static bool ApplyingTrackedProject => applyingTrackedProject;
@@ -136,9 +143,7 @@ namespace CM_Semi_Random_Research
             }
         }
 
-        // The one rule for "may the player start this project right now", shared by the research
-        // tab's start button and by the gate that gets applied to external research trees, so a
-        // handover to Node Research or Nice Research Tab obeys the same limits as our own window.
+        // Whether the player may start this project now. Shared by this mod's start button and the gate on other research trees.
         public bool PlayerCanStartProject(ResearchProjectDef proj)
         {
             if (proj == null)
@@ -147,14 +152,14 @@ namespace CM_Semi_Random_Research
                 return true;
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.allowSwitchingResearch)
                 return true;
-            // Gravship research runs alongside the standard project rather than replacing it.
+            // Gravship research runs alongside the standard project.
             if (GetCategoryKey(proj) == "Gravship")
                 return true;
 
             return !CategoryOccupied(proj);
         }
 
-        // A paused project still occupies its category: it is waiting to be resumed, not free.
+        // A paused project still occupies its category.
         private bool CategoryOccupied(ResearchProjectDef proj)
         {
             string key = GetCategoryKey(proj);
@@ -172,7 +177,7 @@ namespace CM_Semi_Random_Research
 
             return vanilla != null && vanilla != proj && !vanilla.IsFinished && GetCategoryKey(vanilla) == key;
         }
-    
+
         private Dictionary<string, bool> rerolled = new Dictionary<string, bool>();
         private Dictionary<string, List<ResearchProjectDef>> projectDefsCacheByType = new Dictionary<string, List<ResearchProjectDef>>();
         private Dictionary<string, List<ResearchProjectDef>> currentProjectDefsCacheByType = new Dictionary<string, List<ResearchProjectDef>>();
@@ -188,7 +193,6 @@ namespace CM_Semi_Random_Research
         private Dictionary<string, bool> lastPicked = new Dictionary<string, bool>();
         private Dictionary<string, string> loggedMessages = new Dictionary<string, string>();
 
-
         private List<string> all_typeKeys;
 
         public ResearchTracker(World world) : base(world)
@@ -197,7 +201,7 @@ namespace CM_Semi_Random_Research
             RefreshTypeKeys();
         }
 
-        // Recorded when the keys are built rather than re-scanned: this is asked on the world tick.
+        // Whether the anomaly categories were included when the keys were last built.
         private bool typeKeysTrackAnomaly;
 
         private bool AnomalyTypeKeysNeedRefresh()
@@ -239,12 +243,7 @@ namespace CM_Semi_Random_Research
             typeKeysTrackAnomaly = all_typeKeys.Contains("Basic") || all_typeKeys.Contains("Advanced");
         }
 
-        // ==============================================================================
-        // PSEUDO-CATEGORY GENERATOR
-        // ==============================================================================
-        // Hottest helper in the mod: the tick loop, the offer roll and every card drawn call it.
-        // A project's tab and knowledge category are fixed once defs are loaded, so the answer is
-        // memoised per def rather than re-running the string comparisons on every call.
+        // Pseudo-category of a project. A def's tab and knowledge category are fixed once loaded, so the answer is cached.
         private static readonly Dictionary<ResearchProjectDef, string> categoryKeyCache =
             new Dictionary<ResearchProjectDef, string>();
 
@@ -273,8 +272,7 @@ namespace CM_Semi_Random_Research
 
             ResearchTabWindowSwitcher.Apply();
 
-            // CostApparent / RestrictToFactionTechLevel need Faction.OfPlayer.
-            // During WorldGenerator.GenerateWorld that faction does not exist yet.
+            // Rolling needs Faction.OfPlayer, which does not exist yet during world generation.
             if (Faction.OfPlayerSilentFail != null)
                 SettingsChanged();
             else
@@ -295,17 +293,15 @@ namespace CM_Semi_Random_Research
             if (currentAvailableProjects == null) currentAvailableProjects = new List<ResearchProjectDef>();
             if (additionalAvailableProjects == null) additionalAvailableProjects = new HashSet<ResearchProjectDef>();
 
-            if (SemiRandomResearchMod.settings.verboseLogging)
-            {
-                string allCurrentProjects = "";
-                foreach (ResearchProjectDef def in currentProjects)
-                    allCurrentProjects += def != null ? def.LabelCap.RawText : "Null" + " ";
-                LogIfNewMessage("Loaded Current Projects", allCurrentProjects);
+            // A project from a removed mod loads as null.
+            currentProjects.RemoveAll(def => def == null);
+            currentAvailableProjects.RemoveAll(def => def == null);
+            additionalAvailableProjects.RemoveWhere(def => def == null);
 
-                string allAvailableProjects = "";
-                foreach (ResearchProjectDef def in currentAvailableProjects)
-                    allAvailableProjects += def != null ? def.LabelCap.RawText : "Null" + " ";
-                LogIfNewMessage("Loaded Available Projects", allAvailableProjects);
+            if (Scribe.mode == LoadSaveMode.LoadingVars && SemiRandomResearchMod.settings.verboseLogging)
+            {
+                LogIfNewMessage("Loaded Current Projects", string.Join(", ", currentProjects.Select(def => def.LabelCap.RawText)));
+                LogIfNewMessage("Loaded Available Projects", string.Join(", ", currentAvailableProjects.Select(def => def.LabelCap.RawText)));
             }
 
             Scribe_Collections.Look(ref rerolled, "rerolled");
@@ -317,8 +313,8 @@ namespace CM_Semi_Random_Research
             Scribe_Collections.Look(ref lastPicked, "lastPicked");
             if (lastPicked == null) lastPicked = new Dictionary<string, bool>();
 
-            Scribe_Collections.Look(ref pendingResearchRerolls, "pendingResearchRerolls", LookMode.Def);
-            if (pendingResearchRerolls == null) pendingResearchRerolls = new HashSet<KnowledgeCategoryDef>();
+            Scribe_Collections.Look(ref snoozeHeldSlots, "snoozeHeldSlots", LookMode.Value, LookMode.Value);
+            if (snoozeHeldSlots == null) snoozeHeldSlots = new Dictionary<string, int>();
 
             Scribe_Collections.Look(ref completedHistory, "completedHistory", LookMode.Deep);
             if (completedHistory == null)
@@ -327,20 +323,14 @@ namespace CM_Semi_Random_Research
                 completedHistory.RemoveAll(entry => entry == null || entry.project == null);
 
             Scribe_Values.Look(ref researchPaused, "researchPaused", false);
+            Scribe_Values.Look(ref pausedTypeKey, "pausedTypeKey");
         }
 
-        // Reused every slow pass rather than rebuilt, and filled by RefreshActiveByTypeKey.
+        // Vanilla's active project per pseudo-category, rebuilt only when something in the pass changes the current project.
         private readonly Dictionary<string, ResearchProjectDef> activeByTypeKey = new Dictionary<string, ResearchProjectDef>();
-
-        // Anything that writes the vanilla current project invalidates the snapshot, so the tick
-        // loop still sees changes it made earlier in the same pass - exactly as it did when it
-        // asked ResearchManager again for every key.
         private bool activeByTypeKeyStale = true;
 
-        // One pass over the knowledge categories for all pseudo-categories at once. The type loop
-        // used to do this lookup per key, so each extra category multiplied the GetProject calls.
-        // Categories are visited after the standard project and in list order, so the same
-        // "last match wins" answer comes out.
+        // Standard first, then categories in list order, so the last match wins.
         private void RefreshActiveByTypeKey()
         {
             activeByTypeKeyStale = false;
@@ -359,10 +349,6 @@ namespace CM_Semi_Random_Research
             }
         }
 
-        // Filtering by pseudo-category runs on the world tick and while drawing the tab, so it is
-        // a plain loop: the LINQ form allocated a capturing closure and an enumerator every call.
-        // Nulls are skipped - a save that lost a mod scribes them into currentProjects, and the
-        // old code would have handed one to IsFinished.
         private static List<ResearchProjectDef> ProjectsOfType(List<ResearchProjectDef> source, string typeKey)
         {
             List<ResearchProjectDef> result = new List<ResearchProjectDef>();
@@ -392,15 +378,26 @@ namespace CM_Semi_Random_Research
             return count;
         }
 
-        // Strictly-less comparison, so ties keep the first entry exactly as OrderBy().First() did.
-        private static ResearchProjectDef Cheapest(List<ResearchProjectDef> projects)
+        // Cheapest startable offer of the category, falling back to a fresh roll when none is offered. Ties keep list order.
+        private ResearchProjectDef CheapestStartableOffer(string typeKey, ref List<ResearchProjectDef> availableSnapshot)
+        {
+            ResearchProjectDef best = CheapestStartable(currentAvailableProjects, typeKey);
+            if (best != null)
+                return best;
+
+            if (availableSnapshot == null)
+                availableSnapshot = GetCurrentlyAvailableProjects();
+            return CheapestStartable(availableSnapshot, typeKey);
+        }
+
+        private static ResearchProjectDef CheapestStartable(List<ResearchProjectDef> projects, string typeKey)
         {
             ResearchProjectDef best = null;
             float bestCost = 0f;
             for (int i = 0; i < projects.Count; i++)
             {
                 ResearchProjectDef project = projects[i];
-                if (project == null)
+                if (project == null || project.IsFinished || GetCategoryKey(project) != typeKey || !project.CanStartNow)
                     continue;
 
                 float cost = project.CostApparent;
@@ -411,6 +408,15 @@ namespace CM_Semi_Random_Research
                 }
             }
             return best;
+        }
+
+        private void AutoStart(ResearchProjectDef project, string typeKey)
+        {
+            bool alreadyActive = Find.ResearchManager.IsCurrentProject(project);
+            SetCurrentProjectByKey(project, typeKey);
+
+            if (!alreadyActive)
+                Messages.Message("CM_Semi_Random_Research_AutoStarted".Translate(project.LabelCap), MessageTypeDefOf.NeutralEvent, false);
         }
 
         public override void WorldComponentTick()
@@ -435,10 +441,6 @@ namespace CM_Semi_Random_Research
 
                 List<ResearchProjectDef> availableSnapshot = null;
 
-                // The vanilla active project per pseudo-category used to be looked up inside the
-                // type loop, so every extra category multiplied the GetProject calls. Now it is
-                // resolved for all keys at once and only re-read when something in the pass has
-                // actually changed the current project.
                 bool slowPass = (tickCounter % tickOffset) == 0;
                 if (slowPass)
                     activeByTypeKeyStale = true;
@@ -451,7 +453,7 @@ namespace CM_Semi_Random_Research
                         currentProjectOfType = ProjectsOfType(currentProjects, typeKey);
                         currentProjectDefsCacheByType[typeKey] = currentProjectOfType;
                     }
-                    bool finished = false;
+
                     ResearchProjectDef finishedProject = null;
                     for (int i = 0; i < currentProjectOfType.Count; i++)
                     {
@@ -461,68 +463,40 @@ namespace CM_Semi_Random_Research
                             break;
                         }
                     }
-                    if (finishedProject != null)
-                    {
-                        finished = true;
+                    bool finished = finishedProject != null;
+                    if (finished)
                         ConsiderProjectFinished(finishedProject);
-                    }
 
-                    if ((currentProjectOfType.Count == 0 || finished) && !researchPaused)
+                    // Auto research waits until the tab has been opened once and is closed again (see AutoPickNow).
+                    if ((currentProjectOfType.Count == 0 || finished) && !IsPaused(typeKey) &&
+                        SemiRandomResearchMod.settings.autoPickNextResearch && AutoPickArmed &&
+                        !SemiRandomResearchWindowOpen &&
+                        (finished || slowPass))
                     {
-                        // While the research tab is open the player is still choosing. Auto mode
-                        // waits for the window to close (MainTabWindow_NextResearch.PreClose ->
-                        // AutoPickNow) so toggling it on does not snatch the choice away, and it
-                        // stays dormant until the tab has been opened at least once this session.
-                        if (SemiRandomResearchMod.settings.autoPickNextResearch && AutoPickArmed &&
-                            !SemiRandomResearchWindowOpen &&
-                            (finished || (tickCounter % tickOffset) == 0))
+                        ResearchProjectDef cheapestProject = CheapestStartableOffer(typeKey, ref availableSnapshot);
+                        if (cheapestProject != null)
                         {
-                            List<ResearchProjectDef> possibleProjectsOfType = ProjectsOfType(currentAvailableProjects, typeKey);
-                            if (possibleProjectsOfType.Count == 0)
-                            {
-                                if (availableSnapshot == null)
-                                    availableSnapshot = GetCurrentlyAvailableProjects();
-                                possibleProjectsOfType = ProjectsOfType(availableSnapshot, typeKey);
-                            }
-
-                            if (possibleProjectsOfType.Count > 0)
-                            {
-                                // Sort by CostApparent so it always grabs the cheapest project
-                                ResearchProjectDef cheapestProject = Cheapest(possibleProjectsOfType);
-
-                                bool alreadyActive = Find.ResearchManager.IsCurrentProject(cheapestProject);
-
-                                SetCurrentProjectByKey(cheapestProject, typeKey);
-                                currentProjectOfType = ProjectsOfType(currentProjects, typeKey);
-
-                                // Suppress the message if the game was already researching this project
-                                if (!alreadyActive)
-                                {
-                                    Messages.Message("CM_Semi_Random_Research_AutoStarted".Translate(cheapestProject.LabelCap), MessageTypeDefOf.NeutralEvent, false);
-                                }
-                            }
+                            AutoStart(cheapestProject, typeKey);
+                            currentProjectOfType = ProjectsOfType(currentProjects, typeKey);
                         }
                     }
 
                     if (slowPass)
                     {
-                        // Active project for this pseudo-category, resolved for every key at once.
                         if (activeByTypeKeyStale)
                             RefreshActiveByTypeKey();
                         activeByTypeKey.TryGetValue(typeKey, out ResearchProjectDef activeProject);
                         ResearchProjectDef trackedFirst = currentProjectOfType.Count > 0 ? currentProjectOfType[0] : null;
 
-                        // --- VGE SPAM FIX START ---
-                        // VGE hides Gravship projects from GetProject(), but exposes them via IsCurrentProject().
-                        // This sees through VGE's cloak and accurately tracks it!
+                        // VGE hides Gravship projects from GetProject() but reports them through IsCurrentProject().
                         if (activeProject == null && trackedFirst != null &&
                             Find.ResearchManager.IsCurrentProject(trackedFirst))
                         {
                             activeProject = trackedFirst;
                         }
-                        // --- VGE SPAM FIX END ---
 
-                        if (!researchPaused)
+                        // Keeps vanilla's current project and the tracked one in step.
+                        if (!IsPaused(typeKey))
                         {
                             if (activeProject == null && trackedFirst != null && trackedFirst.CanStartNow)
                             {
@@ -568,9 +542,7 @@ namespace CM_Semi_Random_Research
             }
         }
 
-        // Auto research stays dormant until the player has opened the research tab, so a new
-        // colony never has its first project chosen before the player has even seen the offers.
-        // Deliberately not saved: every load starts dormant again.
+        // Auto research stays dormant until the research tab has been opened. Not saved: every load starts dormant.
         private bool researchTabOpened;
 
         public void NotifyResearchTabOpened()
@@ -578,15 +550,13 @@ namespace CM_Semi_Random_Research
             researchTabOpened = true;
         }
 
-        // When another tree owns the Research tab our window never opens, so there would be
-        // nothing to arm the gate with - auto behaves as it always did for those players.
+        // When another tree owns the Research tab this mod's window never opens, so auto research is armed from the start.
         private bool AutoPickArmed => researchTabOpened || !ResearchTabWindowSwitcher.SemiRandomOwnsResearchTab;
 
-        // Auto mode's pick. Called when the research tab closes, so the player always gets a
-        // chance to choose first. Picks the cheapest of the offered cards per category.
+        // Auto research's pick, made when the research tab closes so the player always gets to choose first.
         public void AutoPickNow()
         {
-            if (researchPaused || SemiRandomResearchMod.settings == null || !SemiRandomResearchMod.settings.autoPickNextResearch)
+            if (SemiRandomResearchMod.settings == null || !SemiRandomResearchMod.settings.autoPickNextResearch)
                 return;
             if (!AutoPickArmed || Current.Game == null || Faction.OfPlayerSilentFail == null)
                 return;
@@ -596,32 +566,17 @@ namespace CM_Semi_Random_Research
 
             List<ResearchProjectDef> availableSnapshot = null;
 
-            foreach (string typeKey in all_typeKeys)
+            for (int k = 0; k < all_typeKeys.Count; k++)
             {
-                if (currentProjects.Any(x => x != null && !x.IsFinished && GetCategoryKey(x) == typeKey))
+                string typeKey = all_typeKeys[k];
+                if (IsPaused(typeKey))
+                    continue;
+                if (currentProjects.Any(x => !x.IsFinished && GetCategoryKey(x) == typeKey))
                     continue;
 
-                List<ResearchProjectDef> possibleProjectsOfType = currentAvailableProjects
-                    .Where(x => x != null && !x.IsFinished && x.CanStartNow && GetCategoryKey(x) == typeKey).ToList();
-
-                if (possibleProjectsOfType.Empty())
-                {
-                    if (availableSnapshot == null)
-                        availableSnapshot = GetCurrentlyAvailableProjects();
-                    possibleProjectsOfType = availableSnapshot
-                        .Where(x => x != null && !x.IsFinished && x.CanStartNow && GetCategoryKey(x) == typeKey).ToList();
-                }
-
-                if (possibleProjectsOfType.Empty())
-                    continue;
-
-                ResearchProjectDef cheapestProject = possibleProjectsOfType.OrderBy(x => x.CostApparent).First();
-                bool alreadyActive = Find.ResearchManager.IsCurrentProject(cheapestProject);
-
-                SetCurrentProjectByKey(cheapestProject, typeKey);
-
-                if (!alreadyActive)
-                    Messages.Message("CM_Semi_Random_Research_AutoStarted".Translate(cheapestProject.LabelCap), MessageTypeDefOf.NeutralEvent, false);
+                ResearchProjectDef cheapestProject = CheapestStartableOffer(typeKey, ref availableSnapshot);
+                if (cheapestProject != null)
+                    AutoStart(cheapestProject, typeKey);
             }
         }
 
@@ -630,9 +585,6 @@ namespace CM_Semi_Random_Research
             if (def == null)
                 return;
 
-            if (completedHistory == null)
-                completedHistory = new List<ResearchHistoryEntry>();
-
             completedHistory.RemoveAll(entry => entry == null || entry.project == def);
             completedHistory.Insert(0, new ResearchHistoryEntry(def, Find.TickManager?.TicksGame ?? 0));
 
@@ -640,11 +592,35 @@ namespace CM_Semi_Random_Research
                 completedHistory.RemoveRange(MaxCompletedHistoryEntries, completedHistory.Count - MaxCompletedHistoryEntries);
         }
 
+        private int HeldSlots(string typeKey)
+        {
+            return snoozeHeldSlots.TryGetValue(typeKey, out int held) ? held : 0;
+        }
+
+        private int TargetOfferCount(string typeKey, int additionalProjects)
+        {
+            SemiRandomResearchSettings settings = SemiRandomResearchMod.settings;
+            return Math.Max(0, Math.Min(settings.availableProjectCount + additionalProjects, settings.maxProjectCount) - HeldSlots(typeKey));
+        }
+
+        // Takes a just-snoozed project out of the offers without backfilling its slot.
+        public void RemoveSnoozedOffer(ResearchProjectDef def)
+        {
+            if (def == null || !currentAvailableProjects.Remove(def))
+                return;
+
+            string typeKey = GetCategoryKey(def);
+            if (!additionalAvailableProjects.Remove(def))
+                snoozeHeldSlots[typeKey] = HeldSlots(typeKey) + 1;
+
+            PublishOffers(new List<ResearchProjectDef>(currentAvailableProjects));
+        }
+
         public List<ResearchProjectDef> GetCurrentlyAvailableProjects()
         {
-            // Rolling uses CostApparent, which NREs if the player faction is missing.
+            // Rolling uses CostApparent, which needs the player faction.
             if (Faction.OfPlayerSilentFail == null)
-                return currentAvailableProjects ?? new List<ResearchProjectDef>();
+                return currentAvailableProjects;
 
             if (all_typeKeys == null || AnomalyTypeKeysNeedRefresh())
                 RefreshTypeKeys();
@@ -654,16 +630,13 @@ namespace CM_Semi_Random_Research
             currentAvailableProjects = currentAvailableProjects.Where(projectDef => projectDef != null &&
                 !projectDef.IsFinished &&
                 !Compatibility.IsHiddenResearch(projectDef) &&
-                Compatibility.SatisfiesAlienRaceRestriction(projectDef)).ToList();
+                !ResearchSnoozeTracker.IsSnoozedNow(projectDef)).ToList();
 
-            if (currentProjects.Count > 0)
+            for (int i = currentProjects.Count - 1; i >= 0; i--)
             {
-                for (int i = currentProjects.Count - 1; i >= 0; i--)
-                {
-                    ResearchProjectDef current = currentProjects[i];
-                    if (current != null && Compatibility.IsHiddenResearch(current))
-                        SetCurrentProjectByKey(null, GetCategoryKey(current));
-                }
+                ResearchProjectDef current = currentProjects[i];
+                if (Compatibility.IsHiddenResearch(current))
+                    SetCurrentProjectByKey(null, GetCategoryKey(current));
             }
 
             int additionalProjects = SemiRandomResearchMod.settings.amountSelection == ChoiceAmountSelection.PerColonist ?
@@ -677,14 +650,17 @@ namespace CM_Semi_Random_Research
                 List<ResearchProjectDef> currentAvailableValidProjectsOfType = currentAvailableProjects.Where(x => GetCategoryKey(x) == typeKey && x.CanStartNow).ToList();
                 List<ResearchProjectDef> currentProjectOfType = currentProjects.Where(x => GetCategoryKey(x) == typeKey).ToList();
 
+                // A category whose snoozes emptied it gets its slots back, so it is never left with nothing to research.
+                if (currentAvailableValidProjectsOfType.Count == 0)
+                    snoozeHeldSlots.Remove(typeKey);
+
                 if (!SemiRandomResearchMod.settings.rerollAllEveryTime ||
                     SemiRandomResearchMod.settings.allowSwitchingResearch ||
                     currentProjectOfType.Empty() ||
-                    currentProjectOfType.Any(x => x.IsFinished || !Compatibility.SatisfiesAlienRaceRestriction(x)))
+                    currentProjectOfType.Any(x => x.IsFinished))
                 {
-
                     bool handledProjects = false;
-                    int numberOfMissingProjects = Math.Min((SemiRandomResearchMod.settings.availableProjectCount + additionalProjects), SemiRandomResearchMod.settings.maxProjectCount) - currentAvailableValidProjectsOfType.Count;
+                    int numberOfMissingProjects = TargetOfferCount(typeKey, additionalProjects) - currentAvailableValidProjectsOfType.Count;
 
                     if (numberOfMissingProjects > 0 || additionalProjectsRefresh)
                     {
@@ -699,7 +675,7 @@ namespace CM_Semi_Random_Research
                             handledProjects = true;
                             result.AddRange(currentAvailableValidProjectsOfType);
                         }
-                        numberOfMissingProjects = Math.Min((SemiRandomResearchMod.settings.availableProjectCount + additionalProjects), SemiRandomResearchMod.settings.maxProjectCount) - currentAvailableValidProjectsOfType.Count;
+                        numberOfMissingProjects = TargetOfferCount(typeKey, additionalProjects) - currentAvailableValidProjectsOfType.Count;
                     }
                     int projectsAddedAdditional = currentAvailableValidProjectsOfType.Count(x => additionalAvailableProjects.Contains(x));
                     int progressAddedProgressed = currentAvailableValidProjectsOfType.Count(x => x.ProgressReal > 0 && !currentProjectOfType.Contains(x) && !additionalAvailableProjects.Contains(x));
@@ -723,7 +699,7 @@ namespace CM_Semi_Random_Research
                         IEnumerable<ResearchProjectDef> keepable = currentAvailableValidProjectsOfType.Where(x => !currentProjects.Contains(x) && !currentAvailableProjectsWithoutCurrentProject.Contains(x));
                         currentAvailableProjectsWithoutCurrentProject.AddRange(keepable.Reverse().Skip(amountToRemove).Reverse());
 
-                        if (!currentProjectOfType.Empty() && currentProjectOfType.Any(x => !x.IsFinished && Compatibility.SatisfiesAlienRaceRestriction(x)))
+                        if (currentProjectOfType.Any(x => !x.IsFinished))
                         {
                             currentAvailableProjectsWithoutCurrentProject.AddRange(currentProjectOfType);
                         }
@@ -731,7 +707,6 @@ namespace CM_Semi_Random_Research
                         result.AddRange(currentAvailableProjectsWithoutCurrentProject);
                         if (SemiRandomResearchMod.settings.verboseLogging)
                             LogIfNewMessage("numberOfMissingProjects < 0" + typeKey, $"More projects available than expected. numberOfMissingProjects: {numberOfMissingProjects} Values: additionalProjects {additionalProjects} amountToRemove: {amountToRemove} keepable.Count: {keepable.Count()} extraAddedProgress: {extraAddedProgress} projectsAddedAdditional:{projectsAddedAdditional}");
-
                     }
                     if (!handledProjects)
                     {
@@ -747,8 +722,7 @@ namespace CM_Semi_Random_Research
                     result.AddRange(currentProjectOfType);
                 }
             }
-            // Keep the persisted offer list in sync with what we publish (trim path
-            // previously only updated the returned/published list).
+            // The saved offer list matches what is published.
             currentAvailableProjects = result.Distinct().ToList();
             PublishOffers(result);
             return result;
@@ -810,9 +784,7 @@ namespace CM_Semi_Random_Research
                 }
             }
 
-            // CanStartNow is by far the most expensive of these three - it walks the colony's
-            // research benches - so the two cheap rejections are made first. Membership goes
-            // through a set because this runs over every unfinished project of the category.
+            // CanStartNow walks the colony's research benches, so the cheap rejections come first.
             HashSet<ResearchProjectDef> currentlyOffered = new HashSet<ResearchProjectDef>(currentAvailableProjects);
             List<ResearchProjectDef> availableList = new List<ResearchProjectDef>();
             for (int i = 0; i < projectsOfType.Count; i++)
@@ -820,7 +792,7 @@ namespace CM_Semi_Random_Research
                 ResearchProjectDef projectDef = projectsOfType[i];
                 if (currentlyOffered.Contains(projectDef))
                     continue;
-                if (!Compatibility.DoCompatibilityChecks(projectDef))
+                if (projectDef.IsDummyResearch() || ResearchSnoozeTracker.IsSnoozedNow(projectDef))
                     continue;
                 if (!projectDef.CanStartNow)
                     continue;
@@ -839,8 +811,6 @@ namespace CM_Semi_Random_Research
                     LogIfNewMessage("NoAvailableProjects1" + typeKey, $"[CM_Semi_Random_Research] Total projects in game: {allAvailableProjectsDebug.Count}");
                     allAvailableProjectsDebug = allAvailableProjectsDebug.Where((ResearchProjectDef projectDef) => projectDef.CanStartNow).ToList();
                     LogIfNewMessage("NoAvailableProjects2" + typeKey, $"[CM_Semi_Random_Research] Of which {allAvailableProjectsDebug.Count} Could be started now");
-                    allAvailableProjectsDebug = allAvailableProjectsDebug.Where((ResearchProjectDef projectDef) => Compatibility.SatisfiesAlienRaceRestriction(projectDef)).ToList();
-                    LogIfNewMessage("NoAvailableProjects3" + typeKey, $"[CM_Semi_Random_Research] Of which {allAvailableProjectsDebug.Count} you have the required races for");
                     allAvailableProjectsDebug = allAvailableProjectsDebug.Where((ResearchProjectDef projectDef) => !projectDef.IsDummyResearch()).ToList();
                     LogIfNewMessage("NoAvailableProjects4" + typeKey, $"[CM_Semi_Random_Research] Of which {allAvailableProjectsDebug.Count} are not Dummy researches");
                 }
@@ -885,10 +855,7 @@ namespace CM_Semi_Random_Research
             List<ResearchProjectDef> selectedProjects = new List<ResearchProjectDef>();
             selectedProjects.AddRange(allAvailableProjects.Where(x => additionalAvailableProjects.Contains(x)));
 
-            // Evaluated once and kept as a set. As a lazy query this was re-run for its Count, for
-            // every Contains in the Never branch and again once per element by the final
-            // OrderByDescending, so a single roll re-read ProgressReal for the whole category
-            // hundreds of times over.
+            // Materialized once: ProgressReal is read for every candidate, and the set is checked repeatedly below.
             List<ResearchProjectDef> partiallyCompleted = new List<ResearchProjectDef>();
             HashSet<ResearchProjectDef> partiallyCompletedSet = new HashSet<ResearchProjectDef>();
             foreach (ResearchProjectDef candidate in allAvailableProjects)
@@ -926,7 +893,6 @@ namespace CM_Semi_Random_Research
                 {
                     LogIfNewMessage("ReofferAfterAmountOfRerollsCount" + typeKey, "This many researches were not offered recently: " + possibleNotShownRecently.Count + " while this many were shown recently: " + notChosenProjects.Keys.Count(x => GetCategoryKey(x) == typeKey && !x.IsFinished));
                 }
-                int remainingCount = count;
 
                 if (possibleNotShownRecently.Count < count)
                 {
@@ -942,7 +908,6 @@ namespace CM_Semi_Random_Research
 
             if (SemiRandomResearchMod.settings.equalizeCost && allAvailableProjects.Count() > count && count > 0)
             {
-
                 int amountToRandomlyGenerate = count / 2;
                 int amountToPick = count - amountToRandomlyGenerate;
 
@@ -976,9 +941,7 @@ namespace CM_Semi_Random_Research
                         / Math.Max(currentAvailableProjects.Count + selectedProjects.Count + selectedProjectsFirstHalf.Count, 1);
                     float targetAddedAverageCost = ((averageAvailableCost * (currentAvailableProjects.Count + count))
                         - (currentAvailableProjects.Count + selectedProjectsFirstHalf.Count) * averageCurrentCost) / (amountToPick);
-                    // Materialised once and then shuffled in place. Every one of the 25 passes used
-                    // to rebuild the candidate list from a lazy query and enumerate the chosen
-                    // slice twice more for its sum and its count.
+                    // Materialized once and shuffled in place for each of the 25 tries.
                     List<ResearchProjectDef> equalizePool = allAvailableProjects.Where(x => !selectedProjectsFirstHalf.Contains(x)).ToList();
                     allAvailableProjects = equalizePool;
 
@@ -1050,17 +1013,17 @@ namespace CM_Semi_Random_Research
             return selectedProjects;
         }
 
-        // ==============================================================================
-        // NEW STRING-BASED TRACKING
-        // ==============================================================================
-
         public void SetCurrentProjectByKey(ResearchProjectDef newCurrentProject, string typeKey)
         {
             loggedMessages.Clear();
             activeByTypeKeyStale = true;
             currentProjects = currentProjects.Where(x => GetCategoryKey(x) != typeKey).ToList();
             projectDefsCacheByType.Remove(typeKey);
-            researchPaused = false;
+            if (IsPaused(typeKey))
+            {
+                researchPaused = false;
+                pausedTypeKey = null;
+            }
             if (newCurrentProject != null)
             {
                 currentProjects.Add(newCurrentProject);
@@ -1092,7 +1055,7 @@ namespace CM_Semi_Random_Research
                 if (catActive != null && GetCategoryKey(catActive) == typeKey) active = catActive;
             }
 
-            // Add safety net for stopping Gravship projects since they hide from GetProject
+            // Gravship projects are not returned by GetProject, so fall back to the tracked one.
             ResearchProjectDef trackedType = currentProjects.FirstOrDefault(x => GetCategoryKey(x) == typeKey);
             if (trackedType == null && currentProjectDefsCacheByType.ContainsKey(typeKey))
                 trackedType = currentProjectDefsCacheByType[typeKey].FirstOrDefault();
@@ -1101,8 +1064,6 @@ namespace CM_Semi_Random_Research
 
             if (active != null)
                 Find.ResearchManager.StopProject(active);
-            else if (trackedType != null && Find.ResearchManager.IsCurrentProject(trackedType))
-                Find.ResearchManager.StopProject(trackedType);
         }
 
         public void PauseResearch(ResearchProjectDef project)
@@ -1115,6 +1076,7 @@ namespace CM_Semi_Random_Research
                 currentProjects.Add(project);
 
             researchPaused = true;
+            pausedTypeKey = typeKey;
             StopVanillaProjectForKey(typeKey);
             currentProjectDefsCacheByType[typeKey] = ProjectsOfType(currentProjects, typeKey);
         }
@@ -1142,14 +1104,7 @@ namespace CM_Semi_Random_Research
                 currentRerollState[typeKey]++;
                 foreach (ResearchProjectDef rdef in currentAvailableProjects.Where(x => GetCategoryKey(x) == typeKey))
                 {
-                    if (!notChosenProjects.ContainsKey(rdef))
-                    {
-                        notChosenProjects.Add(rdef, currentRerollState[typeKey]);
-                    }
-                    else
-                    {
-                        notChosenProjects[rdef] = currentRerollState[typeKey];
-                    }
+                    notChosenProjects[rdef] = currentRerollState[typeKey];
                 }
                 notChosenProjects = notChosenProjects.Where(x => x.Value > currentRerollState[typeKey] - SemiRandomResearchMod.settings.reofferAfterAmountOfRerolls).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             }
@@ -1157,14 +1112,7 @@ namespace CM_Semi_Random_Research
 
         public void SetRerolledByKey(string typeKey, bool newValue)
         {
-            if (!rerolled.ContainsKey(typeKey))
-            {
-                rerolled.Add(typeKey, newValue);
-            }
-            else
-            {
-                rerolled[typeKey] = newValue;
-            }
+            rerolled[typeKey] = newValue;
         }
 
         public bool CanRerollByKey(string typeKey)
@@ -1186,28 +1134,21 @@ namespace CM_Semi_Random_Research
                 SetCurrentProjectByKey(null, typeKey);
                 currentAvailableProjects = currentAvailableProjects.Where(x => GetCategoryKey(x) != typeKey).ToList();
                 additionalAvailableProjects = additionalAvailableProjects.Where(x => GetCategoryKey(x) != typeKey).ToHashSet();
+                snoozeHeldSlots.Remove(typeKey);
                 GetCurrentlyAvailableProjects();
                 tickCounter = 0;
             }
         }
 
-        // ==============================================================================
-        // COMPATIBILITY WRAPPERS FOR UI BUTTONS
-        // These intercept calls from your UI and route them to the Pseudo-Categories
-        // ==============================================================================
-
-        // Public entry point kept at the original mod's signature, because other research UIs
-        // find it by reflection: Nice Research Tab looks up CM_Semi_Random_Research.ResearchTracker
-        // and calls this to start a project, which never touches ResearchManager.SetCurrentProject
-        // and so slips straight past the gate there. Prohibit has to be enforced here as well.
-        // Clearing the project (null) is a stop rather than a selection, so it stays allowed.
+        // Public entry points at the original mod's signatures. Nice Research Tab calls SetCurrentProject by reflection,
+        // bypassing ResearchManager.SetCurrentProject, so the selection gate is applied here too. Clearing is always allowed.
         public void SetCurrentProject(ResearchProjectDef newCurrentProject, KnowledgeCategoryDef type)
         {
             if (newCurrentProject != null &&
                 !applyingTrackedProject &&
                 SemiRandomResearchUtility.IsControllingResearchSelection)
             {
-                ResearchManager_Patches.RejectSelection();
+                SemiRandomResearchUtility.RejectSelection();
                 return;
             }
 
@@ -1222,6 +1163,7 @@ namespace CM_Semi_Random_Research
             }
         }
 
+        // A null category means every category.
         public bool CanReroll(KnowledgeCategoryDef type)
         {
             if (SemiRandomResearchMod.settings.allowManualReroll == ManualReroll.None)
@@ -1257,15 +1199,12 @@ namespace CM_Semi_Random_Research
             }
         }
 
-        // ==============================================================================
-
+        // Rebuilds the offers now, so count changes apply without reopening the tab.
         public void SettingsChanged()
         {
             ForceAutoReseachCheckNextTick();
             loggedMessages.Clear();
 
-            // Rebuild offers immediately so count / max / colonist-based amount
-            // changes apply without needing a game restart or tab reopen.
             if (Current.Game != null && Faction.OfPlayerSilentFail != null)
                 GetCurrentlyAvailableProjects();
         }
@@ -1279,29 +1218,22 @@ namespace CM_Semi_Random_Research
         public void ConsiderProjectFinished(ResearchProjectDef def)
         {
             if (def.IsDummyResearch())
-            {
                 return;
-            }
 
             if (SemiRandomResearchMod.settings.verboseLogging)
-            {
-                LogIfNewMessage("Consider Completed", def?.LabelCap);
-            }
+                LogIfNewMessage("Consider Completed", def.LabelCap);
 
             string typeKey = GetCategoryKey(def);
 
             RecordCompletedProject(def);
             SetRerolledByKey(typeKey, false);
+            snoozeHeldSlots.Remove(typeKey);
             ForceAutoReseachCheckNextTick();
             CompletionRevision++;
 
-            // Clear current project
             if (currentProjects.Contains(def))
-            {
                 SetCurrentProjectByKey(null, typeKey);
-            }
 
-            // Immediately handle reroll
             if (SemiRandomResearchMod.settings.rerollAllEveryTime)
             {
                 ManageNotChosenByKey(typeKey);
@@ -1319,7 +1251,7 @@ namespace CM_Semi_Random_Research
 
         private void LogIfNewMessage(string key, string message)
         {
-            if (!loggedMessages.ContainsKey(key) || loggedMessages[key] != message)
+            if (!loggedMessages.TryGetValue(key, out string logged) || logged != message)
             {
                 Log.Message($"[CM_Semi_Random_Research] <{key}>: {message}");
                 loggedMessages[key] = message;

@@ -8,6 +8,7 @@ using Verse.Sound;
 
 namespace CM_Semi_Random_Research
 {
+    // Adds a "Semi Random" button to YART's window. The click is taken in a prefix so it cannot also drag the canvas.
     [StaticConstructorOnStartup]
     public static class Yart_Integration
     {
@@ -20,9 +21,7 @@ namespace CM_Semi_Random_Research
         static Yart_Integration()
         {
             if (!ResearchTabWindowSwitcher.YartInstalled)
-            {
                 return;
-            }
 
             Type type = ResearchTabWindowSwitcher.YartWindowType;
             if (type == null)
@@ -53,59 +52,19 @@ namespace CM_Semi_Random_Research
 
         public static void DoWindowContents_Prefix(Rect inRect, Window __instance)
         {
-            Rect buttonRect = SemiRandomButtonRect(inRect);
-            if (!Clicked(buttonRect))
+            if (!ResearchWidgets.Clicked(SemiRandomButtonRect(inRect)))
                 return;
 
             SoundDefOf.Click.PlayOneShotOnCamera();
             ResearchTabWindowSwitcher.SwitchToSemiRandomResearch(__instance);
-            Event.current.Use();
         }
 
         public static void DoWindowContents_Postfix(Rect inRect)
         {
-            DrawColoredButton(SemiRandomButtonRect(inRect), "CM_Semi_Random_Research_YartButton".Translate(), SemiRandomButtonColor);
-        }
-
-        private static void DrawColoredButton(Rect rect, string label, Color fill)
-        {
-            bool mouseOver = Mouse.IsOver(rect);
-            bool held = mouseOver && Input.GetMouseButton(0);
-
-            if (Event.current.type == EventType.Repaint)
-            {
-                Color bg = fill;
-                if (held)
-                    bg = fill * 0.75f;
-                else if (mouseOver)
-                    bg = Color.Lerp(fill, Color.white, 0.16f);
-
-                Widgets.DrawBoxSolid(rect, bg);
-                Color old = GUI.color;
-                GUI.color = Color.Lerp(fill, Color.black, 0.4f);
-                Widgets.DrawBox(rect);
-                GUI.color = old;
-            }
-
-            Text.Font = GameFont.Small;
-            Text.Anchor = TextAnchor.MiddleCenter;
-            GUI.color = Color.white;
-            Widgets.Label(rect, label);
-            Text.Anchor = TextAnchor.UpperLeft;
-            GUI.color = Color.white;
-
-            if (Event.current.type == EventType.Repaint && mouseOver)
+            Rect rect = SemiRandomButtonRect(inRect);
+            ResearchWidgets.DrawColoredButton(rect, "CM_Semi_Random_Research_YartButton".Translate(), SemiRandomButtonColor);
+            if (Mouse.IsOver(rect))
                 TooltipHandler.TipRegion(rect, "CM_Semi_Random_Research_ReturnToSemiRandom".Translate());
-        }
-
-        private static bool Clicked(Rect rect)
-        {
-            if (Event.current.type != EventType.MouseDown || Event.current.button != 0)
-                return false;
-            if (!Mouse.IsOver(rect))
-                return false;
-            Event.current.Use();
-            return true;
         }
     }
 }

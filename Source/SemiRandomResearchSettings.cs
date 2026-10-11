@@ -5,9 +5,6 @@ using Verse;
 
 namespace CM_Semi_Random_Research
 {
-    // =========================================================================
-    // ENUMS
-    // =========================================================================
     public enum ManualReroll
     {
         None,
@@ -39,8 +36,7 @@ namespace CM_Semi_Random_Research
         Organized
     }
 
-    // Which window the Research main tab button opens. Separate from PreferredResearchTree,
-    // which is only where the tree button at the bottom of this mod's window sends you.
+    // Which window the Research main tab button opens. PreferredResearchTree is where this mod's tree button goes.
     public enum ResearchTabOwner
     {
         SemiRandom,
@@ -52,9 +48,6 @@ namespace CM_Semi_Random_Research
         Organized
     }
 
-    // =========================================================================
-    // MOD SETTINGS CLASS
-    // =========================================================================
     public class SemiRandomResearchSettings : ModSettings
     {
         public bool featureEnabled = true;
@@ -81,9 +74,7 @@ namespace CM_Semi_Random_Research
         public PreferredResearchTree preferredResearchTree = PreferredResearchTree.NodeResearch;
         public int settingsVersion;
 
-        // Read once by MigrateResearchTabOwner and never again. Kept in the config only so an
-        // upgrade from a version that had the "Delegate UI to Node Research" checkbox can carry
-        // that choice over.
+        // The old "Delegate UI to Node Research" checkbox, read only by MigrateResearchTabOwner.
         private bool legacyUsingNodeResearch = false;
         public bool suppressHandoverMessages = false;
         public bool colorAndGroupByTechLevel = true;
@@ -131,11 +122,8 @@ namespace CM_Semi_Random_Research
 
         private static readonly Color SectionColor = new Color(0.62f, 0.72f, 0.80f);
 
-        // A float menu option and a radio button fire in the middle of a frame, between this
-        // window's layout pass and its repaint. Applying a value that shows or hides rows right
-        // there changes how many GUI controls the window draws between those two passes, and
-        // Unity then throws out the pass - which is how a chosen option could silently fail to
-        // stick. These hold the choice until the next layout pass, where it is safe to apply.
+        // Choices from float menus and radio buttons, held until the next layout pass. Applying one mid-frame can
+        // show or hide rows between layout and repaint, and Unity then discards the pass along with the choice.
         private ManualReroll? pendingManualReroll;
         private ProgressAddsChoice? pendingProgressAddsChoice;
         private ChoiceAmountSelection? pendingAmountSelection;
@@ -172,11 +160,8 @@ namespace CM_Semi_Random_Research
             listing.ColumnWidth = (inRect.width - 34f) / 2f;
             listing.Begin(inRect);
 
-            // ==========================================
-            // COLUMN 1: GENERAL, DISPLAY, TREES
-            // ==========================================
-            // Auto research is not listed here on purpose: it is the toggle in the bottom left
-            // of the research tab, and having it in two places invited confusion.
+            // Column 1: general, display, research trees.
+            // Auto research is toggled from the research tab, not here.
             SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_General");
             Checkbox(listing, "Feature_Enabled", ref featureEnabled);
             Checkbox(listing, "AutoOpen", ref autoOpenOnCompletion);
@@ -217,8 +202,7 @@ namespace CM_Semi_Random_Research
                 Checkbox(listing, "SuppressHandover", ref suppressHandoverMessages);
             }
 
-            // Verbose logging is a debugging aid that only spams the log for everyone else,
-            // so the whole section stays out of the way unless dev mode is on.
+            // Verbose logging is only shown in dev mode.
             if (Prefs.DevMode)
             {
                 listing.GapLine();
@@ -227,9 +211,7 @@ namespace CM_Semi_Random_Research
                 Checkbox(listing, "Verbose_Logging", ref verboseLogging);
             }
 
-            // ==========================================
-            // COLUMN 2: SELECTION RULES, REROLLS, AMOUNTS
-            // ==========================================
+            // Column 2: selection rules, rerolls, amounts.
             listing.NewColumn();
 
             SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Gameplay");
@@ -330,7 +312,11 @@ namespace CM_Semi_Random_Research
                 pendingAmountSelection = ChoiceAmountSelection.PerColonist;
             }
 
-            IntSetting(listing, "Available_Projects_Count", ref availableProjectCount, 0);
+            // A constant count of 0 would offer nothing; per colonist, colonists can add choices to a base of 0.
+            int minimumProjects = amountSelection == ChoiceAmountSelection.Static ? 1 : 0;
+            IntSetting(listing, "Available_Projects_Count", ref availableProjectCount, minimumProjects);
+            if (availableProjectCount < minimumProjects)
+                availableProjectCount = minimumProjects;
             if (availableProjectCount > maxProjectCount)
             {
                 maxProjectCount = availableProjectCount;
@@ -357,8 +343,7 @@ namespace CM_Semi_Random_Research
             listing.Label(translationKey.Translate().Colorize(SectionColor));
         }
 
-        // Every checkbox in this window follows the same "<prefix>_Label" / "<prefix>_Description"
-        // key pair, so the description always ends up on the row as its tooltip.
+        // Checkbox labeled by <stem>_Label with <stem>_Description as its tooltip.
         private static void Checkbox(Listing_Standard listing, string keyStem, ref bool value)
         {
             listing.CheckboxLabeled(
@@ -418,8 +403,6 @@ namespace CM_Semi_Random_Research
             rect.x += leftPad;
             rect.width -= leftPad + rightPad;
 
-            // One control, not two stacked on the same rect: the old invisible ButtonImage
-            // underneath doubled this row's control count for no benefit.
             if (!tooltip.NullOrEmpty())
                 TooltipHandler.TipRegion(rect, tooltip);
 
@@ -429,8 +412,7 @@ namespace CM_Semi_Random_Research
             }
         }
 
-        // Closing the settings window can beat the next layout pass. Flushed before the write
-        // so a choice made on the last frame is both applied and saved.
+        // Applies a held choice before saving, in case the window closes before the next layout pass.
         public void FlushPendingChoices()
         {
             ApplyPendingChoices(true);
@@ -455,8 +437,7 @@ namespace CM_Semi_Random_Research
             return changed;
         }
 
-        // One-time: old configs saved Sleek as the tree button target. Reset to Node Research.
-        // Users can still pick Sleek or YART after this version is written.
+        // One-time: resets the tree button target, which old configs saved as Sleek, to Node Research.
         private bool MigrateTreeButtonDefaultToNode()
         {
             if (settingsVersion >= 1)
@@ -467,13 +448,9 @@ namespace CM_Semi_Random_Research
             return true;
         }
 
-        // One-time: which window the Research tab opens used to be two things at once - the
-        // "Delegate UI to Node Research" checkbox, and, as an unintended side effect, the
-        // "Prohibit normal project selection" research rule. Carry both over to the setting
-        // that now says it outright, so nobody's research tab changes under them on upgrade.
-        //
-        // Only package ids are consulted here: this runs from the Mod constructor, where a tree
-        // mod's assembly may not be loaded yet and its window type would read as missing.
+        // One-time: derives the tab owner from the old "Delegate UI to Node Research" checkbox and the
+        // "Prohibit normal project selection" rule, so the tab opens the same window after upgrading.
+        // Checks package ids only: tree mods' assemblies may not be loaded yet in the Mod constructor.
         private bool MigrateResearchTabOwner()
         {
             if (settingsVersion >= 2)
@@ -485,8 +462,7 @@ namespace CM_Semi_Random_Research
             }
             else if (!featureEnabled)
             {
-                // The rule being off pointed the tab at the vanilla window, which is what Sleek
-                // and Research: Organized dress up. That is what these players see today.
+                // With the rule off the tab showed the vanilla window, which Sleek and Research: Organized redress.
                 if (ResearchTabWindowSwitcher.SleekInstalled)
                     researchTabOwner = ResearchTabOwner.Sleek;
                 else if (ResearchTabWindowSwitcher.OrganizedInstalled)

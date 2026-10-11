@@ -28,10 +28,7 @@ namespace CM_Semi_Random_Research
 
         private static readonly Color FulfilledPrerequisiteColor = Color.green;
 
-        // Loaded lazily by EnsureIconsLoaded() rather than here: Harmony's PatchAll() JIT-compiles
-        // patch methods that statically reference this class from a background thread during mod
-        // construction, which forces this beforefieldinit type's static ctor to run there too -
-        // triggering "loaded from a different thread" errors if the textures load eagerly.
+        // Loaded on first draw: PatchAll can run this type's static initializer off the main thread, where textures cannot load.
         private static Texture2D SettingsIcon;
         private static Texture2D PlusIcon;
         private static Texture2D TotalIcon;
@@ -65,19 +62,13 @@ namespace CM_Semi_Random_Research
 
         private int currentRandomSeed = 0;
 
-        private KnowledgeCategoryDef rerollButtonType = null;
-
-        // Keyed on the def rather than its defName: the offer cards look their animation progress
-        // up every frame, and hashing a string for each one is pure overhead.
         private Dictionary<ResearchProjectDef, float> animationProgress = new Dictionary<ResearchProjectDef, float>();
         private float lastRerollTime = -1f;
         private const float ANIMATION_DURATION = 0.25f; // Quarter second per item
         private const float ITEM_DELAY = 0.05f; // Very short delay between items
         private List<ResearchProjectDef> animationOrder = new List<ResearchProjectDef>();
 
-        // TechLevel is a small contiguous enum, so both of these are flat arrays indexed by it.
-        // As dictionaries they cost two lookups per research def per rebuild, which is a scan of
-        // the whole database once a second while the tab is open.
+        // Indexed by TechLevel.
         internal static readonly int TechLevelCount = (int)TechLevel.Archotech + 1;
         private float[] techLevelHeaderProgress = new float[TechLevelCount];
         private (int completed, int total, float remainingCost, float spentCost)[] cachedTechLevelStats;
@@ -126,11 +117,8 @@ namespace CM_Semi_Random_Research
         }
         private List<Def> cachedSelectedUnlocks;
         private ResearchProjectDef cachedUnlocksProject;
-        // Which projects each project is a prerequisite for. The graph itself is fixed once defs
-        // are loaded, and so is the label order it is sorted into, so it is built once for the
-        // session and shared by every window instance rather than rebuilt on each tab open.
-        // Only the filter that drops hidden projects can move (anomaly study, a SoS2 uplink),
-        // which HiddenResearchStateVersion reports; the def count catches the rest.
+        // Which projects each project is a prerequisite for, shared by every window instance. Rebuilt when the
+        // hidden-research state or the def database changes.
         private static Dictionary<ResearchProjectDef, List<ResearchProjectDef>> sharedDependentResearch;
         private static int sharedDependentResearchState = -1;
         private static int sharedDependentResearchDefCount = -1;
@@ -171,18 +159,7 @@ namespace CM_Semi_Random_Research
             return project?.description ?? string.Empty;
         }
 
-        // MouseDown hit-test only. GUI.Button/ButtonInvisible/ButtonImage change control IDs
-        // when the number of calls differs between Layout and Repaint, which makes Unity
-        // retry OnGUI until FPS/TPS collapse.
-        private static bool Clicked(Rect rect)
-        {
-            if (Event.current.type != EventType.MouseDown || Event.current.button != 0)
-                return false;
-            if (!Mouse.IsOver(rect))
-                return false;
-            Event.current.Use();
-            return true;
-        }
+        private static bool Clicked(Rect rect) => ResearchWidgets.Clicked(rect);
 
         private void RefreshCanStartNow(int tick)
         {
@@ -193,7 +170,7 @@ namespace CM_Semi_Random_Research
                 cachedSelectedCanStartNow = selectedProject != null && selectedProject.CanStartNow;
             }
 
-            cachedCanReroll = cachedTracker != null && cachedTracker.CanReroll(rerollButtonType);
+            cachedCanReroll = cachedTracker != null && cachedTracker.CanReroll(null);
             RefreshFooterStartMode();
         }
 
@@ -214,8 +191,7 @@ namespace CM_Semi_Random_Research
                 cachedFooterStartMode = FooterStartMode.InProgress;
                 return;
             }
-            // Same rule the selection gate applies to external research trees, so the start button
-            // and a handover to another tree can never disagree about what is startable.
+            // Same rule the selection gate applies to other research trees.
             bool canStart = cachedSelectedCanStartNow &&
                 cachedTracker != null &&
                 cachedTracker.PlayerCanStartProject(selectedProject);
@@ -375,16 +351,12 @@ namespace CM_Semi_Random_Research
         private static readonly Comparison<ResearchProjectDef> DependentLabelComparison = (left, right) =>
             string.Compare(SafeLabel(left), SafeLabel(right), StringComparison.CurrentCultureIgnoreCase);
 
-        // Walking every research def, building the map and running a culture-aware sort over each
-        // bucket used to happen on every single tab open, for a result that cannot differ unless
-        // the hidden-research filter has moved. Now it is done once and handed out again.
+        // Reuses the shared map unless the hidden-research state or the def database has changed.
         private void RebuildDependentResearchCache()
         {
             List<ResearchProjectDef> allProjects = DefDatabase<ResearchProjectDef>.AllDefsListForReading;
             int defCount = allProjects.Count;
-            // Reloading play data (a language change is the one that happens mid-session) rebuilds
-            // every Def, so the map would be keyed on objects nothing looks up any more while the
-            // count stayed the same. One instance is enough to notice that the database moved.
+            // A play data reload (language change) rebuilds every def at the same count; the first def's identity catches it.
             ResearchProjectDef firstDef = defCount > 0 ? allProjects[0] : null;
             int hiddenState = Compatibility.HiddenResearchStateVersion;
 
@@ -659,7 +631,13 @@ namespace CM_Semi_Random_Research
         // Vanilla MainTabWindow sits its bottom edge this far above the screen bottom, on top of the main button bar.
         private const float BottomBarHeight = 35f;
 
-        public override Vector2 InitialSize =>new Vector2(UI.screenWidth * 0.585f, UI.screenHeight * 0.7f);
+        public override Vector2 InitialSize => new Vector2(UI.screenWidth * 0.585f, UI.screenHeight * 0.7f);
+
+        public override void Notify_ResolutionChanged()
+        {
+            base.Notify_ResolutionChanged();
+            leftScrollOutHeight = 0f;
+        }
 
         public override Vector2 RequestedTabSize => InitialSize;
 
@@ -667,8 +645,7 @@ namespace CM_Semi_Random_Research
 
         public MainTabWindow_NextResearch()
         {
-            // Fully faded in until a reroll says otherwise. As a dictionary a missing entry read
-            // as 1f; an array starts at 0f, which would hide every tech level header.
+            // Fully faded in until a reroll says otherwise.
             SetAllHeaderProgress(1f);
 
             this.def = MainButtonDefOf.Research;
@@ -685,6 +662,7 @@ namespace CM_Semi_Random_Research
 
             // The history view is never remembered between openings.
             showingHistory = false;
+            showingSnoozed = false;
             selectionBeforeHistory = null;
 
             // base.PreOpen reset the window to its normal size, so the last measurement no longer applies.
@@ -694,26 +672,12 @@ namespace CM_Semi_Random_Research
             cachedTracker = SemiRandomResearchUtility.Tracker;
             cachedRateTracker = SemiRandomResearchUtility.RateTracker;
 
-            // Arms auto research. Until the tab has been opened once, a freshly started or
-            // freshly loaded colony picks nothing on its own.
             cachedTracker?.NotifyResearchTabOpened();
             cachedRequiredProgress = ProgressionCoreActive ? GetRequiredProgressionPercent() : 1f;
 
             if (cachedTracker != null)
             {
                 CopyAvailableProjects(cachedTracker.GetCurrentlyAvailableProjects());
-
-                List<ResearchProjectDef> current = cachedTracker.CurrentProject;
-                for (int i = current.Count - 1; i >= 0; i--)
-                {
-                    ResearchProjectDef def = current[i];
-                    if (!Compatibility.SatisfiesAlienRaceRestriction(def))
-                    {
-                        string categoryKey = ResearchTracker.GetCategoryKey(def);
-                        cachedTracker.SetCurrentProjectByKey(null, categoryKey);
-                    }
-                }
-
                 SelectDefaultProject();
 
                 RebuildAnimationOrder(currentAvailableProjects, 1f);
@@ -786,19 +750,14 @@ namespace CM_Semi_Random_Research
                 WarmUnlockCaches();
             }
 
-            // Driven by real-time WindowUpdate rather than the tick-throttled RefreshTechLevelStats
-            // below, so a completion that auto-pauses the game (frozen ticks) still refreshes the
-            // progress bar right away instead of waiting for the window to be reopened.
+            // Not tick-throttled, so a completion that pauses the game still refreshes the progress bar.
             if (researchTracker.CompletionRevision != cachedCompletionRevision)
             {
                 cachedCompletionRevision = researchTracker.CompletionRevision;
                 RebuildTechLevelStats();
             }
 
-            // The history view intentionally keeps a finished project selected so the right
-            // column can show what it unlocked. Outside it, a selection whose card is no longer
-            // drawn falls back to the default, so the right column never describes a card that
-            // is not on screen.
+            // Outside the history view, a selection whose card is no longer drawn falls back to the default.
             if (!showingHistory && !browsingRelatedProject &&
                 (selectedProject == null || selectedProject.IsFinished ||
                 (currentAvailableProjects != null && !currentAvailableProjects.Contains(selectedProject) &&
@@ -859,8 +818,9 @@ namespace CM_Semi_Random_Research
 
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.adaptiveSize)
             {
-                // The history view and the first frame have no measured offer list, so they keep the current height.
-                if (showingHistory || leftScrollOutHeight <= 0f)
+                // Kept at the current height while there is no measured offer list (history, first frame) and while
+                // the reroll animation skips hidden tech level groups, which would measure the list short.
+                if (showingHistory || leftScrollOutHeight <= 0f || lastRerollTime > 0f)
                     return;
                 targetHeight = Mathf.Clamp(windowRect.height + leftScrollViewHeight - leftScrollOutHeight, baseHeight, maxHeight);
             }
@@ -874,8 +834,7 @@ namespace CM_Semi_Random_Research
                 leftScrollPosition = Vector2.zero;
         }
 
-        // True when the selected offer is one the left column hides because its category already
-        // has a project running and switching is off. Mirrors the filter in RebuildLeftColumnLists.
+        // True when the left column hides the selected offer because its category is busy. Mirrors RebuildLeftColumnLists.
         private bool SelectionHiddenByBusyCategory()
         {
             if (selectedProject == null || cachedTracker == null)
@@ -912,7 +871,7 @@ namespace CM_Semi_Random_Research
                 currentAvailableProjects.Add(source[i]);
         }
 
-        // The tech level bands all animate together, so they are only ever written as a set.
+        // The tech level headers all animate together.
         private void SetAllHeaderProgress(float progress)
         {
             for (int i = 0; i < techLevelHeaderProgress.Length; i++)
@@ -1005,7 +964,7 @@ namespace CM_Semi_Random_Research
             float leftWidth = canvas.width * 0.55f;
             float rightWidth = canvas.width * 0.45f;
 
-            // Match the left column's footer strip so both columns share the same bottom line break.
+            // Same footer strip as the left column.
             float rightFooterPaddingTop = 12f;
             float footerButtonHeight = 40f;
             float footerButtonWidth = 120f;
@@ -1017,6 +976,10 @@ namespace CM_Semi_Random_Research
             Rect rightRect = new Rect(leftWidth + columnMargin, mainContentY, rightWidth - (columnMargin * 2), availableHeight);
             Rect rightContentRect = new Rect(rightRect.x, rightRect.y, rightRect.width, rightRect.height - rightFooterHeight);
             Rect rightFooterRect = new Rect(rightRect.x, rightRect.yMax - rightFooterHeight, rightRect.width, rightFooterHeight);
+
+            // Turning snoozing off with the snoozed list open drops back to plain history.
+            if (showingSnoozed && !ResearchSnoozeTracker.SnoozingEnabled)
+                showingSnoozed = false;
 
             if (showingHistory)
                 DrawHistoryColumn(leftRect);
@@ -1044,15 +1007,9 @@ namespace CM_Semi_Random_Research
 
                 if (ColoredButtonText(debugButtonRect, "CM_Semi_Random_Research_FinishNow".Translate(), FooterDebugButtonColor))
                 {
-                    // Ungated: the dev button finishes whatever is selected, gate or no gate.
-                    ResearchTracker.SetVanillaProjectUngated(selectedProject);
+                    // The FinishProject patch hands the completion to the tracker.
                     Find.ResearchManager.FinishProject(selectedProject);
-
-                    ResearchTracker researchTracker = cachedTracker ?? Current.Game.World.GetComponent<ResearchTracker>();
-                    string categoryKey = ResearchTracker.GetCategoryKey(selectedProject);
-                    researchTracker.SetCurrentProjectByKey(selectedProject, categoryKey);
-                    researchTracker.ConsiderProjectFinished(selectedProject);
-                    researchTracker.GetCurrentlyAvailableProjects();
+                    InvalidateLeftColumnCache();
                 }
             }
 
@@ -1134,27 +1091,35 @@ namespace CM_Semi_Random_Research
                 GUI.color = old;
             }
 
+            // Cycles offers, history and (with snoozing on) the snoozed list.
+            bool snoozing = ResearchSnoozeTracker.SnoozingEnabled;
             if (Clicked(rect))
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
-                if (showingHistory)
-                    CloseHistory();
-                else
+                if (!showingHistory)
                     OpenHistory();
+                else if (snoozing && !showingSnoozed)
+                    OpenSnoozed();
+                else
+                    CloseHistory();
             }
 
-            TooltipHandler.TipRegion(rect, showingHistory
-                ? "CM_Semi_Random_Research_HistoryBackTip".Translate()
-                : "CM_Semi_Random_Research_HistoryTip".Translate());
+            string tipKey;
+            if (!snoozing)
+                tipKey = showingHistory ? "CM_Semi_Random_Research_HistoryBackTip" : "CM_Semi_Random_Research_HistoryTip";
+            else if (showingSnoozed)
+                tipKey = "CM_Semi_Random_Research_SnoozedBackTip";
+            else
+                tipKey = showingHistory ? "CM_Semi_Random_Research_HistoryToSnoozedTip" : "CM_Semi_Random_Research_HistoryCycleTip";
+            TooltipHandler.TipRegion(rect, tipKey.Translate());
         }
 
-        // Auto mode toggle. Deliberately does not pick anything while the window is open -
-        // ResearchTracker.AutoPickNow runs on close, so a curious click cannot steal the choice.
+        // Toggling auto research picks nothing while the window is open; ResearchTracker.AutoPickNow runs on close.
         private void DrawAutoPickToggle(Rect toggleRect)
         {
             bool on = SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.autoPickNextResearch;
 
-            Text.Font = GameFont.Tiny;
+            Text.Font = GameFont.Small;
             string label = "CM_Semi_Random_Research_AutoToggleLabel".Translate();
             float labelWidth = Text.CalcSize(label).x + 4f;
             Rect labelRect = new Rect(toggleRect.xMax + 6f, toggleRect.y, labelWidth, toggleRect.height);
@@ -1174,7 +1139,6 @@ namespace CM_Semi_Random_Research
                 Text.Anchor = TextAnchor.UpperLeft;
                 GUI.color = old;
             }
-            Text.Font = GameFont.Small;
 
             if (Clicked(hitRect))
             {
@@ -1182,7 +1146,7 @@ namespace CM_Semi_Random_Research
                 if (SemiRandomResearchMod.settings != null)
                 {
                     SemiRandomResearchMod.settings.autoPickNextResearch = !on;
-                    SemiRandomResearchMod.Instance?.WriteSettings();
+                    SemiRandomResearchMod.Instance?.SaveSettingsOnly();
                 }
             }
 
@@ -1272,16 +1236,12 @@ namespace CM_Semi_Random_Research
             SkipAnimation();
 
             showingHistory = false;
+            showingSnoozed = false;
             selectionBeforeHistory = null;
 
-            // Auto mode picks here rather than while the window is open, so the player always
-            // gets the chance to choose (or to undo an accidental toggle) first.
-            if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.autoPickNextResearch &&
-                Current.Game != null)
-            {
-                ResearchTracker tracker = cachedTracker ?? Current.Game.World?.GetComponent<ResearchTracker>();
-                tracker?.AutoPickNow();
-            }
+            // Auto research picks on close, so the player always gets to choose first.
+            if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.autoPickNextResearch)
+                (cachedTracker ?? SemiRandomResearchUtility.Tracker)?.AutoPickNow();
         }
     }
 }
