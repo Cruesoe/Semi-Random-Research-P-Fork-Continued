@@ -6,6 +6,7 @@
   <modVersion>261012</modVersion>
   <supportedVersions>
     <li>1.6</li>
+    <li>1.7</li>
   </supportedVersions>
   <description>Semi Random Research adds random project selection and visual analytics to RimWorld, making research more dynamic and informative.</description>
   <modDependencies>
