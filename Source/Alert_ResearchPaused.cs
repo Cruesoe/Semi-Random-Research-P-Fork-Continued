@@ -8,7 +8,6 @@ namespace CM_Semi_Random_Research
         public Alert_ResearchPaused()
         {
             defaultLabel = "CM_Semi_Random_Research_ResearchPausedAlert".Translate();
-            defaultExplanation = "CM_Semi_Random_Research_ResearchPausedAlertDesc".Translate();
             defaultPriority = AlertPriority.Medium;
         }
 
@@ -21,9 +20,20 @@ namespace CM_Semi_Random_Research
             return tracker != null && tracker.ResearchPaused;
         }
 
+        public override TaggedString GetExplanation()
+        {
+            ResearchProjectDef paused = SemiRandomResearchUtility.Tracker?.PausedProject;
+            return paused != null
+                ? "CM_Semi_Random_Research_ResearchPausedAlertDescProject".Translate(paused.LabelCap)
+                : "CM_Semi_Random_Research_ResearchPausedAlertDesc".Translate();
+        }
+
+        // Opens the paused project's tab and selects it.
         protected override void OnClick()
         {
-            ResearchTabCompatibility.Open(ResearchTabDefOf.Main);
+            ResearchProjectDef paused = SemiRandomResearchUtility.Tracker?.PausedProject;
+            ResearchTabDef tab = paused?.tab ?? ResearchTabDefOf.Main;
+            ResearchTabCompatibility.Open(tab, paused);
         }
     }
 }

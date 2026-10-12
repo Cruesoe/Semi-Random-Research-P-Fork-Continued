@@ -14,7 +14,7 @@ Instead of choosing freely from the entire research tree, you choose from a few 
 [*]Each project lists what it unlocks, its prerequisites, and the unfinished projects that require it.
 [*]A history view lists recently completed research and what each project unlocked.
 [*]Offers can be grouped and colored by tech level.
-[*]The window can grow to show every offer instead of using a scroll bar.
+[*]The window can grow to show every offer or snoozed project instead of using a scroll bar.
 [/list]
 
 [h2]Settings[/h2]

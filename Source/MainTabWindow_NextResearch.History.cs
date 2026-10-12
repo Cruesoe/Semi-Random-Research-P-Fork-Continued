@@ -40,6 +40,8 @@ namespace CM_Semi_Random_Research
         {
             showingHistory = false;
             showingSnoozed = false;
+            // The offer list was not drawn while history was shown, so its last measurement is stale.
+            leftScrollOutHeight = 0f;
 
             if (selectionBeforeHistory != null && !selectionBeforeHistory.IsFinished)
                 selectedProject = selectionBeforeHistory;
@@ -247,10 +249,17 @@ namespace CM_Semi_Random_Research
         {
             showingSnoozed = true;
             showingHistory = true;
+            snoozedOutHeight = 0f;
+            snoozedScrollPosition = Vector2.zero;
         }
 
         // A reused copy, so unsnoozing from a card cannot disturb the loop walking it.
         private readonly List<ResearchProjectDef> snoozedDrawBuffer = new List<ResearchProjectDef>();
+
+        // Measured on layout for adaptive size, like the offer list's scroll heights.
+        private Vector2 snoozedScrollPosition = Vector2.zero;
+        private float snoozedViewHeight;
+        private float snoozedOutHeight;
 
         private void DrawSnoozedColumn(Rect leftRect)
         {
@@ -279,6 +288,13 @@ namespace CM_Semi_Random_Research
                 currentY += headerHeight + 4f;
                 float listHeight = leftRect.height - totalFooterHeight - currentY;
                 float listWidth = leftRect.width;
+                float viewHeight = Mathf.Max(0f, snoozed.Count * (HistoryCardHeight + HistoryCardGap) - HistoryCardGap);
+                if (Event.current.type == EventType.Layout)
+                {
+                    snoozedViewHeight = viewHeight;
+                    snoozedOutHeight = listHeight;
+                }
+
                 if (snoozed.Count == 0)
                 {
                     GUI.color = new Color(0.7f, 0.7f, 0.7f);
@@ -287,17 +303,32 @@ namespace CM_Semi_Random_Research
                 }
                 else
                 {
-                    int maxCards = Mathf.FloorToInt((listHeight + HistoryCardGap) / (HistoryCardHeight + HistoryCardGap));
-                    int shown = Mathf.Clamp(maxCards, 0, snoozed.Count);
-                    for (int i = 0; i < shown; i++)
+                    Rect outRect = new Rect(0f, currentY, listWidth, listHeight);
+                    bool useScroll = viewHeight > listHeight + 1f;
+                    Rect viewRect = new Rect(0f, 0f, useScroll ? listWidth - 16f : listWidth, viewHeight);
+                    if (useScroll)
+                        Widgets.BeginScrollView(outRect, ref snoozedScrollPosition, viewRect);
+                    else
+                        GUI.BeginGroup(outRect);
+                    try
                     {
-                        ResearchProjectDef projectDef = snoozed[i];
-                        if (projectDef == null)
-                            continue;
-                        CacheFirstUnlockable(projectDef);
-                        Rect cardRect = new Rect(0f, currentY, listWidth, HistoryCardHeight);
-                        DrawSnoozedCard(cardRect, projectDef, tracker);
-                        currentY += HistoryCardHeight + HistoryCardGap;
+                        float cardY = 0f;
+                        for (int i = 0; i < snoozed.Count; i++)
+                        {
+                            ResearchProjectDef projectDef = snoozed[i];
+                            if (projectDef == null)
+                                continue;
+                            CacheFirstUnlockable(projectDef);
+                            DrawSnoozedCard(new Rect(0f, cardY, viewRect.width, HistoryCardHeight), projectDef, tracker);
+                            cardY += HistoryCardHeight + HistoryCardGap;
+                        }
+                    }
+                    finally
+                    {
+                        if (useScroll)
+                            Widgets.EndScrollView();
+                        else
+                            GUI.EndGroup();
                     }
                 }
             }

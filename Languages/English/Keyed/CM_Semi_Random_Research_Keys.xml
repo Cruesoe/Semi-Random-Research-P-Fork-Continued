@@ -84,7 +84,7 @@
   <CM_Semi_Random_Research_Setting_ColorGroup_Label>Color and group by tech level</CM_Semi_Random_Research_Setting_ColorGroup_Label>
   <CM_Semi_Random_Research_Setting_ColorGroup_Description>When enabled, standard research offers are colored and grouped under Neolithic/Medieval/Industrial era headers, and the top progress bar is split by era. When disabled, standard offers use a flat list with neutral colors and the top bar is a single uncolored total of all research. Anomaly and Gravship sections are unchanged.</CM_Semi_Random_Research_Setting_ColorGroup_Description>
   <CM_Semi_Random_Research_Setting_AdaptiveSize_Label>Adaptive size</CM_Semi_Random_Research_Setting_AdaptiveSize_Label>
-  <CM_Semi_Random_Research_Setting_AdaptiveSize_Description>When enabled, the research window grows taller to show every offered project instead of using a scroll bar. It never shrinks below its normal size, and a scroll bar still appears if the list is taller than the screen.</CM_Semi_Random_Research_Setting_AdaptiveSize_Description>
+  <CM_Semi_Random_Research_Setting_AdaptiveSize_Description>When enabled, the research window grows taller to show every offered or snoozed project instead of using a scroll bar. It never shrinks below its normal size, and a scroll bar still appears if the list is taller than the screen.</CM_Semi_Random_Research_Setting_AdaptiveSize_Description>
   <CM_Semi_Random_Research_Setting_TreeButtonOpens_Label>Switch button opens</CM_Semi_Random_Research_Setting_TreeButtonOpens_Label>
   <CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>Which research tree the switch button at the bottom of Semi Random Research opens. That button is named after the tree it will take you to. Only trees you have installed are listed. The Research tab itself reopens whichever window you last switched to, so this button is how you change it. Defaults to Node Research when it is installed, then YART, then Sleek Research Tab, then Nice Research Tab, then Research: Organized.</CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>
   <CM_Semi_Random_Research_Setting_SuppressHandover_Label>Suppress handover messages</CM_Semi_Random_Research_Setting_SuppressHandover_Label>
@@ -115,6 +115,7 @@
   <CM_Semi_Random_Research_ResumeResearchTip>Resume the current research project.</CM_Semi_Random_Research_ResumeResearchTip>
   <CM_Semi_Random_Research_ResearchPausedAlert>Research paused</CM_Semi_Random_Research_ResearchPausedAlert>
   <CM_Semi_Random_Research_ResearchPausedAlertDesc>Research is paused. Colonists will not work on the paused project until you resume it. Click to open the research tab.</CM_Semi_Random_Research_ResearchPausedAlertDesc>
+  <CM_Semi_Random_Research_ResearchPausedAlertDescProject>{0} is paused. Colonists will not work on it until you resume it. Other kinds of research carry on.\n\nClick to open the research tab.</CM_Semi_Random_Research_ResearchPausedAlertDescProject>
   <CM_Semi_Random_Research_ResearchPausedMessage>Research paused.</CM_Semi_Random_Research_ResearchPausedMessage>
   <CM_Semi_Random_Research_PausedTag>Paused</CM_Semi_Random_Research_PausedTag>
   <CM_Semi_Random_Research_Finished>Finished</CM_Semi_Random_Research_Finished>

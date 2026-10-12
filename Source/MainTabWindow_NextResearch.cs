@@ -637,6 +637,7 @@ namespace CM_Semi_Random_Research
         {
             base.Notify_ResolutionChanged();
             leftScrollOutHeight = 0f;
+            snoozedOutHeight = 0f;
         }
 
         public override Vector2 RequestedTabSize => InitialSize;
@@ -818,11 +819,27 @@ namespace CM_Semi_Random_Research
 
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.adaptiveSize)
             {
-                // Kept at the current height while there is no measured offer list (history, first frame) and while
-                // the reroll animation skips hidden tech level groups, which would measure the list short.
-                if (showingHistory || leftScrollOutHeight <= 0f || lastRerollTime > 0f)
+                float viewHeight;
+                float outHeight;
+                if (showingSnoozed)
+                {
+                    viewHeight = snoozedViewHeight;
+                    outHeight = snoozedOutHeight;
+                }
+                else
+                {
+                    // Kept at the current height in the history view, and while the reroll animation skips hidden
+                    // tech level groups, which would measure the list short.
+                    if (showingHistory || lastRerollTime > 0f)
+                        return;
+                    viewHeight = leftScrollViewHeight;
+                    outHeight = leftScrollOutHeight;
+                }
+
+                // No measurement yet (first frame, or just switched view).
+                if (outHeight <= 0f)
                     return;
-                targetHeight = Mathf.Clamp(windowRect.height + leftScrollViewHeight - leftScrollOutHeight, baseHeight, maxHeight);
+                targetHeight = Mathf.Clamp(windowRect.height + viewHeight - outHeight, baseHeight, maxHeight);
             }
 
             if (Mathf.Abs(targetHeight - windowRect.height) < 1f)
@@ -831,7 +848,13 @@ namespace CM_Semi_Random_Research
             windowRect.height = targetHeight;
             windowRect.y = UI.screenHeight - BottomBarHeight - targetHeight;
             if (targetHeight < maxHeight)
+            {
                 leftScrollPosition = Vector2.zero;
+                snoozedScrollPosition = Vector2.zero;
+            }
+            // The resized list is measured again before the next resize.
+            leftScrollOutHeight = 0f;
+            snoozedOutHeight = 0f;
         }
 
         // True when the left column hides the selected offer because its category is busy. Mirrors RebuildLeftColumnLists.

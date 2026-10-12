@@ -7,30 +7,63 @@ using Verse;
 
 namespace CM_Semi_Random_Research
 {
+    // Vanilla finishes unfinished prerequisites first, through nested FinishProject calls. Each project is collected once
+    // it is marked finished, and the whole chain is handed to the tracker when the outermost call returns.
     [HarmonyPatch(typeof(ResearchManager), nameof(ResearchManager.FinishProject))]
     public static class Patch_ResearchManager_FinishProject
     {
-        private static bool isFinishingResearch;
-
-        // Depth of nested FinishProject calls (unfinished prerequisites finish first), so the flag holds until the outermost returns.
         private static int finishDepth;
+
+        // In completion order, so the requested project comes last.
+        private static readonly List<ResearchProjectDef> finishedChain = new List<ResearchProjectDef>();
 
         public static bool InsideFinishProject => finishDepth > 0;
 
         [HarmonyPrefix]
-        public static void Prefix(ResearchProjectDef proj, ref bool doCompletionDialog, Pawn researcher, ref bool doCompletionLetter)
+        public static void Prefix(ref bool doCompletionDialog, ref bool doCompletionLetter)
         {
             finishDepth++;
 
             // The letter and auto-open settings replace vanilla's completion popup and letter.
             doCompletionDialog = false;
             doCompletionLetter = false;
+        }
 
-            if (isFinishingResearch) return;
-            isFinishingResearch = true;
+        [HarmonyPostfix]
+        public static void Postfix(ResearchProjectDef proj)
+        {
+            if (proj != null && proj.IsFinished && !finishedChain.Contains(proj))
+                finishedChain.Add(proj);
+        }
 
-            SemiRandomResearchUtility.Tracker?.ConsiderProjectFinished(proj);
+        [HarmonyFinalizer]
+        public static void Finalizer(Pawn researcher)
+        {
+            if (finishDepth > 0)
+                finishDepth--;
+            if (finishDepth > 0 || finishedChain.Count == 0)
+                return;
 
+            List<ResearchProjectDef> chain = new List<ResearchProjectDef>(finishedChain);
+            finishedChain.Clear();
+
+            try
+            {
+                ResearchTracker tracker = SemiRandomResearchUtility.Tracker;
+                for (int i = 0; i < chain.Count; i++)
+                    tracker?.ConsiderProjectFinished(chain[i]);
+
+                // One letter and one auto-open for the project that was asked for.
+                AnnounceCompletion(chain[chain.Count - 1], researcher);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[Semi Random Research] Error handling finished research: {ex}");
+            }
+        }
+
+        private static void AnnounceCompletion(ResearchProjectDef proj, Pawn researcher)
+        {
             if (GenScene.InEntryScene || Current.Game == null || Current.Game.World == null ||
                 Current.Game.World.worldObjects == null || LongEventHandler.AnyEventNowOrWaiting)
                 return;
@@ -63,14 +96,6 @@ namespace CM_Semi_Random_Research
                     Log.Error($"[Semi Random Research] Error in queued UI update: {ex}");
                 }
             });
-        }
-
-        [HarmonyFinalizer]
-        public static void Finalizer()
-        {
-            isFinishingResearch = false;
-            if (finishDepth > 0)
-                finishDepth--;
         }
 
         // Plants a project unlocks for sowing are not in UnlockedDefs. Mapped once, on the first completion of a session.

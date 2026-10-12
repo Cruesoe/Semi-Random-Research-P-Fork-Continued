@@ -353,13 +353,12 @@ namespace CM_Semi_Random_Research
                 ("CM_Semi_Random_Research_Setting_" + keyStem + "_Description").Translate());
         }
 
-        // Label + adjuster pair. The label carries the tooltip because IntAdjuster has no room for one.
+        // Label with its value and tooltip, and -/+ buttons on the same row so the limits section fits the window's height.
         private static void IntSetting(Listing_Standard listing, string keyStem, ref int value, int min)
         {
             string label = ("CM_Semi_Random_Research_Setting_" + keyStem + "_Label").Translate() + ": " + value.ToString();
             string tooltip = ("CM_Semi_Random_Research_Setting_" + keyStem + "_Description").Translate();
 
-            // Label and -/+ buttons share one row so the limits section fits the window's height.
             const float buttonWidth = 42f;
             const float buttonsWidth = buttonWidth * 2f + 2f;
             float labelWidth = listing.ColumnWidth - buttonsWidth - 8f;

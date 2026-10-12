@@ -73,16 +73,24 @@ namespace CM_Semi_Random_Research
             return false;
         }
 
-        // The uplink is colony-wide and never goes away once built. Re-read at most once a second until then.
+        // The uplink is colony-wide and never goes away once built. Re-read at most once a second until then, per game.
         private static bool sos2HandlesResolved;
         private static FieldInfo sos2WorldCompField;
         private static FieldInfo sos2UnlocksField;
         private static Type sos2UnlocksOwnerType;
+        private static Game sos2Game;
         private static bool sos2UplinkUnlocked;
         private static int sos2UplinkCheckedTick = int.MinValue;
 
         private static bool SaveOurShip2ArchotechUplinkUnlocked()
         {
+            if (!ReferenceEquals(Current.Game, sos2Game))
+            {
+                sos2Game = Current.Game;
+                sos2UplinkUnlocked = false;
+                sos2UplinkCheckedTick = int.MinValue;
+            }
+
             if (sos2UplinkUnlocked)
                 return true;
 

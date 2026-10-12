@@ -1,5 +1,6 @@
 using HarmonyLib;
 using RimWorld;
+using System.Collections.Generic;
 using Verse;
 
 namespace CM_Semi_Random_Research
@@ -19,26 +20,30 @@ namespace CM_Semi_Random_Research
         }
     }
 
-    // Paused research has its own alert.
+    // Drops paused categories from the missing list, since paused research has its own alert.
     [HarmonyPatch(typeof(Alert_NeedAnomalyProject), nameof(Alert_NeedAnomalyProject.GetReport))]
     public static class Patch_Alert_NeedAnomalyProject_GetReport
     {
+        private static readonly AccessTools.FieldRef<Alert_NeedAnomalyProject, List<KnowledgeCategoryDef>> MissingCategories =
+            AccessTools.FieldRefAccess<Alert_NeedAnomalyProject, List<KnowledgeCategoryDef>>("missingProjectCategories");
+
         public static bool Prepare()
         {
             return ModsConfig.AnomalyActive;
         }
 
-        public static bool Prefix(ref AlertReport __result)
+        public static void Postfix(Alert_NeedAnomalyProject __instance, ref AlertReport __result)
         {
-            if (Current.ProgramState != ProgramState.Playing || Find.World == null)
-                return true;
+            if (!__result.active)
+                return;
 
             ResearchTracker tracker = SemiRandomResearchUtility.Tracker;
             if (tracker == null || !tracker.ResearchPaused)
-                return true;
+                return;
 
-            __result = AlertReport.Inactive;
-            return false;
+            List<KnowledgeCategoryDef> missing = MissingCategories(__instance);
+            missing.RemoveAll(category => tracker.IsPaused(ResearchTracker.GetCategoryKey(category)));
+            __result = missing.Count > 0;
         }
     }
 }

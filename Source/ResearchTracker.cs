@@ -61,6 +61,23 @@ namespace CM_Semi_Random_Research
             return researchPaused && (pausedTypeKey == null || pausedTypeKey == typeKey);
         }
 
+        // The tracked project that is paused, or null.
+        public ResearchProjectDef PausedProject
+        {
+            get
+            {
+                if (!researchPaused)
+                    return null;
+                for (int i = 0; i < currentProjects.Count; i++)
+                {
+                    ResearchProjectDef project = currentProjects[i];
+                    if (project != null && !project.IsFinished && IsPaused(GetCategoryKey(project)))
+                        return project;
+                }
+                return null;
+            }
+        }
+
         public bool IsProjectPaused(ResearchProjectDef project)
         {
             return project != null &&
@@ -261,9 +278,14 @@ namespace CM_Semi_Random_Research
         private static string ComputeCategoryKey(ResearchProjectDef def)
         {
             if (def.tab?.defName == "VGE_Gravtech" || def.tab?.defName == "VGE_GravShip") return "Gravship";
-            if (def.knowledgeCategory?.defName == "Information") return "Divinitech";
-            if (def.knowledgeCategory != null) return def.knowledgeCategory.defName;
+            if (def.knowledgeCategory != null) return GetCategoryKey(def.knowledgeCategory);
             return "Standard";
+        }
+
+        public static string GetCategoryKey(KnowledgeCategoryDef category)
+        {
+            if (category == null) return "Standard";
+            return category.defName == "Information" ? "Divinitech" : category.defName;
         }
 
         public override void FinalizeInit(bool fromLoad)

@@ -15,7 +15,7 @@ namespace CM_Semi_Random_Research
         }
     }
 
-    // Paused research has its own alert.
+    // A paused standard project has its own alert.
     [HarmonyPatch(typeof(Alert_NeedResearchProject), nameof(Alert_NeedResearchProject.GetReport))]
     public static class Patch_Alert_NeedResearchProject_GetReport
     {
@@ -26,7 +26,7 @@ namespace CM_Semi_Random_Research
                 return true;
 
             ResearchTracker tracker = SemiRandomResearchUtility.Tracker;
-            if (tracker == null || !tracker.ResearchPaused)
+            if (tracker == null || !tracker.IsPaused("Standard"))
                 return true;
 
             __result = AlertReport.Inactive;
