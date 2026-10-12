@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Verse;
+using Verse.Sound;
 
 namespace CM_Semi_Random_Research
 {
@@ -355,10 +356,34 @@ namespace CM_Semi_Random_Research
         // Label + adjuster pair. The label carries the tooltip because IntAdjuster has no room for one.
         private static void IntSetting(Listing_Standard listing, string keyStem, ref int value, int min)
         {
-            TaggedString label = ("CM_Semi_Random_Research_Setting_" + keyStem + "_Label").Translate() + ": " + value.ToString();
+            string label = ("CM_Semi_Random_Research_Setting_" + keyStem + "_Label").Translate() + ": " + value.ToString();
             string tooltip = ("CM_Semi_Random_Research_Setting_" + keyStem + "_Description").Translate();
-            listing.Label(label, -1, tooltip);
-            listing.IntAdjuster(ref value, 1, min);
+
+            // Label and -/+ buttons share one row so the limits section fits the window's height.
+            const float buttonWidth = 42f;
+            const float buttonsWidth = buttonWidth * 2f + 2f;
+            float labelWidth = listing.ColumnWidth - buttonsWidth - 8f;
+            Rect row = listing.GetRect(Mathf.Max(24f, Text.CalcHeight(label, labelWidth)));
+
+            Rect labelRect = new Rect(row.x, row.y, labelWidth, row.height);
+            Widgets.Label(labelRect, label);
+            if (Mouse.IsOver(labelRect))
+                Widgets.DrawHighlight(labelRect);
+            TooltipHandler.TipRegion(labelRect, tooltip);
+
+            Rect minusRect = new Rect(row.xMax - buttonsWidth, row.y + (row.height - 24f) / 2f, buttonWidth, 24f);
+            Rect plusRect = new Rect(minusRect.xMax + 2f, minusRect.y, buttonWidth, 24f);
+            if (Widgets.ButtonText(minusRect, "-1"))
+            {
+                SoundDefOf.DragSlider.PlayOneShotOnCamera();
+                value = Mathf.Max(min, value - GenUI.CurrentAdjustmentMultiplier());
+            }
+            if (Widgets.ButtonText(plusRect, "+1"))
+            {
+                SoundDefOf.DragSlider.PlayOneShotOnCamera();
+                value += GenUI.CurrentAdjustmentMultiplier();
+            }
+            listing.Gap(listing.verticalSpacing);
         }
 
         private static string EnumTooltip<T>(string headerKey, string optionKeyPrefix)
