@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using RimWorld;
+using UnityEngine;
 using Verse;
 
 namespace CM_Semi_Random_Research
@@ -49,6 +51,31 @@ namespace CM_Semi_Random_Research
         public static bool IsEmergenceTech(ResearchProjectDef def)
         {
             return (GetTags(def) & TagEmergence) != 0;
+        }
+
+        private static readonly Dictionary<ResearchProjectDef, Texture2D> emergenceIcons =
+            new Dictionary<ResearchProjectDef, Texture2D>();
+
+        // Node's own era icon (UI/TechLevels/<level>) for the era an emergence project leads to; null for other projects.
+        public static Texture2D EmergenceIcon(ResearchProjectDef def)
+        {
+            if (!IsEmergenceTech(def))
+                return null;
+            if (emergenceIcons.TryGetValue(def, out Texture2D cached))
+                return cached;
+
+            Texture2D icon = null;
+            foreach (DefModExtension extension in def.modExtensions)
+            {
+                if (extension == null || extension.GetType().Name != "EmergenceExtension")
+                    continue;
+                if (extension.GetType().GetField("targetLevel")?.GetValue(extension) is TechLevel target)
+                    icon = ContentFinder<Texture2D>.Get("UI/TechLevels/" + target, false);
+                break;
+            }
+
+            emergenceIcons[def] = icon;
+            return icon;
         }
     }
 }

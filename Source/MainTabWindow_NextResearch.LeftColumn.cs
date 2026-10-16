@@ -711,17 +711,7 @@ namespace CM_Semi_Random_Research
                 Widgets.DrawBox(drawRect);
                 GUI.color = Color.white;
 
-                Def firstUnlockable = GetFirstUnlockable(projectDef);
-                if (firstUnlockable != null)
-                {
-                    try
-                    {
-                        Widgets.DefIcon(iconRect, firstUnlockable);
-                    }
-                    catch (Exception)
-                    {
-                    }
-                }
+                DrawProjectIcon(iconRect, projectDef);
 
                 Color lineSeparatorColor = structureAccent;
                 lineSeparatorColor.a *= animProgress;

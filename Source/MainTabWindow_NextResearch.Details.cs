@@ -163,17 +163,7 @@ namespace CM_Semi_Random_Research
 
             if (IsRepaint)
             {
-                Def firstUnlockable = GetFirstUnlockable(prereq);
-                if (firstUnlockable != null)
-                {
-                    try
-                    {
-                        Widgets.DefIcon(iconRect, firstUnlockable);
-                    }
-                    catch (Exception)
-                    {
-                    }
-                }
+                DrawProjectIcon(iconRect, prereq);
             }
 
             Text.Anchor = TextAnchor.MiddleLeft;
@@ -245,17 +235,7 @@ namespace CM_Semi_Random_Research
 
             if (IsRepaint)
             {
-                Def firstUnlockable = GetFirstUnlockable(dependent);
-                if (firstUnlockable != null)
-                {
-                    try
-                    {
-                        Widgets.DefIcon(iconRect, firstUnlockable);
-                    }
-                    catch (Exception)
-                    {
-                    }
-                }
+                DrawProjectIcon(iconRect, dependent);
             }
 
             Text.Anchor = TextAnchor.MiddleLeft;
@@ -370,6 +350,21 @@ namespace CM_Semi_Random_Research
 
             cachedFirstUnlockable.TryGetValue(project, out Def cached);
             return cached;
+        }
+
+        // A card's icon: its first unlockable, else Node Research's era icon for an emergence project.
+        private void DrawProjectIcon(Rect rect, ResearchProjectDef project)
+        {
+            Def firstUnlockable = GetFirstUnlockable(project);
+            if (firstUnlockable != null)
+            {
+                try { Widgets.DefIcon(rect, firstUnlockable); }
+                catch (Exception) { }
+                return;
+            }
+            Texture2D era = NodeResearch.EmergenceIcon(project);
+            if (era != null)
+                GUI.DrawTexture(rect, era, ScaleMode.ScaleToFit);
         }
 
         private float DrawUnlockableHyperlinks(Rect rect, ResearchProjectDef project)
