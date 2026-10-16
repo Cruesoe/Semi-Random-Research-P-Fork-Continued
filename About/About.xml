@@ -19,6 +19,7 @@
   </modDependencies>
   <incompatibleWith>
     <li>cruesoe.research.auto</li>
+    <li>cruesoe.researchqueue</li>
   </incompatibleWith>
   <loadAfter>
     <li>Ludeon.RimWorld</li>
