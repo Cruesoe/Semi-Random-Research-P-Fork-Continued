@@ -92,17 +92,7 @@ namespace CM_Semi_Random_Research
 
             if (IsRepaint)
             {
-                Def firstUnlockable = GetFirstUnlockable(project);
-                if (firstUnlockable != null)
-                {
-                    try
-                    {
-                        Widgets.DefIcon(iconRect, firstUnlockable);
-                    }
-                    catch (Exception)
-                    {
-                    }
-                }
+                DrawProjectIcon(iconRect, project);
 
                 Widgets.DrawLine(new Vector2(firstSeparator.x, firstSeparator.y), new Vector2(firstSeparator.x, firstSeparator.yMax), borderColor, separatorWidth);
                 Widgets.DrawLine(new Vector2(secondSeparator.x, secondSeparator.y), new Vector2(secondSeparator.x, secondSeparator.yMax), borderColor, separatorWidth);

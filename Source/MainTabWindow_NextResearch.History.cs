@@ -194,12 +194,7 @@ namespace CM_Semi_Random_Research
                 GUI.color = borderColor;
                 Widgets.DrawBox(drawRect);
                 GUI.color = Color.white;
-                Def firstUnlockable = GetFirstUnlockable(projectDef);
-                if (firstUnlockable != null)
-                {
-                    try { Widgets.DefIcon(layout.IconRect, firstUnlockable); }
-                    catch (Exception) { }
-                }
+                DrawProjectIcon(layout.IconRect, projectDef);
                 Widgets.DrawLine(new Vector2(layout.FirstSeparator.x, layout.FirstSeparator.y), new Vector2(layout.FirstSeparator.x, layout.FirstSeparator.yMax), structureAccent, 1f);
                 Widgets.DrawLine(new Vector2(layout.SecondSeparator.x, layout.SecondSeparator.y), new Vector2(layout.SecondSeparator.x, layout.SecondSeparator.yMax), structureAccent, 1f);
             }
