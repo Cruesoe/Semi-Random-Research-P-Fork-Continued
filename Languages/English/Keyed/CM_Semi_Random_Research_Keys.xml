@@ -80,7 +80,7 @@
   <CM_Semi_Random_Research_Setting_ShowGraph_Label>Show research rate graph</CM_Semi_Random_Research_Setting_ShowGraph_Label>
   <CM_Semi_Random_Research_Setting_ShowGraph_Description>Shows the research rate graph on the active research card.</CM_Semi_Random_Research_Setting_ShowGraph_Description>
   <CM_Semi_Random_Research_Setting_ShowCompletionDates_Label>Show completion dates instead of time left</CM_Semi_Random_Research_Setting_ShowCompletionDates_Label>
-  <CM_Semi_Random_Research_Setting_ShowCompletionDates_Description>Show the active project's estimated time and the timings panel as the in-game dates they should finish on, instead of the time remaining.</CM_Semi_Random_Research_Setting_ShowCompletionDates_Description>
+  <CM_Semi_Random_Research_Setting_ShowCompletionDates_Description>Show the current project and all research in the timings panel as the in-game dates they should finish on, instead of the time remaining.</CM_Semi_Random_Research_Setting_ShowCompletionDates_Description>
   <CM_Semi_Random_Research_Setting_ShowLetter_Label>Show completion letter</CM_Semi_Random_Research_Setting_ShowLetter_Label>
   <CM_Semi_Random_Research_Setting_ShowLetter_Description>Sends a letter when a research project is finished.</CM_Semi_Random_Research_Setting_ShowLetter_Description>
   <CM_Semi_Random_Research_Setting_ColorGroup_Label>Color and group by tech level</CM_Semi_Random_Research_Setting_ColorGroup_Label>
@@ -155,11 +155,7 @@
   <CM_Semi_Random_Research_AlsoRequires>Also requires: {0}. Click to inspect.</CM_Semi_Random_Research_AlsoRequires>
   <CM_Semi_Random_Research_BackToResearch>Back to {0}</CM_Semi_Random_Research_BackToResearch>
 
-  <!-- Rate graph and ETA -->
-  <CM_Semi_Random_Research_Current>Current</CM_Semi_Random_Research_Current>
-  <CM_Semi_Random_Research_TenDayAvg>10-day avg.</CM_Semi_Random_Research_TenDayAvg>
-  <CM_Semi_Random_Research_EstTime>Est. time</CM_Semi_Random_Research_EstTime>
-  <CM_Semi_Random_Research_Calculating>Calculating...</CM_Semi_Random_Research_Calculating>
+  <!-- Rate graph and time estimates -->
   <CM_Semi_Random_Research_CollectingData>Collecting data...</CM_Semi_Random_Research_CollectingData>
   <CM_Semi_Random_Research_GraphAverage>Average</CM_Semi_Random_Research_GraphAverage>
   <CM_Semi_Random_Research_Unknown>Unknown</CM_Semi_Random_Research_Unknown>

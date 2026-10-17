@@ -274,7 +274,7 @@ namespace CM_Semi_Random_Research
                     bool isMainProject = ResearchTracker.GetCategoryKey(activeProj) == "Standard";
 
                     float baseHeight = 48f;
-                    float expandedHeight = baseHeight + 16f + 38f;
+                    float expandedHeight = baseHeight + 16f + TimingsHeight;
                     if (SemiRandomResearchMod.settings.showResearchRateGraph) expandedHeight += 16f + 140f;
                     float cardHeight = isMainProject ? expandedHeight : baseHeight;
 

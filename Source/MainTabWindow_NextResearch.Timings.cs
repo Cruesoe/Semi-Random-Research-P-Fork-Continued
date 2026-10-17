@@ -5,7 +5,7 @@ using Verse;
 
 namespace CM_Semi_Random_Research
 {
-    // The timings panel above the details: standard research speed, the current project and all remaining research.
+    // The timings panel under the standard research card: research speed, the current project and all remaining research.
     public partial class MainTabWindow_NextResearch
     {
         private const float TimingsHeight = 64f;

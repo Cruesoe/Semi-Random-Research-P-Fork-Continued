@@ -68,6 +68,14 @@ namespace CM_Semi_Random_Research
             return categoryKey == "Standard" ? GetGlobalAverageRate() : 0f;
         }
 
+        // A category's samples over the last few days, with the same Standard fallback as its average.
+        public List<float> GetCategoryRateSamplesPeriod(string categoryKey, int days)
+        {
+            if (categoryKey != null && categoryRateSamples.TryGetValue(categoryKey, out List<float> samples) && samples.Count > 0)
+                return CopyRecent(samples, days * SAMPLES_PER_DAY);
+            return categoryKey == "Standard" ? CopyRecent(globalRateSamples, days * SAMPLES_PER_DAY) : new List<float>();
+        }
+
         private void SampleCurrentResearchRate()
         {
             ResearchManager researchManager = Find.ResearchManager;
@@ -268,21 +276,6 @@ namespace CM_Semi_Random_Research
                 result.Add(samples[i]);
 
             return result;
-        }
-
-        public List<float> GetRateSamplesPeriod(ResearchProjectDef project, int days)
-        {
-            if (project == null) return CopyRecent(globalRateSamples, days * SAMPLES_PER_DAY);
-
-            if (projectDataCache.TryGetValue(project.defName, out ProjectRateData projectData))
-                return CopyRecent(projectData.rateSamples, days * SAMPLES_PER_DAY);
-
-            return new List<float>();
-        }
-
-        public List<float> GetGlobalRateSamplesPeriod(int days)
-        {
-            return CopyRecent(globalRateSamples, days * SAMPLES_PER_DAY);
         }
 
         public ResearchRateInfo GetResearchRateInfo(ResearchProjectDef project)

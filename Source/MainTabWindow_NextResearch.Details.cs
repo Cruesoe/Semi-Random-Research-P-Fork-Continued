@@ -95,9 +95,10 @@ namespace CM_Semi_Random_Research
             }
         }
 
+        // Only unfinished prerequisites are listed; the section is left out once all are done.
         private float DrawResearchPrereqs(ResearchProjectDef project, Rect rect)
         {
-            if (project.prerequisites.NullOrEmpty() && (project.hiddenPrerequisites == null || project.hiddenPrerequisites.Count == 0))
+            if (!HasUnfinished(project.prerequisites) && !HasUnfinished(project.hiddenPrerequisites))
             {
                 return 0f;
             }
@@ -113,19 +114,37 @@ namespace CM_Semi_Random_Research
             if (project.prerequisites != null)
             {
                 for (int i = 0; i < project.prerequisites.Count; i++)
-                    DrawPrereqRow(project.prerequisites[i], ref rect);
+                {
+                    if (project.prerequisites[i] != null && !project.prerequisites[i].IsFinished)
+                        DrawPrereqRow(project.prerequisites[i], ref rect);
+                }
             }
 
             if (project.hiddenPrerequisites != null)
             {
                 for (int i = 0; i < project.hiddenPrerequisites.Count; i++)
-                    DrawPrereqRow(project.hiddenPrerequisites[i], ref rect);
+                {
+                    if (project.hiddenPrerequisites[i] != null && !project.hiddenPrerequisites[i].IsFinished)
+                        DrawPrereqRow(project.hiddenPrerequisites[i], ref rect);
+                }
             }
 
             GUI.color = Color.white;
             rect.xMin = xMin;
             rect.yMin += 6f;
             return rect.yMin - yMin;
+        }
+
+        private static bool HasUnfinished(List<ResearchProjectDef> projects)
+        {
+            if (projects == null)
+                return false;
+            for (int i = 0; i < projects.Count; i++)
+            {
+                if (projects[i] != null && !projects[i].IsFinished)
+                    return true;
+            }
+            return false;
         }
 
         private void DrawPrereqRow(ResearchProjectDef prereq, ref Rect rect)

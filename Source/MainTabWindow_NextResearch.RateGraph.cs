@@ -163,48 +163,12 @@ namespace CM_Semi_Random_Research
                 browsingRelatedProject = false;
             }
 
-            // The standard project's card also shows rates, ETA and the graph.
+            // The standard project's card also shows the timings panel and the graph.
             if (isMainProject)
             {
                 currentY += headerHeight + sectionSpacing;
-
-                float statsLineHeight = 38f;
-                Rect statsRowRect = new Rect(rect.x, currentY, rect.width, statsLineHeight);
-                if (IsRepaint)
-                    Widgets.DrawBoxSolid(statsRowRect, new Color(0.1f, 0.1f, 0.1f, 0.2f));
-
-                float sectionWidth = statsRowRect.width / 3;
-
-                Text.Font = GameFont.Small;
-                Text.Anchor = TextAnchor.MiddleCenter;
-
-                Rect currentRateRect = new Rect(statsRowRect.x, statsRowRect.y, sectionWidth, statsLineHeight);
-                GUI.color = new Color(1f, 1f, 1f, 0.8f);
-                Widgets.Label(new Rect(currentRateRect.x, currentRateRect.y, currentRateRect.width, statsLineHeight / 2), "CM_Semi_Random_Research_Current".Translate());
-                GUI.color = new Color(0.65f, 0.8f, 0.9f);
-                float currentTextWidth = Text.CalcSize(cachedCurrentRateText).x + 8f;
-                float currentCenterX = currentRateRect.x + (currentRateRect.width - currentTextWidth) / 2;
-                Widgets.Label(new Rect(currentCenterX, currentRateRect.y + statsLineHeight / 2, currentTextWidth, statsLineHeight / 2), cachedCurrentRateText);
-
-                Rect avgRateRect = new Rect(statsRowRect.x + sectionWidth, statsRowRect.y, sectionWidth, statsLineHeight);
-                GUI.color = new Color(1f, 1f, 1f, 0.8f);
-                Widgets.Label(new Rect(avgRateRect.x, avgRateRect.y, avgRateRect.width, statsLineHeight / 2), "CM_Semi_Random_Research_TenDayAvg".Translate());
-                GUI.color = new Color(0.8f, 0.8f, 0.6f);
-                float avgTextWidth = Text.CalcSize(cachedAvgRateText).x + 8f;
-                float avgCenterX = avgRateRect.x + (avgRateRect.width - avgTextWidth) / 2;
-                Widgets.Label(new Rect(avgCenterX, avgRateRect.y + statsLineHeight / 2, avgTextWidth, statsLineHeight / 2), cachedAvgRateText);
-
-                Rect etaRect = new Rect(statsRowRect.x + sectionWidth * 2, statsRowRect.y, sectionWidth, statsLineHeight);
-                GUI.color = new Color(1f, 1f, 1f, 0.8f);
-                Widgets.Label(new Rect(etaRect.x, etaRect.y, etaRect.width, statsLineHeight / 2), "CM_Semi_Random_Research_EstTime".Translate());
-                // A countdown that is not counting down is worse than no countdown.
-                string etaText = isPaused ? "CM_Semi_Random_Research_PausedTag".Translate().ToString() : cachedEtaText;
-                GUI.color = isPaused ? PausedTagColor : cachedEtaColor;
-                float etaTextWidth = Text.CalcSize(etaText).x + 8f;
-                float etaCenterX = etaRect.x + (etaRect.width - etaTextWidth) / 2;
-                Widgets.Label(new Rect(etaCenterX, etaRect.y + statsLineHeight / 2, etaTextWidth, statsLineHeight / 2), etaText);
-
-                currentY += statsLineHeight + sectionSpacing;
+                DrawTimings(new Rect(rect.x, currentY, rect.width, TimingsHeight));
+                currentY += TimingsHeight + sectionSpacing;
 
                 if (SemiRandomResearchMod.settings.showResearchRateGraph)
                 {

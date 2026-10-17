@@ -81,17 +81,9 @@ namespace CM_Semi_Random_Research
         private ResearchTracker cachedTracker;
         private ResearchRateTracker cachedRateTracker;
         private ResearchTracker drawTracker;
-        private ResearchRateInfo cachedRateInfo;
-        private ResearchProjectDef cachedRateInfoProject;
-        private int cachedRateInfoTick = -1;
-        private bool cachedRateShowDates;
-        private string cachedCurrentRateText = "—";
-        private string cachedAvgRateText = "—";
-        private string cachedEtaText = "—";
-        private Color cachedEtaColor = new Color(0.7f, 0.7f, 0.7f);
+        private int cachedGraphTick = -1;
         private List<float> cachedGraphSamples = new List<float>();
         private float cachedGraphAverage;
-        private float cachedTenDayAverage;
         private List<ResearchProjectDef> cachedActiveProjects = new List<ResearchProjectDef>();
         private readonly List<Pair<TechLevel, List<ResearchProjectDef>>> cachedStandardGroups = new List<Pair<TechLevel, List<ResearchProjectDef>>>();
         private List<ResearchProjectDef> cachedAnomalyBasic = new List<ResearchProjectDef>();
@@ -529,88 +521,20 @@ namespace CM_Semi_Random_Research
             cachedMatchingBench = best;
         }
 
-        private void RefreshRateTexts(int tick)
+        // The graph shows standard research speed over the last three days, with the same average the timings use.
+        private void RefreshRateGraph(int tick)
         {
-            ResearchProjectDef mainProject = null;
-            for (int i = 0; i < cachedActiveProjects.Count; i++)
+            if (cachedRateTracker == null)
             {
-                ResearchProjectDef project = cachedActiveProjects[i];
-                if (project != null && ResearchTracker.GetCategoryKey(project) == "Standard")
-                {
-                    mainProject = project;
-                    break;
-                }
-            }
-
-            if (mainProject == null || cachedRateTracker == null)
-            {
-                cachedCurrentRateText = "—";
-                cachedAvgRateText = "CM_Semi_Random_Research_RateZeroShort".Translate();
-                cachedEtaText = "CM_Semi_Random_Research_Unknown".Translate().ToString();
-                cachedEtaColor = new Color(0.7f, 0.7f, 0.7f);
-                cachedRateInfo = null;
-                cachedRateInfoProject = mainProject;
                 cachedGraphSamples.Clear();
                 cachedGraphAverage = 0f;
-                cachedTenDayAverage = 0f;
                 return;
             }
-
-            bool showDates = SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.showCompletionDates;
-            if (mainProject == cachedRateInfoProject && cachedRateInfo != null && tick - cachedRateInfoTick < 30 && showDates == cachedRateShowDates)
+            if (cachedGraphTick >= 0 && tick >= cachedGraphTick && tick - cachedGraphTick < 30)
                 return;
-            cachedRateShowDates = showDates;
-
-            cachedRateInfo = cachedRateTracker.GetResearchRateInfo(mainProject);
-            cachedRateInfoProject = mainProject;
-            cachedRateInfoTick = tick;
-
-            bool hasRateData = cachedRateInfo != null && cachedRateInfo.TotalSamples > 0;
-            float globalAverageRate = cachedRateInfo != null ? cachedRateInfo.AverageRate : 0f;
-            cachedCurrentRateText = hasRateData
-                ? ResearchRateTracker.FormatRateShort(cachedRateInfo.CurrentRate)
-                : "CM_Semi_Random_Research_Calculating".Translate().ToString();
-            if (hasRateData)
-                cachedAvgRateText = ResearchRateTracker.FormatRateShort(cachedRateInfo.AverageRate);
-            else if (globalAverageRate > 0f)
-                cachedAvgRateText = ResearchRateTracker.FormatRateShort(globalAverageRate);
-            else
-                cachedAvgRateText = "CM_Semi_Random_Research_RateZeroShort".Translate();
-
-            float estimatedDays = -1f;
-            if (hasRateData && cachedRateInfo.EstimatedDaysToCompletion >= 0)
-            {
-                estimatedDays = cachedRateInfo.EstimatedDaysToCompletion;
-                cachedEtaText = ResearchRateTracker.FormatEstimate(estimatedDays);
-            }
-            else if (globalAverageRate > 0f)
-            {
-                float remainingProgress = mainProject.CostApparent - mainProject.ProgressApparent;
-                estimatedDays = remainingProgress / globalAverageRate;
-                cachedEtaText = ResearchRateTracker.FormatEstimate(estimatedDays);
-            }
-            else
-            {
-                cachedEtaText = "CM_Semi_Random_Research_Unknown".Translate().ToString();
-            }
-
-            cachedEtaColor = new Color(0.7f, 0.7f, 0.7f);
-            if (estimatedDays >= 0)
-            {
-                if (estimatedDays < 1f) cachedEtaColor = new Color(0.0f, 0.7f, 0.0f);
-                else if (estimatedDays < 3f) cachedEtaColor = new Color(0.7f, 0.7f, 0.0f);
-                else if (estimatedDays > 10f) cachedEtaColor = new Color(0.75f, 0.5f, 0.3f);
-            }
-
-            cachedGraphSamples = hasRateData
-                ? cachedRateTracker.GetRateSamplesPeriod(mainProject, 3)
-                : cachedRateTracker.GetGlobalRateSamplesPeriod(3);
-            cachedGraphAverage = hasRateData
-                ? cachedRateTracker.GetAverageRate(mainProject)
-                : cachedRateTracker.GetGlobalAverageRate();
-            cachedTenDayAverage = hasRateData
-                ? cachedRateInfo.AverageRate
-                : cachedRateTracker.GetGlobalAverageRate();
+            cachedGraphTick = tick;
+            cachedGraphSamples = cachedRateTracker.GetCategoryRateSamplesPeriod("Standard", 3);
+            cachedGraphAverage = CategoryRate("Standard");
         }
 
         private bool ColonistsHaveResearchBench
@@ -699,9 +623,7 @@ namespace CM_Semi_Random_Research
             cachedMatchingBenchProject = null;
             cachedLeftListsRevision = -1;
             cachedLeftCurrentHash = int.MinValue;
-            cachedRateInfo = null;
-            cachedRateInfoProject = null;
-            cachedRateInfoTick = -1;
+            cachedGraphTick = -1;
             cachedCategoryRatesTick = -1;
             timingsBuiltAt = -1f;
             cachedCanStartNowProject = null;
@@ -715,7 +637,7 @@ namespace CM_Semi_Random_Research
             RecacheMatchingBenchIfNeeded();
             int tick = Find.TickManager.TicksGame;
             RefreshCanStartNow(tick);
-            RefreshRateTexts(tick);
+            RefreshRateGraph(tick);
         }
 
         public override void WindowUpdate()
@@ -809,7 +731,7 @@ namespace CM_Semi_Random_Research
             WarmSelectedUnlocks();
             RecacheMatchingBenchIfNeeded();
             RefreshCanStartNow(tick);
-            RefreshRateTexts(tick);
+            RefreshRateGraph(tick);
             RefreshTechLevelStats(tick);
             ApplyAdaptiveSize();
         }
@@ -1014,8 +936,6 @@ namespace CM_Semi_Random_Research
             else
                 DrawLeftColumn(leftRect);
 
-            DrawTimings(new Rect(rightContentRect.x, rightContentRect.y, rightContentRect.width, TimingsHeight));
-            rightContentRect.yMin += TimingsHeight + 10f;
             DrawRightColumn(rightContentRect);
 
             if (IsRepaint)

@@ -176,9 +176,7 @@ namespace CM_Semi_Random_Research
             if (remainingCost <= 0f)
                 return "CM_Semi_Random_Research_Complete".Translate();
 
-            float average = cachedTenDayAverage;
-            if (average <= 0f && cachedRateTracker != null)
-                average = cachedRateTracker.GetGlobalAverageRate();
+            float average = CategoryRate("Standard");
             if (average <= 0f)
                 return "CM_Semi_Random_Research_ETA_UnknownNoAverage".Translate();
 
