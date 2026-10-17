@@ -8,7 +8,7 @@ namespace CM_Semi_Random_Research
     // The timings panel under the standard research card: research speed, the current project and all remaining research.
     public partial class MainTabWindow_NextResearch
     {
-        private const float TimingsHeight = 64f;
+        private const float TimingsHeight = 54f;
         private const float TimingsRefreshSeconds = 0.5f;
         private static readonly Color TimingsDividerColor = new ColorInt(135, 135, 135).ToColor;
 
@@ -101,36 +101,34 @@ namespace CM_Semi_Random_Research
             return date == null ? string.Empty : "\n\n" + "CM_Semi_Random_Research_TimingFinishes".Translate(date);
         }
 
-        // Equal tiles split by dividers, each a gray label over its value, the pair centered in the tile.
+        // Equal tiles split by dividers, each a gray label over its value, both centered in the tile.
         private void DrawTimings(Rect rect)
         {
             RefreshTimings();
             Widgets.DrawMenuSection(rect);
             if (timings.Count == 0)
                 return;
-            Rect inner = rect.ContractedBy(8f, 6f);
+            Rect inner = rect.ContractedBy(8f, 4f);
             float width = inner.width / timings.Count;
             float x = inner.x;
-            const float labelHeight = 22f, valueHeight = 30f;
-            float top = inner.center.y - (labelHeight + valueHeight) / 2f;
+            const float lineHeight = 22f;
+            float top = inner.center.y - lineHeight;
             bool wordWrap = Text.WordWrap;
             Text.WordWrap = false;
+            Text.Font = GameFont.Small;
+            Text.Anchor = TextAnchor.MiddleCenter;
             foreach (TimingStat stat in timings)
             {
                 Rect tile = new Rect(x, inner.y, width, inner.height);
                 if (x > inner.x && IsRepaint)
-                    Widgets.DrawLine(new Vector2(x, inner.y + 6f), new Vector2(x, inner.yMax - 6f), TimingsDividerColor, 1f);
+                    Widgets.DrawLine(new Vector2(x, inner.y + 4f), new Vector2(x, inner.yMax - 4f), TimingsDividerColor, 1f);
                 x += width;
                 Widgets.DrawHighlightIfMouseover(tile);
-                Rect text = tile.ContractedBy(8f, 0f);
-                Text.Anchor = TextAnchor.MiddleLeft;
-                Text.Font = GameFont.Small;
+                Rect text = tile.ContractedBy(6f, 0f);
                 GUI.color = Color.gray;
-                Widgets.Label(new Rect(text.x, top, text.width, labelHeight), stat.Label.Truncate(text.width));
-                Text.Font = GameFont.Medium;
+                Widgets.Label(new Rect(text.x, top, text.width, lineHeight), stat.Label.Truncate(text.width));
                 GUI.color = Color.white;
-                Widgets.Label(new Rect(text.x, top + labelHeight, text.width, valueHeight), stat.Value.Truncate(text.width));
-                Text.Font = GameFont.Small;
+                Widgets.Label(new Rect(text.x, top + lineHeight, text.width, lineHeight), stat.Value.Truncate(text.width));
                 TooltipHandler.TipRegion(tile, stat.Tip);
             }
             Text.Anchor = TextAnchor.UpperLeft;
