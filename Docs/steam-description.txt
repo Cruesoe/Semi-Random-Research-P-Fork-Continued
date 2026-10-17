@@ -7,11 +7,13 @@ Instead of choosing freely from the entire research tree, you choose from a few 
 [*]A small set of research projects is offered at a time, rerolled when a project is finished.
 [*]Anomaly dark research and Vanilla Gravship Expanded gravtech research get their own offers alongside standard research.
 [*]Right-click an offer to snooze it: it is not offered again until you unsnooze it, and its place stays empty until the next reroll.
+[*]Snoozing a project also sets aside the research that depends on it, after a confirmation listing every project affected, and the snoozed list shows what is set aside.
 [*]Auto research starts the cheapest offer for you when the research tab closes with nothing being researched.
 [*]Research can be paused and resumed from the research tab.
-[*]The active project shows its current rate, 10-day average, time to completion and a rate graph.
+[*]Every offer shows how long it will take at your colony's research speed.
+[*]A timings panel under the current research shows your research speed, the time left on the current project and the time to finish all remaining research, with an optional rate graph.
 [*]A progress bar shows completed research for each tech level, with your faction's and the world's tech level.
-[*]Each project lists what it unlocks, its prerequisites, and the unfinished projects that require it.
+[*]Each project lists what it unlocks, its unfinished prerequisites, and the unfinished projects that require it.
 [*]A history view lists recently completed research and what each project unlocked.
 [*]Offers can be grouped and colored by tech level.
 [*]The window can grow to show every offer or snoozed project instead of using a scroll bar.
@@ -23,12 +25,13 @@ Instead of choosing freely from the entire research tree, you choose from a few 
 [*][b]Rerolls[/b]: reroll every choice when a project is finished, and allow manual rerolls never, once per project or always.
 [*][b]Which projects are offered[/b]: restrict offers to your faction's tech level, finish the lowest tech level first, allow one higher-tech project, and balance the cost of the offers.
 [*][b]Partially researched projects[/b]: offer them normally, never, as a replacement choice or as an extra choice.
-[*][b]Display[/b]: the rate graph, the completion letter, opening the research tab on completion, and adaptive window size can each be turned off.
+[*][b]Display[/b]: the rate graph, the completion letter, opening the research tab on completion, and adaptive window size can each be turned off, and estimates can show the in-game date they finish instead of the time left.
+[*][b]Snoozing[/b]: allow snoozing, and ask before snoozing a project other research depends on.
 [/list]
 
 [h2]Compatibility[/h2]
 Works with Node Research, YART, Sleek Research Tab, Nice Research Tab and Research: Organized, with a button in each to switch back. Also supports Progression: Core, Genesis, Vanilla Factions Expanded - Tribals, Vanilla Gravship Expanded and Save Our Ship 2.
-Not compatible with Research: Auto, because both choose your research for you.
+Not compatible with Research: Auto or Research Queue, because they choose your research for you.
 Remove any other version of Semi Random Research before enabling this one.
 Safe to add to an existing save.
 
