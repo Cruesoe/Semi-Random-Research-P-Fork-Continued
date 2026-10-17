@@ -128,12 +128,7 @@ namespace CM_Semi_Random_Research
                 Widgets.Label(nameRect, SafeLabel(project));
             }
 
-            Text.Anchor = TextAnchor.MiddleCenter;
-            GUI.color = isPaused ? PausedTextColor : new Color(1f, 1f, 1f, 0.8f);
-            bool wordWrap = Text.WordWrap;
-            Text.WordWrap = false;
-            Widgets.Label(costRect, progressText);
-            Text.WordWrap = wordWrap;
+            DrawCostColumn(costRect, project, progressText, isPaused ? PausedTextColor : new Color(1f, 1f, 1f, 0.8f));
 
             if (SemiRandomResearchMod.settings.allowSwitchingResearch)
             {

@@ -250,6 +250,8 @@ namespace CM_Semi_Random_Research
 
         // A reused copy, so unsnoozing from a card cannot disturb the loop walking it.
         private readonly List<ResearchProjectDef> snoozedDrawBuffer = new List<ResearchProjectDef>();
+        private readonly List<ResearchProjectDef> blockedDrawBuffer = new List<ResearchProjectDef>();
+        private const float BlockedHeaderHeight = 32f;
 
         // Measured on layout for adaptive size, like the offer list's scroll heights.
         private Vector2 snoozedScrollPosition = Vector2.zero;
@@ -260,10 +262,17 @@ namespace CM_Semi_Random_Research
         {
             ResearchSnoozeTracker tracker = ResearchSnoozeTracker.Get();
             List<ResearchProjectDef> snoozed = snoozedDrawBuffer;
+            List<ResearchProjectDef> blocked = blockedDrawBuffer;
             if (tracker != null)
+            {
                 tracker.GetSnoozedProjects(snoozed);
+                tracker.GetBlockedBySnooze(blocked);
+            }
             else
+            {
                 snoozed.Clear();
+                blocked.Clear();
+            }
 
             float footerPaddingTop = 12f;
             float footerHeight = 40f;
@@ -283,14 +292,18 @@ namespace CM_Semi_Random_Research
                 currentY += headerHeight + 4f;
                 float listHeight = leftRect.height - totalFooterHeight - currentY;
                 float listWidth = leftRect.width;
-                float viewHeight = Mathf.Max(0f, snoozed.Count * (HistoryCardHeight + HistoryCardGap) - HistoryCardGap);
+                // Projects set aside by a snoozed prerequisite follow under their own heading.
+                float blockedTop = snoozed.Count * (HistoryCardHeight + HistoryCardGap);
+                float viewHeight = blocked.Count > 0
+                    ? blockedTop + BlockedHeaderHeight + blocked.Count * (HistoryCardHeight + HistoryCardGap) - HistoryCardGap
+                    : Mathf.Max(0f, blockedTop - HistoryCardGap);
                 if (Event.current.type == EventType.Layout)
                 {
                     snoozedViewHeight = viewHeight;
                     snoozedOutHeight = listHeight;
                 }
 
-                if (snoozed.Count == 0)
+                if (snoozed.Count == 0 && blocked.Count == 0)
                 {
                     GUI.color = new Color(0.7f, 0.7f, 0.7f);
                     Widgets.Label(new Rect(0f, currentY, listWidth, 60f), "CM_Semi_Random_Research_SnoozedEmpty".Translate());
@@ -316,6 +329,21 @@ namespace CM_Semi_Random_Research
                             CacheFirstUnlockable(projectDef);
                             DrawSnoozedCard(new Rect(0f, cardY, viewRect.width, HistoryCardHeight), projectDef, tracker);
                             cardY += HistoryCardHeight + HistoryCardGap;
+                        }
+                        if (blocked.Count > 0)
+                        {
+                            cardY = blockedTop;
+                            Text.Anchor = TextAnchor.MiddleLeft;
+                            GUI.color = new Color(0.7f, 0.7f, 0.7f);
+                            Widgets.Label(new Rect(0f, cardY, viewRect.width, BlockedHeaderHeight - 4f), "CM_Semi_Random_Research_BlockedBySnoozeHeader".Translate());
+                            GUI.color = Color.white;
+                            Text.Anchor = TextAnchor.UpperLeft;
+                            cardY += BlockedHeaderHeight;
+                            for (int i = 0; i < blocked.Count; i++)
+                            {
+                                DrawBlockedBySnoozeCard(new Rect(0f, cardY, viewRect.width, HistoryCardHeight), blocked[i], tracker);
+                                cardY += HistoryCardHeight + HistoryCardGap;
+                            }
                         }
                     }
                     finally
@@ -361,6 +389,32 @@ namespace CM_Semi_Random_Research
             }
             if (isMouseOver)
                 TooltipHandler.TipRegion(drawRect, "CM_Semi_Random_Research_UnsnoozeTip".Translate());
+            GUI.color = originalColor;
+            Text.Anchor = startingTextAnchor;
+        }
+
+        // Greyed and inert: it comes back when the snoozed prerequisite the tooltip names is unsnoozed.
+        private void DrawBlockedBySnoozeCard(Rect drawRect, ResearchProjectDef projectDef, ResearchSnoozeTracker tracker)
+        {
+            Color originalColor = GUI.color;
+            TextAnchor startingTextAnchor = Text.Anchor;
+            Color techColor = GetCategoryColor(projectDef);
+            if (IsRepaint)
+            {
+                Widgets.DrawBoxSolid(drawRect, Color.Lerp(TexUI.AvailResearchColor, techColor, 0.12f));
+                GUI.color = Color.Lerp(GetCardStructureAccent(projectDef, techColor), Color.gray, 0.5f);
+                Widgets.DrawBox(drawRect);
+            }
+            Text.Font = GameFont.Small;
+            Text.Anchor = TextAnchor.MiddleLeft;
+            GUI.color = Color.gray;
+            Widgets.Label(new Rect(drawRect.x + 8f, drawRect.y, drawRect.width - 16f, drawRect.height), SafeLabel(projectDef));
+            if (Mouse.IsOver(drawRect) && tracker != null)
+            {
+                ResearchProjectDef tipProject = projectDef;
+                TooltipHandler.TipRegion(drawRect, () => "CM_Semi_Random_Research_BlockedBySnoozeTip".Translate(
+                    string.Join(", ", tracker.SnoozedPrerequisites(tipProject).ConvertAll(SafeLabel))), tipProject.shortHash ^ 0x5a17);
+            }
             GUI.color = originalColor;
             Text.Anchor = startingTextAnchor;
         }

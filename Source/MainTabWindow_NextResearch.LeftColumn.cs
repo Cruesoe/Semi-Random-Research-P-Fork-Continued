@@ -762,13 +762,8 @@ namespace CM_Semi_Random_Research
                 Widgets.Label(nameRect, SafeLabel(projectDef));
             }
 
+            DrawCostColumn(costRect, projectDef, costText, originalColor);
             GUI.color = originalColor;
-
-            Text.Anchor = TextAnchor.MiddleCenter;
-            bool wordWrap = Text.WordWrap;
-            Text.WordWrap = false;
-            Widgets.Label(costRect, costText);
-            Text.WordWrap = wordWrap;
 
             if (animProgress >= 0.7f)
             {
@@ -804,7 +799,26 @@ namespace CM_Semi_Random_Research
             drawRect = originalRect;
         }
 
+        // Lists the projects the snooze would also set aside and asks first, unless there are none or the setting is off.
         private void SnoozeOffer(ResearchProjectDef projectDef)
+        {
+            ResearchSnoozeTracker snoozeTracker = ResearchSnoozeTracker.Get();
+            string refusal = ResearchSnoozeTracker.SnoozeRefusal(projectDef);
+            if (snoozeTracker == null || refusal != null)
+            {
+                if (refusal != null)
+                    Messages.Message(refusal, MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            List<ResearchProjectDef> dependents = snoozeTracker.BlockedDependents(projectDef);
+            if (dependents.Count == 0 || SemiRandomResearchMod.settings == null || !SemiRandomResearchMod.settings.confirmDependentSnooze)
+                ApplySnooze(projectDef);
+            else
+                Find.WindowStack.Add(new Dialog_ConfirmSnooze(projectDef, dependents, () => ApplySnooze(projectDef)));
+        }
+
+        private void ApplySnooze(ResearchProjectDef projectDef)
         {
             string blockReason = ResearchSnoozeTracker.Get()?.TrySnooze(projectDef);
             if (blockReason != null)

@@ -54,6 +54,19 @@ namespace CM_Semi_Random_Research
         private readonly HashSet<string> activeDefNamesBuffer = new HashSet<string>();
         private readonly List<string> trackedDefNamesBuffer = new List<string>();
         private readonly Dictionary<string, ResearchProjectDef> defsByName = new Dictionary<string, ResearchProjectDef>();
+        private readonly Dictionary<string, float> categoryProgressBuffer = new Dictionary<string, float>();
+
+        // Keyed by ResearchTracker category key (Standard, Gravship, Anomaly categories).
+        private Dictionary<string, List<float>> categoryRateSamples = new Dictionary<string, List<float>>();
+
+        // Average research points per day for a category over up to the last ten days; 0 before it has been sampled.
+        // Standard falls back to the global average until it has samples of its own.
+        public float GetCategoryAverageRate(string categoryKey)
+        {
+            if (categoryKey != null && categoryRateSamples.TryGetValue(categoryKey, out List<float> samples) && samples.Count > 0)
+                return AverageRecent(samples, DAYS_TO_TRACK);
+            return categoryKey == "Standard" ? GetGlobalAverageRate() : 0f;
+        }
 
         private void SampleCurrentResearchRate()
         {
@@ -81,10 +94,15 @@ namespace CM_Semi_Random_Research
             }
 
             float totalProgressChange = 0f;
+            categoryProgressBuffer.Clear();
             for (int i = 0; i < activeProjects.Count; i++)
             {
                 ResearchProjectDef project = activeProjects[i];
-                totalProgressChange += SampleProjectRate(project);
+                float change = SampleProjectRate(project);
+                totalProgressChange += change;
+                string key = ResearchTracker.GetCategoryKey(project);
+                categoryProgressBuffer.TryGetValue(key, out float categoryChange);
+                categoryProgressBuffer[key] = categoryChange + change;
                 previousProjectDefNames.Add(project.defName);
                 activeDefNamesBuffer.Add(project.defName);
             }
@@ -92,6 +110,19 @@ namespace CM_Semi_Random_Research
             // Idle hours count too, so the global average matches the per-project one, which records zeros.
             globalRateSamples.Add(totalProgressChange * SAMPLES_PER_DAY);
             TrimSamples(globalRateSamples);
+
+            // Each research category's own rate; a category gets zeros once it has been researched at all.
+            foreach (string key in categoryProgressBuffer.Keys)
+            {
+                if (!categoryRateSamples.ContainsKey(key))
+                    categoryRateSamples[key] = new List<float>();
+            }
+            foreach (KeyValuePair<string, List<float>> category in categoryRateSamples)
+            {
+                categoryProgressBuffer.TryGetValue(category.Key, out float change);
+                category.Value.Add(change * SAMPLES_PER_DAY);
+                TrimSamples(category.Value);
+            }
 
             // Copied out first because finished projects are removed from the set while walking it.
             trackedDefNamesBuffer.Clear();
@@ -309,6 +340,25 @@ namespace CM_Semi_Random_Research
             return "CM_Semi_Random_Research_ETA_UntilComplete".Translate(FormatDuration(daysToCompletion)).ToString();
         }
 
+        // The in-game date the given number of days from now, at the current or first home map's longitude; null without a map.
+        public static string DateAfter(float days)
+        {
+            Map map = Find.CurrentMap ?? Find.AnyPlayerHomeMap;
+            if (map == null || days < 0f || days > 30000f)
+                return null;
+            long ticks = Find.TickManager.TicksAbs + (long)(days * GenDate.TicksPerDay);
+            return GenDate.DateShortStringAt(ticks, Find.WorldGrid.LongLatOf(map.Tile));
+        }
+
+        // A time left, or the date it ends on when "Show completion dates" is on.
+        public static string FormatEstimate(float daysToCompletion)
+        {
+            if (daysToCompletion > 0f && SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.showCompletionDates &&
+                DateAfter(daysToCompletion) is string date)
+                return date;
+            return FormatDuration(daysToCompletion);
+        }
+
         private static string FormatDuration(float daysToCompletion)
         {
             if (daysToCompletion < 0)
@@ -357,14 +407,30 @@ namespace CM_Semi_Random_Research
 
                 Scribe_Collections.Look(ref projectIds, "projectIds", LookMode.Value);
                 Scribe_Collections.Look(ref projectDatas, "projectDatas", LookMode.Deep);
+
+                List<string> categoryKeys = categoryRateSamples.Keys.ToList();
+                List<CategoryRateData> categoryDatas = categoryRateSamples.Values.Select(s => new CategoryRateData { rateSamples = s }).ToList();
+                Scribe_Collections.Look(ref categoryKeys, "categoryKeys", LookMode.Value);
+                Scribe_Collections.Look(ref categoryDatas, "categoryDatas", LookMode.Deep);
             }
             else if (Scribe.mode == LoadSaveMode.LoadingVars)
             {
                 List<string> projectIds = null;
                 List<ProjectRateData> projectDatas = null;
+                List<string> categoryKeys = null;
+                List<CategoryRateData> categoryDatas = null;
 
                 Scribe_Collections.Look(ref projectIds, "projectIds", LookMode.Value);
                 Scribe_Collections.Look(ref projectDatas, "projectDatas", LookMode.Deep);
+                Scribe_Collections.Look(ref categoryKeys, "categoryKeys", LookMode.Value);
+                Scribe_Collections.Look(ref categoryDatas, "categoryDatas", LookMode.Deep);
+
+                categoryRateSamples.Clear();
+                if (categoryKeys != null && categoryDatas != null && categoryKeys.Count == categoryDatas.Count)
+                {
+                    for (int i = 0; i < categoryKeys.Count; i++)
+                        categoryRateSamples[categoryKeys[i]] = categoryDatas[i].rateSamples;
+                }
 
                 if (globalRateSamples == null)
                     globalRateSamples = new List<float>();
@@ -395,6 +461,18 @@ namespace CM_Semi_Random_Research
         }
     }
 
+    public class CategoryRateData : IExposable
+    {
+        public List<float> rateSamples = new List<float>();
+
+        public void ExposeData()
+        {
+            Scribe_Collections.Look(ref rateSamples, "rateSamples", LookMode.Value);
+            if (rateSamples == null)
+                rateSamples = new List<float>();
+        }
+    }
+
     public class ResearchRateInfo
     {
         public float CurrentRate { get; set; }
@@ -403,6 +481,5 @@ namespace CM_Semi_Random_Research
         public int TotalSamples { get; set; }
 
         public string AverageRateFormatted => ResearchRateTracker.FormatRate(AverageRate);
-        public string ETAFormatted => ResearchRateTracker.FormatETA(EstimatedDaysToCompletion);
     }
 }

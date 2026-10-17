@@ -84,6 +84,7 @@ namespace CM_Semi_Random_Research
         private ResearchRateInfo cachedRateInfo;
         private ResearchProjectDef cachedRateInfoProject;
         private int cachedRateInfoTick = -1;
+        private bool cachedRateShowDates;
         private string cachedCurrentRateText = "—";
         private string cachedAvgRateText = "—";
         private string cachedEtaText = "—";
@@ -555,8 +556,10 @@ namespace CM_Semi_Random_Research
                 return;
             }
 
-            if (mainProject == cachedRateInfoProject && cachedRateInfo != null && tick - cachedRateInfoTick < 30)
+            bool showDates = SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.showCompletionDates;
+            if (mainProject == cachedRateInfoProject && cachedRateInfo != null && tick - cachedRateInfoTick < 30 && showDates == cachedRateShowDates)
                 return;
+            cachedRateShowDates = showDates;
 
             cachedRateInfo = cachedRateTracker.GetResearchRateInfo(mainProject);
             cachedRateInfoProject = mainProject;
@@ -577,14 +580,14 @@ namespace CM_Semi_Random_Research
             float estimatedDays = -1f;
             if (hasRateData && cachedRateInfo.EstimatedDaysToCompletion >= 0)
             {
-                cachedEtaText = cachedRateInfo.ETAFormatted;
                 estimatedDays = cachedRateInfo.EstimatedDaysToCompletion;
+                cachedEtaText = ResearchRateTracker.FormatEstimate(estimatedDays);
             }
             else if (globalAverageRate > 0f)
             {
                 float remainingProgress = mainProject.CostApparent - mainProject.ProgressApparent;
                 estimatedDays = remainingProgress / globalAverageRate;
-                cachedEtaText = ResearchRateTracker.FormatETA(estimatedDays);
+                cachedEtaText = ResearchRateTracker.FormatEstimate(estimatedDays);
             }
             else
             {
@@ -699,6 +702,8 @@ namespace CM_Semi_Random_Research
             cachedRateInfo = null;
             cachedRateInfoProject = null;
             cachedRateInfoTick = -1;
+            cachedCategoryRatesTick = -1;
+            timingsBuiltAt = -1f;
             cachedCanStartNowProject = null;
             cachedCanStartNowTick = -1;
             cachedUnlocksProject = null;
@@ -1009,6 +1014,8 @@ namespace CM_Semi_Random_Research
             else
                 DrawLeftColumn(leftRect);
 
+            DrawTimings(new Rect(rightContentRect.x, rightContentRect.y, rightContentRect.width, TimingsHeight));
+            rightContentRect.yMin += TimingsHeight + 10f;
             DrawRightColumn(rightContentRect);
 
             if (IsRepaint)

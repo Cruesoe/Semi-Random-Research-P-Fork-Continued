@@ -6,7 +6,7 @@ using Verse;
 
 namespace CM_Semi_Random_Research
 {
-    // Projects the player has snoozed. ResearchTracker leaves them out of the offers; the list is kept while snoozing is off.
+    // Projects the player has snoozed. ResearchTracker leaves them and their dependents out of the offers; the list is kept while snoozing is off.
     public class ResearchSnoozeTracker : WorldComponent
     {
         private HashSet<ResearchProjectDef> snoozedProjects = new HashSet<ResearchProjectDef>();
@@ -53,10 +53,10 @@ namespace CM_Semi_Random_Research
             return tracker;
         }
 
-        // True when snoozing is on and the project is snoozed in the current world.
-        public static bool IsSnoozedNow(ResearchProjectDef def)
+        // True when snoozing is on and the project is snoozed or depends, directly or not, on an unfinished snoozed project.
+        public static bool IsExcludedNow(ResearchProjectDef def)
         {
-            return SnoozingEnabled && Get()?.IsSnoozed(def) == true;
+            return SnoozingEnabled && def != null && Get()?.IsExcluded(def) == true;
         }
 
         public override void ExposeData()
@@ -66,7 +66,155 @@ namespace CM_Semi_Random_Research
             if (snoozedProjects == null)
                 snoozedProjects = new HashSet<ResearchProjectDef>();
             snoozedProjects.RemoveWhere(def => def == null);
+            snoozeVersion++;
         }
+
+        // Snoozed projects and everything depending on them, rebuilt when the snoozes change or a project finishes.
+        private readonly HashSet<ResearchProjectDef> excluded = new HashSet<ResearchProjectDef>();
+        private int snoozeVersion;
+        private int excludedSnoozeVersion = -1;
+        private int excludedCompletionRevision = -1;
+
+        public bool IsExcluded(ResearchProjectDef def)
+        {
+            EnsureExcluded();
+            return excluded.Contains(def);
+        }
+
+        private void EnsureExcluded()
+        {
+            int completionRevision = SemiRandomResearchUtility.Tracker?.CompletionRevision ?? 0;
+            if (excludedSnoozeVersion == snoozeVersion && excludedCompletionRevision == completionRevision)
+                return;
+
+            excludedSnoozeVersion = snoozeVersion;
+            excludedCompletionRevision = completionRevision;
+            excluded.Clear();
+            foreach (ResearchProjectDef def in snoozedProjects)
+            {
+                if (def != null && !def.IsFinished)
+                    AddWithDependents(excluded, def);
+            }
+        }
+
+        private static void AddWithDependents(HashSet<ResearchProjectDef> result, ResearchProjectDef root)
+        {
+            if (!result.Add(root))
+                return;
+            Stack<ResearchProjectDef> pending = new Stack<ResearchProjectDef>();
+            pending.Push(root);
+            while (pending.Count > 0)
+            {
+                List<ResearchProjectDef> next = Dependents(pending.Pop());
+                for (int i = 0; i < next.Count; i++)
+                {
+                    if (result.Add(next[i]))
+                        pending.Push(next[i]);
+                }
+            }
+        }
+
+        // Projects that list each project as a prerequisite or hidden prerequisite, built once from the def database.
+        private static Dictionary<ResearchProjectDef, List<ResearchProjectDef>> dependents;
+        private static readonly List<ResearchProjectDef> NoDependents = new List<ResearchProjectDef>();
+
+        private static List<ResearchProjectDef> Dependents(ResearchProjectDef def)
+        {
+            if (dependents == null)
+            {
+                dependents = new Dictionary<ResearchProjectDef, List<ResearchProjectDef>>();
+                foreach (ResearchProjectDef project in DefDatabase<ResearchProjectDef>.AllDefsListForReading)
+                {
+                    AddDependent(project.prerequisites, project);
+                    AddDependent(project.hiddenPrerequisites, project);
+                }
+            }
+            return dependents.TryGetValue(def, out List<ResearchProjectDef> list) ? list : NoDependents;
+        }
+
+        private static void AddDependent(List<ResearchProjectDef> prerequisites, ResearchProjectDef project)
+        {
+            if (prerequisites == null)
+                return;
+            for (int i = 0; i < prerequisites.Count; i++)
+            {
+                ResearchProjectDef prerequisite = prerequisites[i];
+                if (prerequisite == null)
+                    continue;
+                if (!dependents.TryGetValue(prerequisite, out List<ResearchProjectDef> list))
+                    dependents[prerequisite] = list = new List<ResearchProjectDef>();
+                if (!list.Contains(project))
+                    list.Add(project);
+            }
+        }
+
+        private static bool Listable(ResearchProjectDef def) =>
+            !def.IsFinished && !def.IsDummyResearch() && !Compatibility.IsHiddenResearch(def) &&
+            Find.Storyteller.difficulty.AllowedBy(def.hideWhen);
+
+        // Unfinished projects that snoozing this one would also set aside, by tech level and then cost.
+        public List<ResearchProjectDef> BlockedDependents(ResearchProjectDef def)
+        {
+            EnsureExcluded();
+            HashSet<ResearchProjectDef> affected = new HashSet<ResearchProjectDef>();
+            AddWithDependents(affected, def);
+            List<ResearchProjectDef> result = new List<ResearchProjectDef>();
+            foreach (ResearchProjectDef dependent in affected)
+            {
+                if (dependent != def && !excluded.Contains(dependent) && Listable(dependent))
+                    result.Add(dependent);
+            }
+            result.Sort(ByTechLevelThenCost);
+            return result;
+        }
+
+        // Projects set aside only because a prerequisite is snoozed, by tech level and then cost.
+        public void GetBlockedBySnooze(List<ResearchProjectDef> buffer)
+        {
+            buffer.Clear();
+            EnsureExcluded();
+            foreach (ResearchProjectDef def in excluded)
+            {
+                if (!snoozedProjects.Contains(def) && Listable(def))
+                    buffer.Add(def);
+            }
+            buffer.Sort(ByTechLevelThenCost);
+        }
+
+        // Snoozed projects that set this one aside through its prerequisites.
+        public List<ResearchProjectDef> SnoozedPrerequisites(ResearchProjectDef def)
+        {
+            List<ResearchProjectDef> result = new List<ResearchProjectDef>();
+            HashSet<ResearchProjectDef> seen = new HashSet<ResearchProjectDef>();
+            Stack<ResearchProjectDef> pending = new Stack<ResearchProjectDef>();
+            pending.Push(def);
+            while (pending.Count > 0)
+            {
+                ResearchProjectDef next = pending.Pop();
+                foreach (ResearchProjectDef prerequisite in Prerequisites(next))
+                {
+                    if (prerequisite == null || !seen.Add(prerequisite) || prerequisite.IsFinished)
+                        continue;
+                    if (snoozedProjects.Contains(prerequisite))
+                        result.Add(prerequisite);
+                    pending.Push(prerequisite);
+                }
+            }
+            return result;
+        }
+
+        private static IEnumerable<ResearchProjectDef> Prerequisites(ResearchProjectDef def)
+        {
+            if (def.prerequisites != null)
+                foreach (ResearchProjectDef prerequisite in def.prerequisites)
+                    yield return prerequisite;
+            if (def.hiddenPrerequisites != null)
+                foreach (ResearchProjectDef prerequisite in def.hiddenPrerequisites)
+                    yield return prerequisite;
+        }
+
+        private static int ByTechLevelThenCost(ResearchProjectDef a, ResearchProjectDef b) =>
+            a.techLevel != b.techLevel ? a.techLevel.CompareTo(b.techLevel) : a.CostApparent.CompareTo(b.CostApparent);
 
         public bool IsSnoozed(ResearchProjectDef def)
         {
@@ -87,8 +235,8 @@ namespace CM_Semi_Random_Research
             }
         }
 
-        // Returns the reason the project cannot be snoozed, or null once it is snoozed.
-        public string TrySnooze(ResearchProjectDef def)
+        // The reason the project cannot be snoozed, or null when it can.
+        public static string SnoozeRefusal(ResearchProjectDef def)
         {
             if (!SnoozingEnabled)
                 return "CM_Semi_Random_Research_SnoozeDisabled".Translate();
@@ -100,8 +248,18 @@ namespace CM_Semi_Random_Research
                 return "CM_Semi_Random_Research_SnoozeEmergence".Translate(def.LabelCap);
             if (ResearchTabWindowSwitcher.NodeResearchInstalled && NodeResearch.IsFoundationTech(def))
                 return "CM_Semi_Random_Research_SnoozeFoundation".Translate(def.LabelCap);
+            return null;
+        }
+
+        // Returns the reason the project cannot be snoozed, or null once it is snoozed.
+        public string TrySnooze(ResearchProjectDef def)
+        {
+            string refusal = SnoozeRefusal(def);
+            if (refusal != null)
+                return refusal;
 
             snoozedProjects.Add(def);
+            snoozeVersion++;
             SemiRandomResearchUtility.Tracker?.RemoveSnoozedOffer(def);
             SyncSnoozeToGraph(def, snoozed: true);
             return null;
@@ -113,6 +271,7 @@ namespace CM_Semi_Random_Research
                 return;
 
             snoozedProjects.Remove(def);
+            snoozeVersion++;
             SyncSnoozeToGraph(def, snoozed: false);
         }
 

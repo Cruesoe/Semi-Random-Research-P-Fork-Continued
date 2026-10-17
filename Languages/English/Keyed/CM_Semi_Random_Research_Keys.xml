@@ -79,6 +79,8 @@
   <CM_Semi_Random_Research_Setting_AutoOpen_Description>Automatically open the Semi Random Research window and pause the game when a project finishes.</CM_Semi_Random_Research_Setting_AutoOpen_Description>
   <CM_Semi_Random_Research_Setting_ShowGraph_Label>Show research rate graph</CM_Semi_Random_Research_Setting_ShowGraph_Label>
   <CM_Semi_Random_Research_Setting_ShowGraph_Description>Shows the research rate graph on the active research card.</CM_Semi_Random_Research_Setting_ShowGraph_Description>
+  <CM_Semi_Random_Research_Setting_ShowCompletionDates_Label>Show completion dates instead of time left</CM_Semi_Random_Research_Setting_ShowCompletionDates_Label>
+  <CM_Semi_Random_Research_Setting_ShowCompletionDates_Description>Show the active project's estimated time and the timings panel as the in-game dates they should finish on, instead of the time remaining.</CM_Semi_Random_Research_Setting_ShowCompletionDates_Description>
   <CM_Semi_Random_Research_Setting_ShowLetter_Label>Show completion letter</CM_Semi_Random_Research_Setting_ShowLetter_Label>
   <CM_Semi_Random_Research_Setting_ShowLetter_Description>Sends a letter when a research project is finished.</CM_Semi_Random_Research_Setting_ShowLetter_Description>
   <CM_Semi_Random_Research_Setting_ColorGroup_Label>Color and group by tech level</CM_Semi_Random_Research_Setting_ColorGroup_Label>
@@ -172,6 +174,20 @@
   <CM_Semi_Random_Research_ETA_Years>{0} years</CM_Semi_Random_Research_ETA_Years>
   <CM_Semi_Random_Research_ETA_UntilComplete>{0} until complete</CM_Semi_Random_Research_ETA_UntilComplete>
   <CM_Semi_Random_Research_ETA_UnknownNoAverage>Unknown (no 10-day average yet)</CM_Semi_Random_Research_ETA_UnknownNoAverage>
+  <CM_Semi_Random_Research_OfferDuration>~{0}</CM_Semi_Random_Research_OfferDuration>
+
+  <!-- Timings panel -->
+  <CM_Semi_Random_Research_TimingRate>Research speed</CM_Semi_Random_Research_TimingRate>
+  <CM_Semi_Random_Research_TimingRateTip>Standard research points per day, measured every hour and averaged over up to the last ten days. Every time estimate uses this speed.</CM_Semi_Random_Research_TimingRateTip>
+  <CM_Semi_Random_Research_TimingCurrent>Current project</CM_Semi_Random_Research_TimingCurrent>
+  <CM_Semi_Random_Research_TimingCurrentTip>Time left on {0}: {1} research points.</CM_Semi_Random_Research_TimingCurrentTip>
+  <CM_Semi_Random_Research_TimingIdle>Idle</CM_Semi_Random_Research_TimingIdle>
+  <CM_Semi_Random_Research_TimingIdleTip>No standard research is in progress.</CM_Semi_Random_Research_TimingIdleTip>
+  <CM_Semi_Random_Research_TimingPausedTip>{0} is paused. Resume it to count down again.</CM_Semi_Random_Research_TimingPausedTip>
+  <CM_Semi_Random_Research_TimingTree>All research</CM_Semi_Random_Research_TimingTree>
+  <CM_Semi_Random_Research_TimingTreeTip>Time to finish all {0} remaining standard projects, including those not yet available: {1} research points. Snoozed projects and those they set aside are left out, and tech levels or other requirements may hold some back for longer.</CM_Semi_Random_Research_TimingTreeTip>
+  <CM_Semi_Random_Research_TimingFinishes>Expected to finish around {0}.</CM_Semi_Random_Research_TimingFinishes>
+  <CM_Semi_Random_Research_TimingNoRateTip>Estimates appear once research progress has been measured. It is measured every hour and averaged over up to the last ten days.</CM_Semi_Random_Research_TimingNoRateTip>
 
   <!-- Progress bar -->
   <CM_Semi_Random_Research_ProgressTotal>Research ({0}/{1})</CM_Semi_Random_Research_ProgressTotal>

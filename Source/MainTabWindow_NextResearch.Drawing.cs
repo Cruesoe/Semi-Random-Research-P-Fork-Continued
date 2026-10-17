@@ -9,7 +9,7 @@ namespace CM_Semi_Random_Research
 {
     public partial class MainTabWindow_NextResearch
     {
-        private Color GetTechLevelColor(TechLevel techLevel)
+        internal static Color GetTechLevelColor(TechLevel techLevel)
         {
             switch (techLevel)
             {
@@ -38,7 +38,7 @@ namespace CM_Semi_Random_Research
         private static readonly Color GravshipColor = new Color(0.2f, 0.6f, 0.8f);
 
         // A project's card color: the Anomaly/Gravship color, else its tech level color (or neutral with grouping off).
-        private Color GetCategoryColor(ResearchProjectDef projectDef)
+        internal static Color GetCategoryColor(ResearchProjectDef projectDef)
         {
             if (projectDef.knowledgeCategory != null && projectDef.knowledgeCategory == KnowledgeCategoryDefOf.Basic)
                 return AnomalyBasicColor;
@@ -54,7 +54,7 @@ namespace CM_Semi_Random_Research
         }
 
         // Neutral standard cards get a lighter progress fill and structure accent so they show against the background.
-        private bool UsesFlatNeutralCardColor(ResearchProjectDef projectDef)
+        private static bool UsesFlatNeutralCardColor(ResearchProjectDef projectDef)
         {
             return SemiRandomResearchMod.settings != null
                 && !SemiRandomResearchMod.settings.colorAndGroupByTechLevel
@@ -64,7 +64,7 @@ namespace CM_Semi_Random_Research
                 && projectDef.tab?.defName != "VGE_GravShip";
         }
 
-        private Color GetCardStructureAccent(ResearchProjectDef projectDef, Color categoryColor)
+        internal static Color GetCardStructureAccent(ResearchProjectDef projectDef, Color categoryColor)
         {
             if (UsesFlatNeutralCardColor(projectDef))
                 return Color.Lerp(TexUI.AvailResearchColor, Color.white, 0.45f);
@@ -102,6 +102,7 @@ namespace CM_Semi_Random_Research
         private void InvalidateCostTextCache()
         {
             costTextCache.Clear();
+            durationTextCache.Clear();
             costTextCacheTick = int.MinValue;
         }
 
@@ -114,6 +115,7 @@ namespace CM_Semi_Random_Research
             if (tick != costTextCacheTick)
             {
                 costTextCache.Clear();
+                durationTextCache.Clear();
                 costTextCacheTick = tick;
             }
             else if (costTextCache.TryGetValue(project, out string cached))
@@ -128,6 +130,70 @@ namespace CM_Semi_Random_Research
             return text;
         }
 
+        // Each category's average research speed, read from the rate tracker at most once a game hour.
+        private readonly Dictionary<string, float> cachedCategoryRates = new Dictionary<string, float>();
+        private int cachedCategoryRatesTick = -1;
+
+        private float CategoryRate(string categoryKey)
+        {
+            int tick = Find.TickManager?.TicksGame ?? 0;
+            if (cachedCategoryRatesTick < 0 || tick < cachedCategoryRatesTick || tick - cachedCategoryRatesTick >= GenDate.TicksPerHour)
+            {
+                cachedCategoryRates.Clear();
+                cachedCategoryRatesTick = tick;
+            }
+            if (!cachedCategoryRates.TryGetValue(categoryKey, out float rate))
+            {
+                rate = cachedRateTracker?.GetCategoryAverageRate(categoryKey) ?? 0f;
+                cachedCategoryRates[categoryKey] = rate;
+            }
+            return rate;
+        }
+
+        // "~4 days": the project's own remaining time at its category's research speed, cached with the cost labels.
+        private readonly Dictionary<ResearchProjectDef, string> durationTextCache =
+            new Dictionary<ResearchProjectDef, string>();
+
+        private string GetProjectDurationText(ResearchProjectDef project)
+        {
+            if (project == null)
+                return null;
+
+            GetProjectCostText(project);
+            if (durationTextCache.TryGetValue(project, out string cached))
+                return cached;
+
+            float rate = CategoryRate(ResearchTracker.GetCategoryKey(project));
+            float remaining = project.CostApparent - project.ProgressApparent;
+            string text = null;
+            if (rate > 0f && remaining > 0f && remaining / rate <= 100000f)
+                text = "CM_Semi_Random_Research_OfferDuration".Translate(ResearchRateTracker.FormatETA(remaining / rate));
+            durationTextCache[project] = text;
+            return text;
+        }
+
+        // Cost, with the project's own time below it once a research speed has been measured.
+        private void DrawCostColumn(Rect costRect, ResearchProjectDef project, string costText, Color costColor)
+        {
+            bool wordWrap = Text.WordWrap;
+            Text.WordWrap = false;
+            Text.Anchor = TextAnchor.MiddleCenter;
+            string duration = GetProjectDurationText(project);
+            if (duration == null)
+            {
+                GUI.color = costColor;
+                Widgets.Label(costRect, costText);
+            }
+            else
+            {
+                GUI.color = costColor;
+                Widgets.Label(new Rect(costRect.x, costRect.y + 2f, costRect.width, 22f), costText);
+                GUI.color = new Color(0.62f, 0.62f, 0.62f, costColor.a);
+                Widgets.Label(new Rect(costRect.x, costRect.y + 24f, costRect.width, 22f), duration);
+            }
+            Text.WordWrap = wordWrap;
+        }
+
         private float MeasureCostColumnWidth(IEnumerable<ResearchProjectDef> projects)
         {
             Text.Font = GameFont.Small;
@@ -138,6 +204,9 @@ namespace CM_Semi_Random_Research
                     continue;
 
                 width = Mathf.Max(width, Text.CalcSize(GetProjectCostText(project)).x + 12f);
+                string duration = GetProjectDurationText(project);
+                if (duration != null)
+                    width = Mathf.Max(width, Text.CalcSize(duration).x + 12f);
             }
             return width;
         }

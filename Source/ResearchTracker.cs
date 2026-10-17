@@ -652,7 +652,7 @@ namespace CM_Semi_Random_Research
             currentAvailableProjects = currentAvailableProjects.Where(projectDef => projectDef != null &&
                 !projectDef.IsFinished &&
                 !Compatibility.IsHiddenResearch(projectDef) &&
-                !ResearchSnoozeTracker.IsSnoozedNow(projectDef)).ToList();
+                !ResearchSnoozeTracker.IsExcludedNow(projectDef)).ToList();
 
             for (int i = currentProjects.Count - 1; i >= 0; i--)
             {
@@ -814,7 +814,7 @@ namespace CM_Semi_Random_Research
                 ResearchProjectDef projectDef = projectsOfType[i];
                 if (currentlyOffered.Contains(projectDef))
                     continue;
-                if (projectDef.IsDummyResearch() || ResearchSnoozeTracker.IsSnoozedNow(projectDef))
+                if (projectDef.IsDummyResearch() || ResearchSnoozeTracker.IsExcludedNow(projectDef))
                     continue;
                 if (!projectDef.CanStartNow)
                     continue;

@@ -80,6 +80,8 @@ namespace CM_Semi_Random_Research
         public bool suppressHandoverMessages = false;
         public bool colorAndGroupByTechLevel = true;
         public bool adaptiveSize = false;
+        public bool confirmDependentSnooze = true;
+        public bool showCompletionDates = false;
 
         public bool AllowOneHigherTechProjectActive =>
             allowOneHigherTechProject && !ResearchTabWindowSwitcher.NodeResearchInstalled;
@@ -119,6 +121,8 @@ namespace CM_Semi_Random_Research
             Scribe_Values.Look(ref suppressHandoverMessages, "suppressHandoverMessages", false);
             Scribe_Values.Look(ref colorAndGroupByTechLevel, "colorAndGroupByTechLevel", true);
             Scribe_Values.Look(ref adaptiveSize, "adaptiveSize", false);
+            Scribe_Values.Look(ref confirmDependentSnooze, "confirmDependentSnooze", true);
+            Scribe_Values.Look(ref showCompletionDates, "showCompletionDates", false);
         }
 
         private static readonly Color SectionColor = new Color(0.62f, 0.72f, 0.80f);
@@ -168,12 +172,14 @@ namespace CM_Semi_Random_Research
             Checkbox(listing, "AutoOpen", ref autoOpenOnCompletion);
             Checkbox(listing, "ShowLetter", ref showCompletionLetter);
             Checkbox(listing, "AllowSnoozing", ref allowSnoozing);
+            Checkbox(listing, "ConfirmDependentSnooze", ref confirmDependentSnooze);
 
             listing.GapLine();
 
             SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Display");
             Checkbox(listing, "ColorGroup", ref colorAndGroupByTechLevel);
             Checkbox(listing, "ShowGraph", ref showResearchRateGraph);
+            Checkbox(listing, "ShowCompletionDates", ref showCompletionDates);
             Checkbox(listing, "AdaptiveSize", ref adaptiveSize);
 
             if (ResearchTabWindowSwitcher.AnyTreeInstalled)
