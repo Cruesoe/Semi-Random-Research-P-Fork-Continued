@@ -288,17 +288,14 @@ namespace CM_Semi_Random_Research
             return "CM_Semi_Random_Research_RatePerDayShort".Translate(ratePerDay.ToString("F1")).ToString();
         }
 
-        public static string FormatETA(float daysToCompletion)
-        {
-            return FormatDuration(daysToCompletion);
-        }
-
         public static string FormatETAUntilComplete(float daysToCompletion)
         {
             if (daysToCompletion < 0)
                 return "CM_Semi_Random_Research_Unknown".Translate();
             if (daysToCompletion == 0)
                 return "CM_Semi_Random_Research_Complete".Translate();
+            if (ShowDates && DateAfter(daysToCompletion) is string date)
+                return "CM_Semi_Random_Research_ETA_CompleteAround".Translate(date).ToString();
 
             return "CM_Semi_Random_Research_ETA_UntilComplete".Translate(FormatDuration(daysToCompletion)).ToString();
         }
@@ -307,7 +304,7 @@ namespace CM_Semi_Random_Research
         public static string DateAfter(float days)
         {
             Map map = Find.CurrentMap ?? Find.AnyPlayerHomeMap;
-            if (map == null || days < 0f || days > 30000f)
+            if (map == null || days < 0f || days > 1000000f)
                 return null;
             long ticks = Find.TickManager.TicksAbs + (long)(days * GenDate.TicksPerDay);
             return GenDate.DateShortStringAt(ticks, Find.WorldGrid.LongLatOf(map.Tile));
@@ -316,11 +313,12 @@ namespace CM_Semi_Random_Research
         // A time left, or the date it ends on when "Show completion dates" is on.
         public static string FormatEstimate(float daysToCompletion)
         {
-            if (daysToCompletion > 0f && SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.showCompletionDates &&
-                DateAfter(daysToCompletion) is string date)
+            if (daysToCompletion > 0f && ShowDates && DateAfter(daysToCompletion) is string date)
                 return date;
             return FormatDuration(daysToCompletion);
         }
+
+        internal static bool ShowDates => SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.showCompletionDates;
 
         private static string FormatDuration(float daysToCompletion)
         {

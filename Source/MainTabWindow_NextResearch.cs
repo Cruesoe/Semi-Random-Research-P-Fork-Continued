@@ -94,6 +94,7 @@ namespace CM_Semi_Random_Research
         private float cachedSharedCostWidth;
         private int cachedLeftListsRevision = -1;
         private int cachedLeftCurrentHash = int.MinValue;
+        private bool cachedLeftDates;
         private bool cachedSelectedCanStartNow;
         private ResearchProjectDef cachedCanStartNowProject;
         private int cachedCanStartNowTick = -1;

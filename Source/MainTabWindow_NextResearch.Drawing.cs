@@ -98,6 +98,7 @@ namespace CM_Semi_Random_Research
         private readonly Dictionary<ResearchProjectDef, string> costTextCache =
             new Dictionary<ResearchProjectDef, string>();
         private int costTextCacheTick = int.MinValue;
+        private bool costTextCacheDates;
 
         private void InvalidateCostTextCache()
         {
@@ -112,11 +113,13 @@ namespace CM_Semi_Random_Research
                 return string.Empty;
 
             int tick = Find.TickManager?.TicksGame ?? 0;
-            if (tick != costTextCacheTick)
+            // Also rebuilt when "Show completion dates" changes, which can happen while paused.
+            if (tick != costTextCacheTick || costTextCacheDates != ResearchRateTracker.ShowDates)
             {
                 costTextCache.Clear();
                 durationTextCache.Clear();
                 costTextCacheTick = tick;
+                costTextCacheDates = ResearchRateTracker.ShowDates;
             }
             else if (costTextCache.TryGetValue(project, out string cached))
             {
@@ -167,7 +170,7 @@ namespace CM_Semi_Random_Research
             float remaining = project.CostApparent - project.ProgressApparent;
             string text = null;
             if (rate > 0f && remaining > 0f && remaining / rate <= 100000f)
-                text = "CM_Semi_Random_Research_OfferDuration".Translate(ResearchRateTracker.FormatETA(remaining / rate));
+                text = "CM_Semi_Random_Research_OfferDuration".Translate(ResearchRateTracker.FormatEstimate(remaining / rate));
             durationTextCache[project] = text;
             return text;
         }

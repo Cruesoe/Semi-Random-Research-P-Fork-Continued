@@ -43,13 +43,16 @@ namespace CM_Semi_Random_Research
             int revision = researchTracker != null ? researchTracker.OffersRevision : -1;
             int currentHash = CurrentProjectsHash(researchTracker?.CurrentProject);
 
-            if (revision == cachedLeftListsRevision && currentHash == cachedLeftCurrentHash)
+            // Dates are wider than durations, so the cost column is measured again when "Show completion dates" changes.
+            bool dates = ResearchRateTracker.ShowDates;
+            if (revision == cachedLeftListsRevision && currentHash == cachedLeftCurrentHash && dates == cachedLeftDates)
             {
                 return;
             }
 
             cachedLeftListsRevision = revision;
             cachedLeftCurrentHash = currentHash;
+            cachedLeftDates = dates;
 
             ResearchProjectDef activeNonAnomalyProject = null;
             ResearchProjectDef activeAnomalyProjectBasic = null;
