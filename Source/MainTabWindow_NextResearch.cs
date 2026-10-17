@@ -163,7 +163,7 @@ namespace CM_Semi_Random_Research
                 cachedSelectedCanStartNow = selectedProject != null && selectedProject.CanStartNow;
             }
 
-            cachedCanReroll = cachedTracker != null && cachedTracker.CanReroll(null);
+            cachedCanReroll = cachedTracker != null && cachedTracker.CanReroll();
             RefreshFooterStartMode();
         }
 

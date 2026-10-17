@@ -214,21 +214,6 @@ namespace CM_Semi_Random_Research
             return progressChange;
         }
 
-        public float GetCurrentRate(ResearchProjectDef project)
-        {
-            if (project == null) return GetGlobalCurrentRate();
-
-            if (projectDataCache.TryGetValue(project.defName, out ProjectRateData projectData) && projectData.rateSamples.Count > 0)
-                return projectData.rateSamples[projectData.rateSamples.Count - 1];
-
-            return 0f;
-        }
-
-        private float GetGlobalCurrentRate()
-        {
-            return globalRateSamples.Count > 0 ? globalRateSamples[globalRateSamples.Count - 1] : 0f;
-        }
-
         // Falls back to the global average when the project has no samples.
         public float GetAverageRate(ResearchProjectDef project, int days = DAYS_TO_TRACK)
         {
@@ -280,24 +265,9 @@ namespace CM_Semi_Random_Research
 
         public ResearchRateInfo GetResearchRateInfo(ResearchProjectDef project)
         {
-            float current = project != null ? GetCurrentRate(project) : GetGlobalCurrentRate();
-            float average = project != null ? GetAverageRate(project) : GetGlobalAverageRate();
-            float eta = -1f;
-            if (project != null)
-            {
-                float averageForEta = average > 0f ? average : GetGlobalAverageRate();
-                if (averageForEta > 0f)
-                {
-                    float remainingProgress = project.CostApparent - project.ProgressApparent;
-                    eta = remainingProgress <= 0f ? 0f : remainingProgress / averageForEta;
-                }
-            }
-
             return new ResearchRateInfo
             {
-                CurrentRate = current,
-                AverageRate = average,
-                EstimatedDaysToCompletion = eta,
+                AverageRate = project != null ? GetAverageRate(project) : GetGlobalAverageRate(),
                 TotalSamples = project != null
                     ? (projectDataCache.TryGetValue(project.defName, out ProjectRateData data) ? data.rateSamples.Count : 0)
                     : globalRateSamples.Count
@@ -468,9 +438,7 @@ namespace CM_Semi_Random_Research
 
     public class ResearchRateInfo
     {
-        public float CurrentRate { get; set; }
         public float AverageRate { get; set; }
-        public float EstimatedDaysToCompletion { get; set; }
         public int TotalSamples { get; set; }
 
         public string AverageRateFormatted => ResearchRateTracker.FormatRate(AverageRate);

@@ -652,6 +652,7 @@ namespace CM_Semi_Random_Research
             currentAvailableProjects = currentAvailableProjects.Where(projectDef => projectDef != null &&
                 !projectDef.IsFinished &&
                 !Compatibility.IsHiddenResearch(projectDef) &&
+                Find.Storyteller.difficulty.AllowedBy(projectDef.hideWhen) &&
                 !ResearchSnoozeTracker.IsExcludedNow(projectDef)).ToList();
 
             for (int i = currentProjects.Count - 1; i >= 0; i--)
@@ -815,6 +816,9 @@ namespace CM_Semi_Random_Research
                 if (currentlyOffered.Contains(projectDef))
                     continue;
                 if (projectDef.IsDummyResearch() || ResearchSnoozeTracker.IsExcludedNow(projectDef))
+                    continue;
+                // Projects the difficulty's trap, turret and mortar settings hide from the research tree.
+                if (!Find.Storyteller.difficulty.AllowedBy(projectDef.hideWhen))
                     continue;
                 if (!projectDef.CanStartNow)
                     continue;
@@ -1185,40 +1189,28 @@ namespace CM_Semi_Random_Research
             }
         }
 
-        // A null category means every category.
-        public bool CanReroll(KnowledgeCategoryDef type)
+        // True when any category has offers it can reroll.
+        public bool CanReroll()
         {
             if (SemiRandomResearchMod.settings.allowManualReroll == ManualReroll.None)
                 return false;
             if (all_typeKeys == null) RefreshTypeKeys();
 
-            if (type == null)
+            for (int i = 0; i < all_typeKeys.Count; i++)
             {
-                for (int i = 0; i < all_typeKeys.Count; i++)
-                {
-                    string key = all_typeKeys[i];
-                    if (CanRerollByKey(key) && HasRerollableOffers(key))
-                        return true;
-                }
-                return false;
+                string key = all_typeKeys[i];
+                if (CanRerollByKey(key) && HasRerollableOffers(key))
+                    return true;
             }
-
-            string typeKey = type.defName;
-            return CanRerollByKey(typeKey) && HasRerollableOffers(typeKey);
+            return false;
         }
 
-        public void Reroll(KnowledgeCategoryDef type)
+        // Rerolls every category.
+        public void Reroll()
         {
-            if (type == null)
-            {
-                if (all_typeKeys == null) RefreshTypeKeys();
-                for (int i = 0; i < all_typeKeys.Count; i++)
-                    RerollByKey(all_typeKeys[i]);
-            }
-            else
-            {
-                RerollByKey(type.defName);
-            }
+            if (all_typeKeys == null) RefreshTypeKeys();
+            for (int i = 0; i < all_typeKeys.Count; i++)
+                RerollByKey(all_typeKeys[i]);
         }
 
         // Rebuilds the offers now, so count changes apply without reopening the tab.

@@ -535,6 +535,8 @@ namespace CM_Semi_Random_Research
                 $"autoOpenOnCompletion: {autoOpenOnCompletion} " +
                 $"autoPickNextResearch: {autoPickNextResearch} " +
                 $"allowSnoozing: {allowSnoozing} " +
+                $"confirmDependentSnooze: {confirmDependentSnooze} " +
+                $"showCompletionDates: {showCompletionDates} " +
                 $"suppressHandoverMessages: {suppressHandoverMessages} " +
                 $"colorAndGroupByTechLevel: {colorAndGroupByTechLevel} " +
                 $"adaptiveSize: {adaptiveSize}");

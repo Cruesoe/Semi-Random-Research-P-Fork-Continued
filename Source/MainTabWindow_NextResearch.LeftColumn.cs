@@ -495,7 +495,7 @@ namespace CM_Semi_Random_Research
             if (showRerollButton)
             {
                 // Recomputed every draw, so a reroll setting changed while the window is open applies at once.
-                cachedCanReroll = researchTracker.CanReroll(null);
+                cachedCanReroll = researchTracker.CanReroll();
 
                 if (cachedCanReroll)
                 {
@@ -503,9 +503,9 @@ namespace CM_Semi_Random_Research
                     {
                         SoundDefOf.Click.PlayOneShotOnCamera();
                         SoundDefOf.TabOpen.PlayOneShotOnCamera();
-                        researchTracker.Reroll(null);
+                        researchTracker.Reroll();
                         lastRerollTime = Time.realtimeSinceStartup;
-                        cachedCanReroll = researchTracker.CanReroll(null);
+                        cachedCanReroll = researchTracker.CanReroll();
                         CopyAvailableProjects(researchTracker.PeekAvailableProjects());
                         InvalidateLeftColumnCache();
                     }

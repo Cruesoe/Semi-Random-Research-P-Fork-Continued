@@ -71,6 +71,8 @@ namespace CM_Semi_Random_Research
 
         // Snoozed projects and everything depending on them, rebuilt when the snoozes change or a project finishes.
         private readonly HashSet<ResearchProjectDef> excluded = new HashSet<ResearchProjectDef>();
+        // The excluded projects that are not snoozed themselves, by tech level and then cost.
+        private readonly List<ResearchProjectDef> blockedSorted = new List<ResearchProjectDef>();
         private int snoozeVersion;
         private int excludedSnoozeVersion = -1;
         private int excludedCompletionRevision = -1;
@@ -95,6 +97,14 @@ namespace CM_Semi_Random_Research
                 if (def != null && !def.IsFinished)
                     AddWithDependents(excluded, def);
             }
+
+            blockedSorted.Clear();
+            foreach (ResearchProjectDef def in excluded)
+            {
+                if (!snoozedProjects.Contains(def))
+                    blockedSorted.Add(def);
+            }
+            blockedSorted.Sort(ByTechLevelThenCost);
         }
 
         private static void AddWithDependents(HashSet<ResearchProjectDef> result, ResearchProjectDef root)
@@ -173,12 +183,11 @@ namespace CM_Semi_Random_Research
         {
             buffer.Clear();
             EnsureExcluded();
-            foreach (ResearchProjectDef def in excluded)
+            for (int i = 0; i < blockedSorted.Count; i++)
             {
-                if (!snoozedProjects.Contains(def) && Listable(def))
-                    buffer.Add(def);
+                if (Listable(blockedSorted[i]))
+                    buffer.Add(blockedSorted[i]);
             }
-            buffer.Sort(ByTechLevelThenCost);
         }
 
         // Snoozed projects that set this one aside through its prerequisites.
@@ -215,11 +224,6 @@ namespace CM_Semi_Random_Research
 
         private static int ByTechLevelThenCost(ResearchProjectDef a, ResearchProjectDef b) =>
             a.techLevel != b.techLevel ? a.techLevel.CompareTo(b.techLevel) : a.CostApparent.CompareTo(b.CostApparent);
-
-        public bool IsSnoozed(ResearchProjectDef def)
-        {
-            return def != null && snoozedProjects.Contains(def);
-        }
 
         // Fills a caller-owned buffer, since the snoozed view asks on every OnGUI pass.
         public void GetSnoozedProjects(List<ResearchProjectDef> buffer)
