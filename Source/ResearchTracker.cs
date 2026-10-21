@@ -1,3 +1,4 @@
+using HarmonyLib;
 using RimWorld;
 using RimWorld.Planet;
 using System;
@@ -190,7 +191,7 @@ namespace CM_Semi_Random_Research
 
             ResearchProjectDef vanilla = proj.knowledgeCategory == null
                 ? Find.ResearchManager.GetProject()
-                : Find.ResearchManager.GetProject(proj.knowledgeCategory);
+                : GetActiveProject(proj.knowledgeCategory);
 
             return vanilla != null && vanilla != proj && !vanilla.IsFinished && GetCategoryKey(vanilla) == key;
         }
@@ -258,6 +259,53 @@ namespace CM_Semi_Random_Research
 
             all_typeKeys = all_typeKeys.Distinct().ToList();
             typeKeysTrackAnomaly = all_typeKeys.Contains("Basic") || all_typeKeys.Contains("Advanced");
+        }
+
+        // Vanilla's GetProject(category) throws when the save's Anomaly project list is missing or holds a broken entry,
+        // which spammed errors every tick. Clean the list once and retry; if it still fails, treat the category as idle.
+        private static bool anomalyProjectsRepaired;
+
+        public static ResearchProjectDef GetActiveProject(KnowledgeCategoryDef category)
+        {
+            ResearchManager manager = Find.ResearchManager;
+            if (category == null)
+                return manager.GetProject();
+
+            try
+            {
+                return manager.GetProject(category);
+            }
+            catch (NullReferenceException)
+            {
+                if (!anomalyProjectsRepaired)
+                {
+                    anomalyProjectsRepaired = true;
+                    RepairAnomalyProjects(manager);
+                    try
+                    {
+                        return manager.GetProject(category);
+                    }
+                    catch (NullReferenceException)
+                    {
+                    }
+                }
+                return null;
+            }
+        }
+
+        private static void RepairAnomalyProjects(ResearchManager manager)
+        {
+            List<ResearchManager.KnowledgeCategoryProject> list = manager.CurrentAnomalyKnowledgeProjects;
+            if (list == null)
+            {
+                AccessTools.Field(typeof(ResearchManager), "currentAnomalyKnowledgeProjects")
+                    ?.SetValue(manager, new List<ResearchManager.KnowledgeCategoryProject>());
+                Log.Warning("[Semi Random Research] Rebuilt the save's missing Anomaly research list.");
+                return;
+            }
+
+            int removed = list.RemoveAll(entry => entry == null || entry.category == null);
+            Log.Warning("[Semi Random Research] Removed " + removed + " broken entries from the save's Anomaly research list.");
         }
 
         // Pseudo-category of a project. A def's tab and knowledge category are fixed once loaded, so the answer is cached.
@@ -358,14 +406,14 @@ namespace CM_Semi_Random_Research
             activeByTypeKeyStale = false;
             activeByTypeKey.Clear();
 
-            ResearchProjectDef standardActive = Find.ResearchManager.GetProject(null);
+            ResearchProjectDef standardActive = GetActiveProject(null);
             if (standardActive != null)
                 activeByTypeKey[GetCategoryKey(standardActive)] = standardActive;
 
             List<KnowledgeCategoryDef> categories = DefDatabase<KnowledgeCategoryDef>.AllDefsListForReading;
             for (int i = 0; i < categories.Count; i++)
             {
-                ResearchProjectDef catActive = Find.ResearchManager.GetProject(categories[i]);
+                ResearchProjectDef catActive = GetActiveProject(categories[i]);
                 if (catActive != null)
                     activeByTypeKey[GetCategoryKey(catActive)] = catActive;
             }
@@ -1073,11 +1121,11 @@ namespace CM_Semi_Random_Research
         {
             activeByTypeKeyStale = true;
             ResearchProjectDef active = null;
-            ResearchProjectDef standardActive = Find.ResearchManager.GetProject(null);
+            ResearchProjectDef standardActive = GetActiveProject(null);
             if (standardActive != null && GetCategoryKey(standardActive) == typeKey) active = standardActive;
             foreach (var cat in DefDatabase<KnowledgeCategoryDef>.AllDefsListForReading)
             {
-                ResearchProjectDef catActive = Find.ResearchManager.GetProject(cat);
+                ResearchProjectDef catActive = GetActiveProject(cat);
                 if (catActive != null && GetCategoryKey(catActive) == typeKey) active = catActive;
             }
 
@@ -1184,7 +1232,7 @@ namespace CM_Semi_Random_Research
             }
             else
             {
-                ResearchProjectDef active = Find.ResearchManager.GetProject(type);
+                ResearchProjectDef active = GetActiveProject(type);
                 if (active != null) SetCurrentProjectByKey(null, GetCategoryKey(active));
             }
         }
