@@ -17,16 +17,18 @@ namespace CM_Semi_Random_Research
         // In completion order, so the requested project comes last.
         private static readonly List<ResearchProjectDef> finishedChain = new List<ResearchProjectDef>();
 
-        // Set when the outermost call passes doCompletionLetter false: starting research, scenario research, a colony move.
+        // Set when the outermost call passes both doCompletionDialog and doCompletionLetter false: starting research, scenario research, a colony move.
         private static bool silentChain;
 
         public static bool InsideFinishProject => finishDepth > 0;
 
+        // Runs first to read the caller's flags before other mods' prefixes change them (Triumphant Research clears doCompletionLetter).
         [HarmonyPrefix]
+        [HarmonyPriority(Priority.First)]
         public static void Prefix(ref bool doCompletionDialog, bool doCompletionLetter)
         {
             if (finishDepth == 0)
-                silentChain = !doCompletionLetter;
+                silentChain = !doCompletionDialog && !doCompletionLetter;
             finishDepth++;
 
             // The letter and auto-open settings replace vanilla's completion popup. doCompletionLetter only sends a project's own discovery letter, so it is kept.
