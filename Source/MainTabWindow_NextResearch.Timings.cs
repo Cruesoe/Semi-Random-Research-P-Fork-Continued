@@ -5,7 +5,7 @@ using Verse;
 
 namespace CM_Semi_Random_Research
 {
-    // The timings panel under the standard research card: research speed, the current project and all remaining research.
+    // The timings panel under the standard research card: research speed, the current project and all remaining research (or the current era's).
     public partial class MainTabWindow_NextResearch
     {
         private const float TimingsHeight = 54f;
@@ -76,23 +76,30 @@ namespace CM_Semi_Random_Research
             }
 
             // Every unfinished standard project the difficulty allows, available or not, except snoozed ones and what they block.
+            // With the era setting, only those of the player's current tech level.
+            bool eraOnly = SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.timingsShowCurrentEra;
+            TechLevel era = Faction.OfPlayer.def.techLevel;
             float treeWork = 0f;
             int treeCount = 0;
             List<ResearchProjectDef> allDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading;
             for (int i = 0; i < allDefs.Count; i++)
             {
                 ResearchProjectDef def = allDefs[i];
-                if (def.IsFinished || ResearchTracker.GetCategoryKey(def) != "Standard" || def.IsDummyResearch() ||
-                    Compatibility.IsHiddenResearch(def) || !Find.Storyteller.difficulty.AllowedBy(def.hideWhen) ||
+                if (def.IsFinished || (eraOnly && def.techLevel != era) || ResearchTracker.GetCategoryKey(def) != "Standard" ||
+                    def.IsDummyResearch() || Compatibility.IsHiddenResearch(def) || !Find.Storyteller.difficulty.AllowedBy(def.hideWhen) ||
                     ResearchSnoozeTracker.IsExcludedNow(def))
                     continue;
                 treeWork += Mathf.Max(0f, def.CostApparent - def.ProgressApparent);
                 treeCount++;
             }
-            string treeTip = "CM_Semi_Random_Research_TimingTreeTip".Translate(treeCount, treeWork.ToString("N0")) + DateLine(treeWork, rate);
+            string eraName = era.ToStringHuman();
+            string treeLabel = eraOnly ? "CM_Semi_Random_Research_TimingEra".Translate(eraName.CapitalizeFirst()).ToString()
+                : "CM_Semi_Random_Research_TimingTree".Translate().ToString();
+            string treeTip = (eraOnly ? "CM_Semi_Random_Research_TimingEraTip".Translate(treeCount, eraName, treeWork.ToString("N0"))
+                : "CM_Semi_Random_Research_TimingTreeTip".Translate(treeCount, treeWork.ToString("N0"))) + DateLine(treeWork, rate);
             string treeValue = treeWork <= 0f ? "CM_Semi_Random_Research_Complete".Translate().ToString()
                 : measured ? ResearchRateTracker.FormatEstimate(treeWork / rate) : unknown;
-            timings.Add(new TimingStat("CM_Semi_Random_Research_TimingTree".Translate(), treeValue, measured || treeWork <= 0f ? treeTip : noRateTip));
+            timings.Add(new TimingStat(treeLabel, treeValue, measured || treeWork <= 0f ? treeTip : noRateTip));
         }
 
         private static string DateLine(float work, float rate)

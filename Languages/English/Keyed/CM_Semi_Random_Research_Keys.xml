@@ -81,6 +81,8 @@
   <CM_Semi_Random_Research_Setting_ShowGraph_Description>Shows the research rate graph on the active research card.</CM_Semi_Random_Research_Setting_ShowGraph_Description>
   <CM_Semi_Random_Research_Setting_ShowCompletionDates_Label>Show completion dates instead of time left</CM_Semi_Random_Research_Setting_ShowCompletionDates_Label>
   <CM_Semi_Random_Research_Setting_ShowCompletionDates_Description>Show research estimates (offers, the timings panel and tech level progress) as the in-game dates they should finish on, instead of the time remaining.</CM_Semi_Random_Research_Setting_ShowCompletionDates_Description>
+  <CM_Semi_Random_Research_Setting_TimingsCurrentEra_Label>Time the current tech level instead of all research</CM_Semi_Random_Research_Setting_TimingsCurrentEra_Label>
+  <CM_Semi_Random_Research_Setting_TimingsCurrentEra_Description>In the timings panel, show the time to finish the remaining standard research of your current tech level instead of all remaining research.</CM_Semi_Random_Research_Setting_TimingsCurrentEra_Description>
   <CM_Semi_Random_Research_Setting_ShowLetter_Label>Show completion letter</CM_Semi_Random_Research_Setting_ShowLetter_Label>
   <CM_Semi_Random_Research_Setting_ShowLetter_Description>Sends a letter when a research project is finished.</CM_Semi_Random_Research_Setting_ShowLetter_Description>
   <CM_Semi_Random_Research_Setting_ColorGroup_Label>Color and group by tech level</CM_Semi_Random_Research_Setting_ColorGroup_Label>
@@ -183,6 +185,8 @@
   <CM_Semi_Random_Research_TimingPausedTip>{0} is paused. Resume it to count down again.</CM_Semi_Random_Research_TimingPausedTip>
   <CM_Semi_Random_Research_TimingTree>All research</CM_Semi_Random_Research_TimingTree>
   <CM_Semi_Random_Research_TimingTreeTip>Time to finish all {0} remaining standard projects, including those not yet available: {1} research points. Snoozed projects and those they set aside are left out, and tech levels or other requirements may hold some back for longer.</CM_Semi_Random_Research_TimingTreeTip>
+  <CM_Semi_Random_Research_TimingEra>{0} research</CM_Semi_Random_Research_TimingEra>
+  <CM_Semi_Random_Research_TimingEraTip>Time to finish all {0} remaining {1} standard projects, including those not yet available: {2} research points. Snoozed projects and those they set aside are left out, and other requirements may hold some back for longer.</CM_Semi_Random_Research_TimingEraTip>
   <CM_Semi_Random_Research_TimingFinishes>Expected to finish around {0}.</CM_Semi_Random_Research_TimingFinishes>
   <CM_Semi_Random_Research_TimingNoRateTip>Estimates appear once research progress has been measured. It is measured every hour and averaged over up to the last ten days.</CM_Semi_Random_Research_TimingNoRateTip>
 

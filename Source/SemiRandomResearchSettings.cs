@@ -82,6 +82,7 @@ namespace CM_Semi_Random_Research
         public bool adaptiveSize = false;
         public bool confirmDependentSnooze = true;
         public bool showCompletionDates = false;
+        public bool timingsShowCurrentEra = false;
 
         public bool AllowOneHigherTechProjectActive =>
             allowOneHigherTechProject && !ResearchTabWindowSwitcher.NodeResearchInstalled;
@@ -123,6 +124,7 @@ namespace CM_Semi_Random_Research
             Scribe_Values.Look(ref adaptiveSize, "adaptiveSize", false);
             Scribe_Values.Look(ref confirmDependentSnooze, "confirmDependentSnooze", true);
             Scribe_Values.Look(ref showCompletionDates, "showCompletionDates", false);
+            Scribe_Values.Look(ref timingsShowCurrentEra, "timingsShowCurrentEra", false);
         }
 
         private static readonly Color SectionColor = new Color(0.62f, 0.72f, 0.80f);
@@ -180,6 +182,7 @@ namespace CM_Semi_Random_Research
             Checkbox(listing, "ColorGroup", ref colorAndGroupByTechLevel);
             Checkbox(listing, "ShowGraph", ref showResearchRateGraph);
             Checkbox(listing, "ShowCompletionDates", ref showCompletionDates);
+            Checkbox(listing, "TimingsCurrentEra", ref timingsShowCurrentEra);
             Checkbox(listing, "AdaptiveSize", ref adaptiveSize);
 
             if (ResearchTabWindowSwitcher.AnyTreeInstalled)
@@ -537,6 +540,7 @@ namespace CM_Semi_Random_Research
                 $"allowSnoozing: {allowSnoozing} " +
                 $"confirmDependentSnooze: {confirmDependentSnooze} " +
                 $"showCompletionDates: {showCompletionDates} " +
+                $"timingsShowCurrentEra: {timingsShowCurrentEra} " +
                 $"suppressHandoverMessages: {suppressHandoverMessages} " +
                 $"colorAndGroupByTechLevel: {colorAndGroupByTechLevel} " +
                 $"adaptiveSize: {adaptiveSize}");
