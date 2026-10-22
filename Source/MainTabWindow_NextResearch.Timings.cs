@@ -75,8 +75,8 @@ namespace CM_Semi_Random_Research
                     measured ? ResearchRateTracker.FormatEstimate(work / rate) : unknown, measured ? tip : noRateTip));
             }
 
-            // Every unfinished standard project the difficulty allows, available or not, except snoozed ones and what they block.
-            // With the era setting, only those of the player's current tech level.
+            // Every unfinished project that counts toward the estimates, available or not. With the era setting, only those
+            // of the player's current tech level.
             bool eraOnly = SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.timingsShowCurrentEra;
             TechLevel era = Faction.OfPlayer.def.techLevel;
             float treeWork = 0f;
@@ -85,9 +85,7 @@ namespace CM_Semi_Random_Research
             for (int i = 0; i < allDefs.Count; i++)
             {
                 ResearchProjectDef def = allDefs[i];
-                if (def.IsFinished || (eraOnly && def.techLevel != era) || ResearchTracker.GetCategoryKey(def) != "Standard" ||
-                    def.IsDummyResearch() || Compatibility.IsHiddenResearch(def) || !Find.Storyteller.difficulty.AllowedBy(def.hideWhen) ||
-                    ResearchSnoozeTracker.IsExcludedNow(def))
+                if (def.IsFinished || (eraOnly && def.techLevel != era) || !CountsTowardEstimates(def))
                     continue;
                 treeWork += Mathf.Max(0f, def.CostApparent - def.ProgressApparent);
                 treeCount++;

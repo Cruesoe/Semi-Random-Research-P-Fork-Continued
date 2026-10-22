@@ -4,17 +4,6 @@ using Verse;
 
 namespace CM_Semi_Random_Research
 {
-    [HarmonyPatch(typeof(Alert_NeedResearchProject), "OnClick")]
-    public static class Patch_Alert_NeedResearchProject_OnClick
-    {
-        [HarmonyPrefix]
-        public static bool Prefix()
-        {
-            ResearchTabCompatibility.Open(ResearchTabDefOf.Main);
-            return false;
-        }
-    }
-
     // A paused standard project has its own alert.
     [HarmonyPatch(typeof(Alert_NeedResearchProject), nameof(Alert_NeedResearchProject.GetReport))]
     public static class Patch_Alert_NeedResearchProject_GetReport

@@ -185,41 +185,40 @@ namespace CM_Semi_Random_Research
             Checkbox(listing, "TimingsCurrentEra", ref timingsShowCurrentEra);
             Checkbox(listing, "AdaptiveSize", ref adaptiveSize);
 
-            if (ResearchTabWindowSwitcher.AnyTreeInstalled)
-            {
-                listing.GapLine();
-                SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Trees");
+            listing.GapLine();
+            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Trees");
 
-                string treeTooltip = "CM_Semi_Random_Research_Setting_TreeButtonOpens_Description".Translate();
-                listing.Label("CM_Semi_Random_Research_Setting_TreeButtonOpens_Label".Translate(), -1, treeTooltip);
+            // Without a tree mod the switch button always opens the vanilla tree, so these are greyed out.
+            bool anyTree = ResearchTabWindowSwitcher.AnyTreeInstalled;
+            string noTreeTip = anyTree ? null : "CM_Semi_Random_Research_Setting_Trees_LockedTip".Translate().ToString();
+            string treeTooltip = noTreeTip ?? "CM_Semi_Random_Research_Setting_TreeButtonOpens_Description".Translate();
+            GUI.color = anyTree ? Color.white : Color.gray;
+            listing.Label("CM_Semi_Random_Research_Setting_TreeButtonOpens_Label".Translate(), -1, treeTooltip);
+            GUI.color = Color.white;
 
-                List<FloatMenuOption> treeOptions = new List<FloatMenuOption>();
-                AddTreeOption(treeOptions, PreferredResearchTree.NodeResearch);
-                AddTreeOption(treeOptions, PreferredResearchTree.YART);
-                AddTreeOption(treeOptions, PreferredResearchTree.Sleek);
-                AddTreeOption(treeOptions, PreferredResearchTree.NiceResearchTab);
-                AddTreeOption(treeOptions, PreferredResearchTree.Organized);
+            List<FloatMenuOption> treeOptions = new List<FloatMenuOption>();
+            AddTreeOption(treeOptions, PreferredResearchTree.NodeResearch);
+            AddTreeOption(treeOptions, PreferredResearchTree.YART);
+            AddTreeOption(treeOptions, PreferredResearchTree.Sleek);
+            AddTreeOption(treeOptions, PreferredResearchTree.NiceResearchTab);
+            AddTreeOption(treeOptions, PreferredResearchTree.Organized);
 
-                if (!ResearchTabWindowSwitcher.IsTreeAvailable(preferredResearchTree))
-                    preferredResearchTree = ResearchTabWindowSwitcher.GetEffectivePreferredTree();
+            if (anyTree && !ResearchTabWindowSwitcher.IsTreeAvailable(preferredResearchTree))
+                preferredResearchTree = ResearchTabWindowSwitcher.GetEffectivePreferredTree();
 
-                Rect treeButtonOptionRect = listing.GetRect(26);
-                DoButtonOption(treeButtonOptionRect,
-                    PreferredTreeLabel(ResearchTabWindowSwitcher.GetEffectivePreferredTree()),
-                    treeTooltip,
-                    treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10);
+            Rect treeButtonOptionRect = listing.GetRect(26);
+            DoButtonOption(treeButtonOptionRect,
+                anyTree ? PreferredTreeLabel(ResearchTabWindowSwitcher.GetEffectivePreferredTree()) : "CM_Semi_Random_Research_TreeButton".Translate().ToString(),
+                treeTooltip,
+                treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10, anyTree);
 
-                Checkbox(listing, "SuppressHandover", ref suppressHandoverMessages);
-            }
+            Checkbox(listing, "SuppressHandover", ref suppressHandoverMessages, noTreeTip);
 
-            // Verbose logging is only shown in dev mode.
-            if (Prefs.DevMode)
-            {
-                listing.GapLine();
+            listing.GapLine();
 
-                SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Debug");
-                Checkbox(listing, "Verbose_Logging", ref verboseLogging);
-            }
+            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Debug");
+            Checkbox(listing, "Verbose_Logging", ref verboseLogging,
+                Prefs.DevMode ? null : "CM_Semi_Random_Research_Setting_Verbose_Logging_LockedTip".Translate().ToString());
 
             // Column 2: selection rules, rerolls, amounts.
             listing.NewColumn();
@@ -302,10 +301,10 @@ namespace CM_Semi_Random_Research
                 ("CM_Semi_Random_Research_Setting_Manual_Reroll_" + (pendingManualReroll ?? allowManualReroll) + "_Label").Translate(),
                 rerollTooltip, manualRerollOptions, rerollRect.width / 10, rerollRect.width / 10);
 
-            if (allowManualReroll != ManualReroll.None)
-            {
-                IntSetting(listing, "Prevent_Rerolled_From_Appearing", ref reofferAfterAmountOfRerolls, 0);
-            }
+            // Projects are suppressed after manual rerolls and after the reroll when a project is finished.
+            bool rerollsHappen = allowManualReroll != ManualReroll.None || rerollAllEveryTime;
+            IntSetting(listing, "Prevent_Rerolled_From_Appearing", ref reofferAfterAmountOfRerolls, 0,
+                rerollsHappen ? null : "CM_Semi_Random_Research_Setting_Prevent_Rerolled_LockedTip".Translate().ToString());
 
             listing.GapLine();
 
@@ -332,14 +331,14 @@ namespace CM_Semi_Random_Research
                 maxProjectCount = availableProjectCount;
             }
 
-            if (amountSelection == ChoiceAmountSelection.PerColonist)
+            // Only the per colonist count uses these two.
+            bool perColonist = amountSelection == ChoiceAmountSelection.PerColonist;
+            string perColonistTip = perColonist ? null : "CM_Semi_Random_Research_Setting_PerColonist_LockedTip".Translate().ToString();
+            IntSetting(listing, "Additional_Project_Per_XColonists", ref additionalProjectPerXColonists, 1, perColonistTip);
+            IntSetting(listing, "Max_Projects", ref maxProjectCount, 1, perColonistTip);
+            if (perColonist && availableProjectCount > maxProjectCount)
             {
-                IntSetting(listing, "Additional_Project_Per_XColonists", ref additionalProjectPerXColonists, 1);
-                IntSetting(listing, "Max_Projects", ref maxProjectCount, 1);
-                if (availableProjectCount > maxProjectCount)
-                {
-                    availableProjectCount = maxProjectCount;
-                }
+                availableProjectCount = maxProjectCount;
             }
 
             listing.End();
@@ -353,20 +352,34 @@ namespace CM_Semi_Random_Research
             listing.Label(translationKey.Translate().Colorize(SectionColor));
         }
 
-        // Checkbox labeled by <stem>_Label with <stem>_Description as its tooltip.
-        private static void Checkbox(Listing_Standard listing, string keyStem, ref bool value)
+        // Checkbox labeled by <stem>_Label with <stem>_Description as its tooltip. With lockedTip it is greyed out and inert,
+        // and lockedTip names the requirement.
+        private static void Checkbox(Listing_Standard listing, string keyStem, ref bool value, string lockedTip = null)
         {
-            listing.CheckboxLabeled(
-                ("CM_Semi_Random_Research_Setting_" + keyStem + "_Label").Translate(),
-                ref value,
-                ("CM_Semi_Random_Research_Setting_" + keyStem + "_Description").Translate());
+            string label = ("CM_Semi_Random_Research_Setting_" + keyStem + "_Label").Translate();
+            if (lockedTip == null)
+            {
+                listing.CheckboxLabeled(label, ref value, ("CM_Semi_Random_Research_Setting_" + keyStem + "_Description").Translate());
+                return;
+            }
+
+            Rect rect = listing.GetRect(Text.CalcHeight(label, listing.ColumnWidth));
+            if (Mouse.IsOver(rect))
+                Widgets.DrawHighlight(rect);
+            TooltipHandler.TipRegion(rect, lockedTip);
+            GUI.color = Color.gray;
+            Widgets.CheckboxLabeled(rect, label, ref value, disabled: true);
+            GUI.color = Color.white;
+            listing.Gap(listing.verticalSpacing);
         }
 
         // Label with its value and tooltip, and -/+ buttons on the same row so the limits section fits the window's height.
-        private static void IntSetting(Listing_Standard listing, string keyStem, ref int value, int min)
+        // With lockedTip the row is greyed out and inert, and lockedTip names the requirement.
+        private static void IntSetting(Listing_Standard listing, string keyStem, ref int value, int min, string lockedTip = null)
         {
             string label = ("CM_Semi_Random_Research_Setting_" + keyStem + "_Label").Translate() + ": " + value.ToString();
-            string tooltip = ("CM_Semi_Random_Research_Setting_" + keyStem + "_Description").Translate();
+            string tooltip = lockedTip ?? ("CM_Semi_Random_Research_Setting_" + keyStem + "_Description").Translate();
+            bool active = lockedTip == null;
 
             const float buttonWidth = 42f;
             const float buttonsWidth = buttonWidth * 2f + 2f;
@@ -374,19 +387,21 @@ namespace CM_Semi_Random_Research
             Rect row = listing.GetRect(Mathf.Max(24f, Text.CalcHeight(label, labelWidth)));
 
             Rect labelRect = new Rect(row.x, row.y, labelWidth, row.height);
+            GUI.color = active ? Color.white : Color.gray;
             Widgets.Label(labelRect, label);
+            GUI.color = Color.white;
             if (Mouse.IsOver(labelRect))
                 Widgets.DrawHighlight(labelRect);
             TooltipHandler.TipRegion(labelRect, tooltip);
 
             Rect minusRect = new Rect(row.xMax - buttonsWidth, row.y + (row.height - 24f) / 2f, buttonWidth, 24f);
             Rect plusRect = new Rect(minusRect.xMax + 2f, minusRect.y, buttonWidth, 24f);
-            if (Widgets.ButtonText(minusRect, "-1"))
+            if (Widgets.ButtonText(minusRect, "-1", active: active))
             {
                 SoundDefOf.DragSlider.PlayOneShotOnCamera();
                 value = Mathf.Max(min, value - GenUI.CurrentAdjustmentMultiplier());
             }
-            if (Widgets.ButtonText(plusRect, "+1"))
+            if (Widgets.ButtonText(plusRect, "+1", active: active))
             {
                 SoundDefOf.DragSlider.PlayOneShotOnCamera();
                 value += GenUI.CurrentAdjustmentMultiplier();
@@ -431,7 +446,7 @@ namespace CM_Semi_Random_Research
             return "CM_Semi_Random_Research_Tree_NodeResearch".Translate();
         }
 
-        private void DoButtonOption(Rect rect, string text, string tooltip, List<FloatMenuOption> options, float leftPad = 0, float rightPad = 0)
+        private void DoButtonOption(Rect rect, string text, string tooltip, List<FloatMenuOption> options, float leftPad = 0, float rightPad = 0, bool active = true)
         {
             rect.x += leftPad;
             rect.width -= leftPad + rightPad;
@@ -439,7 +454,7 @@ namespace CM_Semi_Random_Research
             if (!tooltip.NullOrEmpty())
                 TooltipHandler.TipRegion(rect, tooltip);
 
-            if (Widgets.ButtonText(rect, text))
+            if (Widgets.ButtonText(rect, text, active: active) && options.Count > 0)
             {
                 Find.WindowStack.Add(new FloatMenu(options));
             }

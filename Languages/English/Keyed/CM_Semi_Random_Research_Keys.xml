@@ -32,6 +32,7 @@
 
   <CM_Semi_Random_Research_Setting_Prevent_Rerolled_From_Appearing_Label>Suppress projects for this many rerolls</CM_Semi_Random_Research_Setting_Prevent_Rerolled_From_Appearing_Label>
   <CM_Semi_Random_Research_Setting_Prevent_Rerolled_From_Appearing_Description>Prevents projects from reappearing as choices for this many rerolls. If nothing else could be offered, they may be offered again sooner. Completing a project also counts as a reroll.</CM_Semi_Random_Research_Setting_Prevent_Rerolled_From_Appearing_Description>
+  <CM_Semi_Random_Research_Setting_Prevent_Rerolled_LockedTip>Has no effect while manual rerolls are set to Never and "Reroll all choices every time" is off.</CM_Semi_Random_Research_Setting_Prevent_Rerolled_LockedTip>
 
   <CM_Semi_Random_Research_Setting_Progress_Adds_Choice_Label>Offer choices if they are partially researched</CM_Semi_Random_Research_Setting_Progress_Adds_Choice_Label>
   <CM_Semi_Random_Research_Setting_Progress_Adds_Choice_Description>How partially researched projects are handled. A book is one way to get a partially researched project.</CM_Semi_Random_Research_Setting_Progress_Adds_Choice_Description>
@@ -56,12 +57,14 @@
   <CM_Semi_Random_Research_Setting_Additional_Project_Per_XColonists_Description>One more choice is offered for every X colonists who can research.</CM_Semi_Random_Research_Setting_Additional_Project_Per_XColonists_Description>
   <CM_Semi_Random_Research_Setting_Max_Projects_Label>Maximum number of choices</CM_Semi_Random_Research_Setting_Max_Projects_Label>
   <CM_Semi_Random_Research_Setting_Max_Projects_Description>Never offers more random projects than this. Depending on "Offer choices if they are partially researched", the total can go above it. This only limits the choices added by colonist count.</CM_Semi_Random_Research_Setting_Max_Projects_Description>
+  <CM_Semi_Random_Research_Setting_PerColonist_LockedTip>Only used when the number of projects to choose from is "Dynamic: colonists".</CM_Semi_Random_Research_Setting_PerColonist_LockedTip>
 
   <CM_Semi_Random_Research_Setting_Equalize_Cost_Label>Balance cost of offered choices</CM_Semi_Random_Research_Setting_Equalize_Cost_Label>
   <CM_Semi_Random_Research_Setting_Equalize_Cost_Description>Picks half of the offered choices so that the average research cost of the choices is close to the average of all possible projects.\n\nPrevents being offered only expensive projects while cheap ones are available.</CM_Semi_Random_Research_Setting_Equalize_Cost_Description>
 
   <CM_Semi_Random_Research_Setting_Verbose_Logging_Label>Verbose logging</CM_Semi_Random_Research_Setting_Verbose_Logging_Label>
   <CM_Semi_Random_Research_Setting_Verbose_Logging_Description>Logs how the offered choices are picked. Fills the log quickly, so keep it off unless you are debugging something.</CM_Semi_Random_Research_Setting_Verbose_Logging_Description>
+  <CM_Semi_Random_Research_Setting_Verbose_Logging_LockedTip>Available in development mode.</CM_Semi_Random_Research_Setting_Verbose_Logging_LockedTip>
 
   <CM_Semi_Random_Research_Available_Projects>Available projects</CM_Semi_Random_Research_Available_Projects>
   <CM_Semi_Random_Research_Reroll_Label>Reroll</CM_Semi_Random_Research_Reroll_Label>
@@ -93,6 +96,7 @@
   <CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>Which research tree the switch button at the bottom of Semi Random Research opens. That button is named after the tree it will take you to. Only trees you have installed are listed. The Research tab itself reopens whichever window you last switched to, so this button is how you change it. Defaults to Node Research when it is installed, then YART, then Sleek Research Tab, then Nice Research Tab, then Research: Organized.</CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>
   <CM_Semi_Random_Research_Setting_SuppressHandover_Label>Suppress handover messages</CM_Semi_Random_Research_Setting_SuppressHandover_Label>
   <CM_Semi_Random_Research_Setting_SuppressHandover_Description>Hide the messages shown when switching between Semi Random Research and another research tree (Node Research, YART, Sleek Research Tab, Nice Research Tab or Research: Organized).</CM_Semi_Random_Research_Setting_SuppressHandover_Description>
+  <CM_Semi_Random_Research_Setting_Trees_LockedTip>Install Node Research, YART, Sleek Research Tab, Nice Research Tab or Research: Organized to use these. Without one, the switch button opens the vanilla research tree.</CM_Semi_Random_Research_Setting_Trees_LockedTip>
   <CM_Semi_Random_Research_Setting_RestrictFaction_LockedTip>Locked on while Node Research is installed. Node Research controls tech-level progression.</CM_Semi_Random_Research_Setting_RestrictFaction_LockedTip>
   <CM_Semi_Random_Research_Setting_OneHigher_DisabledTip>Disabled while Node Research is installed. Node Research controls tech-level progression.</CM_Semi_Random_Research_Setting_OneHigher_DisabledTip>
   <CM_Semi_Random_Research_Tree_NodeResearch>Node Research</CM_Semi_Random_Research_Tree_NodeResearch>

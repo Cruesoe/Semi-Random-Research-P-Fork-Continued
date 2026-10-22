@@ -3,6 +3,5 @@
     <RootNamespace>SemiRandomResearchProgressionContinued</RootNamespace>
     <AssemblyName>SemiRandomResearchProgressionContinued</AssemblyName>
     <Nullable>disable</Nullable>
-    <UnityModules>CoreModule;IMGUIModule;InputLegacyModule;TextRenderingModule</UnityModules>
   </PropertyGroup>
 </Project>

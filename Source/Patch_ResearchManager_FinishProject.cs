@@ -7,8 +7,8 @@ using Verse;
 
 namespace CM_Semi_Random_Research
 {
-    // Vanilla finishes unfinished prerequisites first, through nested FinishProject calls. Each project is collected once
-    // it is marked finished, and the whole chain is handed to the tracker when the outermost call returns.
+    // Vanilla finishes unfinished prerequisites first, through nested FinishProject calls, passing on the caller's flags.
+    // Each project is collected once it is marked finished, and the whole chain is handed to the tracker when the outermost call returns.
     [HarmonyPatch(typeof(ResearchManager), nameof(ResearchManager.FinishProject))]
     public static class Patch_ResearchManager_FinishProject
     {
@@ -17,16 +17,20 @@ namespace CM_Semi_Random_Research
         // In completion order, so the requested project comes last.
         private static readonly List<ResearchProjectDef> finishedChain = new List<ResearchProjectDef>();
 
+        // Set when the outermost call passes doCompletionLetter false: starting research, scenario research, a colony move.
+        private static bool silentChain;
+
         public static bool InsideFinishProject => finishDepth > 0;
 
         [HarmonyPrefix]
-        public static void Prefix(ref bool doCompletionDialog, ref bool doCompletionLetter)
+        public static void Prefix(ref bool doCompletionDialog, bool doCompletionLetter)
         {
+            if (finishDepth == 0)
+                silentChain = !doCompletionLetter;
             finishDepth++;
 
-            // The letter and auto-open settings replace vanilla's completion popup and letter.
+            // The letter and auto-open settings replace vanilla's completion popup. doCompletionLetter only sends a project's own discovery letter, so it is kept.
             doCompletionDialog = false;
-            doCompletionLetter = false;
         }
 
         [HarmonyPostfix]
@@ -50,6 +54,16 @@ namespace CM_Semi_Random_Research
             try
             {
                 ResearchTracker tracker = SemiRandomResearchUtility.Tracker;
+
+                // Silent completions are bookkeeping: no history, reroll count, letter or auto-open.
+                if (silentChain)
+                {
+                    for (int i = 0; i < chain.Count; i++)
+                        tracker?.ConsiderProjectFinishedSilently(chain[i]);
+                    tracker?.RefreshOffers();
+                    return;
+                }
+
                 for (int i = 0; i < chain.Count; i++)
                     tracker?.ConsiderProjectFinished(chain[i]);
 

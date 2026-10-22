@@ -833,6 +833,7 @@ namespace CM_Semi_Random_Research
             if (cachedTracker != null)
                 CopyAvailableProjects(cachedTracker.PeekAvailableProjects());
             InvalidateLeftColumnCache();
+            techLevelStatsStale = true;
             Messages.Message("CM_Semi_Random_Research_Snoozed".Translate(projectDef.LabelCap), MessageTypeDefOf.NeutralEvent, false);
         }
     }

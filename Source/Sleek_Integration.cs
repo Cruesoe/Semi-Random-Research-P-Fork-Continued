@@ -75,7 +75,6 @@ namespace CM_Semi_Random_Research
             }
 
             sleekDisabledSetter?.Invoke(null, new object[] { false });
-            Log.Message("[Semi Random Research] Sleek Research Tab will stay active for the research tree view.");
         }
 
         // Sleek only auto-binds the original Semi Random package IDs. Point its start-button
@@ -95,7 +94,6 @@ namespace CM_Semi_Random_Research
                     canSelect.SetValue(null, new Func<ResearchProjectDef, bool>(
                         SemiRandomResearchUtility.CanSelectNormalResearchNow));
                 }
-                Log.Message("[Semi Random Research] Sleek Research Tab selection gate bound.");
             }
             catch (Exception e)
             {

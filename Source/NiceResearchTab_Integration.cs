@@ -41,7 +41,6 @@ namespace CM_Semi_Random_Research
                 original,
                 prefix: new HarmonyMethod(AccessTools.Method(typeof(NiceResearchTab_Integration), nameof(DoWindowContents_Prefix))),
                 postfix: new HarmonyMethod(AccessTools.Method(typeof(NiceResearchTab_Integration), nameof(DoWindowContents_Postfix))));
-            Log.Message("[Semi Random Research] Successfully integrated with Nice Research Tab UI.");
         }
 
         // Bottom right: the only corner Nice Research Tab leaves free.

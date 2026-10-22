@@ -385,6 +385,7 @@ namespace CM_Semi_Random_Research
                 tracker?.Unsnooze(projectDef);
                 CopyAvailableProjects((drawTracker ?? cachedTracker)?.PeekAvailableProjects());
                 InvalidateLeftColumnCache();
+                techLevelStatsStale = true;
                 Messages.Message("CM_Semi_Random_Research_Unsnoozed".Translate(SafeLabel(projectDef)), MessageTypeDefOf.NeutralEvent, false);
             }
             if (isMouseOver)

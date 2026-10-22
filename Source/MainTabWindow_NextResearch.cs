@@ -111,10 +111,8 @@ namespace CM_Semi_Random_Research
         }
         private List<Def> cachedSelectedUnlocks;
         private ResearchProjectDef cachedUnlocksProject;
-        // Which projects each project is a prerequisite for, shared by every window instance. Rebuilt when the
-        // hidden-research state or the def database changes.
+        // Which projects each project is a prerequisite for, shared by every window instance. Rebuilt when the def database changes.
         private static Dictionary<ResearchProjectDef, List<ResearchProjectDef>> sharedDependentResearch;
-        private static int sharedDependentResearchState = -1;
         private static int sharedDependentResearchDefCount = -1;
         private static ResearchProjectDef sharedDependentResearchFirstDef;
         private Dictionary<ResearchProjectDef, List<ResearchProjectDef>> cachedDependentResearch;
@@ -192,14 +190,22 @@ namespace CM_Semi_Random_Research
             cachedFooterStartMode = canStart ? FooterStartMode.CanStart : FooterStartMode.Locked;
         }
 
+        // A project picked from outside (a hyperlink, the Entity Codex) is browsed like a related project, so it stays selected
+        // when it is not on offer, with a back button to the previous selection.
         internal void SelectFromExternal(ResearchProjectDef project)
         {
-            if (project != null)
-            {
-                selectedProject = project;
-                relatedProjectHistory.Clear();
-                browsingRelatedProject = false;
-            }
+            if (project == null)
+                return;
+
+            relatedProjectHistory.Clear();
+            if (selectedProject != null && selectedProject != project)
+                relatedProjectHistory.Push(selectedProject);
+            selectedProject = project;
+            browsingRelatedProject = true;
+            rightScrollPosition = Vector2.zero;
+            cachedCanStartNowTick = -1;
+            WarmSelectedUnlocks();
+            RecacheMatchingBenchIfNeeded();
         }
 
         private void SelectDefaultProject()
@@ -345,17 +351,16 @@ namespace CM_Semi_Random_Research
         private static readonly Comparison<ResearchProjectDef> DependentLabelComparison = (left, right) =>
             string.Compare(SafeLabel(left), SafeLabel(right), StringComparison.CurrentCultureIgnoreCase);
 
-        // Reuses the shared map unless the hidden-research state or the def database has changed.
+        // Reuses the shared map unless the def database has changed. Hidden projects are kept and skipped when shown,
+        // since the Entity Codex and the SoS2 uplink reveal them mid-game.
         private void RebuildDependentResearchCache()
         {
             List<ResearchProjectDef> allProjects = DefDatabase<ResearchProjectDef>.AllDefsListForReading;
             int defCount = allProjects.Count;
             // A play data reload (language change) rebuilds every def at the same count; the first def's identity catches it.
             ResearchProjectDef firstDef = defCount > 0 ? allProjects[0] : null;
-            int hiddenState = Compatibility.HiddenResearchStateVersion;
 
             if (sharedDependentResearch != null &&
-                sharedDependentResearchState == hiddenState &&
                 sharedDependentResearchDefCount == defCount &&
                 ReferenceEquals(sharedDependentResearchFirstDef, firstDef))
             {
@@ -368,7 +373,7 @@ namespace CM_Semi_Random_Research
             for (int i = 0; i < allProjects.Count; i++)
             {
                 ResearchProjectDef dependent = allProjects[i];
-                if (dependent == null || Compatibility.IsDummyResearch(dependent) || Compatibility.IsHiddenResearch(dependent))
+                if (dependent == null || Compatibility.IsDummyResearch(dependent))
                     continue;
 
                 AddDependentResearch(built, dependent.prerequisites, dependent);
@@ -381,7 +386,6 @@ namespace CM_Semi_Random_Research
             }
 
             sharedDependentResearch = built;
-            sharedDependentResearchState = hiddenState;
             sharedDependentResearchDefCount = defCount;
             sharedDependentResearchFirstDef = firstDef;
             cachedDependentResearch = built;
@@ -420,6 +424,10 @@ namespace CM_Semi_Random_Research
             return null;
         }
 
+        // A dependent listed under "Required for": unfinished and not hidden.
+        private static bool ShowsAsDependent(ResearchProjectDef dependent) =>
+            dependent != null && !dependent.IsFinished && !Compatibility.IsHiddenResearch(dependent);
+
         private string GetDependentResearchTooltip(ResearchProjectDef project)
         {
             List<ResearchProjectDef> dependents = GetDependentResearch(project);
@@ -429,7 +437,7 @@ namespace CM_Semi_Random_Research
             int unfinishedCount = 0;
             for (int i = 0; i < dependents.Count; i++)
             {
-                if (dependents[i] != null && !dependents[i].IsFinished)
+                if (ShowsAsDependent(dependents[i]))
                     unfinishedCount++;
             }
             if (unfinishedCount == 0)
@@ -444,7 +452,7 @@ namespace CM_Semi_Random_Research
             for (int i = 0; i < dependents.Count && listed < maxListed; i++)
             {
                 ResearchProjectDef dependent = dependents[i];
-                if (dependent == null || dependent.IsFinished)
+                if (!ShowsAsDependent(dependent))
                     continue;
 
                 tooltip.Append("\n• ");

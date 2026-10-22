@@ -8,29 +8,6 @@ using Verse;
 
 namespace CM_Semi_Random_Research
 {
-    // One finished project for the history view, deep-saved so a removed mod's entry drops out with its tick.
-    public class ResearchHistoryEntry : IExposable
-    {
-        public ResearchProjectDef project;
-        public int tick;
-
-        public ResearchHistoryEntry()
-        {
-        }
-
-        public ResearchHistoryEntry(ResearchProjectDef project, int tick)
-        {
-            this.project = project;
-            this.tick = tick;
-        }
-
-        public void ExposeData()
-        {
-            Scribe_Defs.Look(ref project, "project");
-            Scribe_Values.Look(ref tick, "tick", 0);
-        }
-    }
-
     public class ResearchTracker : WorldComponent
     {
         private List<ResearchProjectDef> currentAvailableProjects = new List<ResearchProjectDef>();
@@ -262,8 +239,8 @@ namespace CM_Semi_Random_Research
         }
 
         // Vanilla's GetProject(category) throws when the save's Anomaly project list is missing or holds a broken entry,
-        // which spammed errors every tick. Clean the list once and retry; if it still fails, treat the category as idle.
-        private static bool anomalyProjectsRepaired;
+        // which spammed errors every tick. Clean the list once per game and retry; if it still fails, treat the category as idle.
+        private static ResearchManager anomalyProjectsRepairedFor;
 
         public static ResearchProjectDef GetActiveProject(KnowledgeCategoryDef category)
         {
@@ -277,9 +254,9 @@ namespace CM_Semi_Random_Research
             }
             catch (NullReferenceException)
             {
-                if (!anomalyProjectsRepaired)
+                if (!ReferenceEquals(anomalyProjectsRepairedFor, manager))
                 {
-                    anomalyProjectsRepaired = true;
+                    anomalyProjectsRepairedFor = manager;
                     RepairAnomalyProjects(manager);
                     try
                     {
@@ -833,6 +810,7 @@ namespace CM_Semi_Random_Research
                 }
             }
 
+            // Hidden projects stay in the cache and are skipped below: the Entity Codex and the SoS2 uplink reveal them mid-game.
             if (!projectDefsCacheByType.TryGetValue(typeKey, out List<ResearchProjectDef> projectsOfType))
             {
                 List<ResearchProjectDef> allDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading;
@@ -840,12 +818,8 @@ namespace CM_Semi_Random_Research
                 for (int i = 0; i < allDefs.Count; i++)
                 {
                     ResearchProjectDef projectDef = allDefs[i];
-                    if (!projectDef.IsFinished &&
-                        GetCategoryKey(projectDef) == typeKey &&
-                        !Compatibility.IsHiddenResearch(projectDef))
-                    {
+                    if (!projectDef.IsFinished && GetCategoryKey(projectDef) == typeKey)
                         projectsOfType.Add(projectDef);
-                    }
                 }
                 projectDefsCacheByType[typeKey] = projectsOfType;
 
@@ -863,7 +837,7 @@ namespace CM_Semi_Random_Research
                 ResearchProjectDef projectDef = projectsOfType[i];
                 if (currentlyOffered.Contains(projectDef))
                     continue;
-                if (projectDef.IsDummyResearch() || ResearchSnoozeTracker.IsExcludedNow(projectDef))
+                if (projectDef.IsDummyResearch() || Compatibility.IsHiddenResearch(projectDef) || ResearchSnoozeTracker.IsExcludedNow(projectDef))
                     continue;
                 // Projects the difficulty's trap, turret and mortar settings hide from the research tree.
                 if (!Find.Storyteller.difficulty.AllowedBy(projectDef.hideWhen))
@@ -1264,6 +1238,11 @@ namespace CM_Semi_Random_Research
         // Rebuilds the offers now, so count changes apply without reopening the tab.
         public void SettingsChanged()
         {
+            RefreshOffers();
+        }
+
+        public void RefreshOffers()
+        {
             ForceAutoReseachCheckNextTick();
             loggedMessages.Clear();
 
@@ -1303,6 +1282,20 @@ namespace CM_Semi_Random_Research
                 additionalAvailableProjects = additionalAvailableProjects.Where(x => GetCategoryKey(x) != typeKey).ToHashSet();
                 GetCurrentlyAvailableProjects();
             }
+        }
+
+        // A project the game finished silently: dropped from the current project and offers, without history or a reroll.
+        // The caller rebuilds the offers once with RefreshOffers.
+        public void ConsiderProjectFinishedSilently(ResearchProjectDef def)
+        {
+            if (def.IsDummyResearch())
+                return;
+
+            CompletionRevision++;
+            if (currentProjects.Contains(def))
+                SetCurrentProjectByKey(null, GetCategoryKey(def));
+            currentAvailableProjects.Remove(def);
+            additionalAvailableProjects.Remove(def);
         }
 
         public void AddProjectToAvailableProjects(ResearchProjectDef rdef)

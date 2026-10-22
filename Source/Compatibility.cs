@@ -45,20 +45,6 @@ namespace CM_Semi_Random_Research
             return false;
         }
 
-        // Changes whenever IsHiddenResearch can answer differently: anomaly study enabled, or the SoS2 uplink built.
-        internal static int HiddenResearchStateVersion
-        {
-            get
-            {
-                int version = 0;
-                if (ModsConfig.AnomalyActive && AnomalyResearchUnlocked())
-                    version |= 1;
-                if (enabled_SoS2 && SaveOurShip2ArchotechUplinkUnlocked())
-                    version |= 2;
-                return version;
-            }
-        }
-
         public static bool IsDummyResearch(this ResearchProjectDef rpd)
         {
             if (rpd == null)

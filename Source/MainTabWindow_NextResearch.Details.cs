@@ -208,7 +208,7 @@ namespace CM_Semi_Random_Research
             int unfinishedCount = 0;
             for (int i = 0; i < dependents.Count; i++)
             {
-                if (dependents[i] != null && !dependents[i].IsFinished)
+                if (ShowsAsDependent(dependents[i]))
                     unfinishedCount++;
             }
             if (unfinishedCount == 0)
@@ -223,7 +223,7 @@ namespace CM_Semi_Random_Research
             for (int i = 0; i < dependents.Count; i++)
             {
                 ResearchProjectDef dependent = dependents[i];
-                if (dependent == null || dependent.IsFinished)
+                if (!ShowsAsDependent(dependent))
                     continue;
 
                 DrawDependentResearchRow(project, dependent, ref rect);

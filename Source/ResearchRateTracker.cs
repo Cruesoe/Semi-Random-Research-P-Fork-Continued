@@ -421,24 +421,4 @@ namespace CM_Semi_Random_Research
             }
         }
     }
-
-    public class CategoryRateData : IExposable
-    {
-        public List<float> rateSamples = new List<float>();
-
-        public void ExposeData()
-        {
-            Scribe_Collections.Look(ref rateSamples, "rateSamples", LookMode.Value);
-            if (rateSamples == null)
-                rateSamples = new List<float>();
-        }
-    }
-
-    public class ResearchRateInfo
-    {
-        public float AverageRate { get; set; }
-        public int TotalSamples { get; set; }
-
-        public string AverageRateFormatted => ResearchRateTracker.FormatRate(AverageRate);
-    }
 }

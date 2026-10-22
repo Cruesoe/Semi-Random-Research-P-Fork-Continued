@@ -34,7 +34,6 @@ namespace CM_Semi_Random_Research
             var transpiler = AccessTools.Method(typeof(NodeResearch_Integration), nameof(DrawGraphControls_Transpiler));
             var postfix = AccessTools.Method(typeof(NodeResearch_Integration), nameof(DrawGraphControls_Postfix));
             harmony.Patch(original, transpiler: new HarmonyMethod(transpiler), postfix: new HarmonyMethod(postfix));
-            Log.Message("[Semi Random Research] Successfully integrated with Node Research UI.");
 
             NodeResearchAdvancement.TryPatch(harmony, type);
         }

@@ -42,7 +42,6 @@ namespace CM_Semi_Random_Research
                 original,
                 prefix: new HarmonyMethod(AccessTools.Method(typeof(Yart_Integration), nameof(DoWindowContents_Prefix))),
                 postfix: new HarmonyMethod(AccessTools.Method(typeof(Yart_Integration), nameof(DoWindowContents_Postfix))));
-            Log.Message("[Semi Random Research] Successfully integrated with YART UI.");
         }
 
         private static Rect SemiRandomButtonRect(Rect inRect)

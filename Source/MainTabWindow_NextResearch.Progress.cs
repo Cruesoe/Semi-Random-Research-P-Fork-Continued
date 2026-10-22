@@ -52,15 +52,37 @@ namespace CM_Semi_Random_Research
                 .Max();
         }
 
-        // Completed, total, spent and remaining cost per tech level, over the whole research database.
+        // Projects whose cost counts toward the time estimates: standard research the difficulty allows, not hidden,
+        // and not set aside by a snooze. Shared by the timings panel and the progress bar tooltips.
+        internal static bool CountsTowardEstimates(ResearchProjectDef def)
+        {
+            return ResearchTracker.GetCategoryKey(def) == "Standard" && !def.IsDummyResearch() &&
+                !Compatibility.IsHiddenResearch(def) && Find.Storyteller.difficulty.AllowedBy(def.hideWhen) &&
+                (def.IsFinished || !ResearchSnoozeTracker.IsExcludedNow(def));
+        }
+
+        // Progression: Core's own count per tech level: every project without techprints.
+        private (int completed, int total)[] cachedProgressionCoreStats;
+
+        // Set when a snooze changes the estimates, which can happen while the game is paused.
+        private bool techLevelStatsStale;
+
+        // Completed and total projects per tech level over the whole research database, with the spent and remaining
+        // cost of the projects that count toward the estimates.
         private void RebuildTechLevelStats()
         {
             if (cachedTechLevelStats == null || cachedTechLevelStats.Length != TechLevelCount)
                 cachedTechLevelStats = new (int completed, int total, float remainingCost, float spentCost)[TechLevelCount];
+            if (cachedProgressionCoreStats == null || cachedProgressionCoreStats.Length != TechLevelCount)
+                cachedProgressionCoreStats = new (int completed, int total)[TechLevelCount];
 
             var stats = cachedTechLevelStats;
+            var coreStats = cachedProgressionCoreStats;
             for (int i = 0; i < stats.Length; i++)
+            {
                 stats[i] = (0, 0, 0f, 0f);
+                coreStats[i] = (0, 0);
+            }
 
             bool countCosts = Faction.OfPlayerSilentFail != null;
             List<ResearchProjectDef> allDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading;
@@ -77,9 +99,13 @@ namespace CM_Semi_Random_Research
                 {
                     stats[level].completed++;
                 }
-                if (countCosts &&
-                    !Compatibility.IsDummyResearch(def) &&
-                    !Compatibility.IsHiddenResearch(def))
+                if (def.techprintCount == 0)
+                {
+                    coreStats[level].total++;
+                    if (finished)
+                        coreStats[level].completed++;
+                }
+                if (countCosts && CountsTowardEstimates(def))
                 {
                     if (finished)
                     {
@@ -96,7 +122,20 @@ namespace CM_Semi_Random_Research
                 }
             }
             cachedTechLevelStatsTick = Find.TickManager.TicksGame;
+            techLevelStatsStale = false;
             techLevelStatsVersion++;
+        }
+
+        // Progress toward Progression: Core's advancement threshold at the player's tech level, counted as it counts it.
+        private float ProgressionCoreProgress(TechLevel techLevel, out int completed, out int total)
+        {
+            completed = 0;
+            total = 0;
+            int level = (int)techLevel;
+            if (cachedProgressionCoreStats == null || level < 0 || level >= cachedProgressionCoreStats.Length)
+                return 0f;
+            (completed, total) = cachedProgressionCoreStats[level];
+            return total > 0 ? (float)completed / total : 0f;
         }
 
         // "Industrial (42/97)" labels and their widths, rebuilt with the stats.
@@ -165,7 +204,7 @@ namespace CM_Semi_Random_Research
 
         private void RefreshTechLevelStats(int tick)
         {
-            if (cachedTechLevelStats != null && tick - cachedTechLevelStatsTick < 60)
+            if (cachedTechLevelStats != null && !techLevelStatsStale && tick - cachedTechLevelStatsTick < 60)
                 return;
             cachedTechLevelStatsTick = tick;
             RebuildTechLevelStats();
@@ -374,14 +413,10 @@ namespace CM_Semi_Random_Research
                 Text.Anchor = TextAnchor.UpperCenter;
                 GUI.color = Color.white;
 
-                TechLevel currentTechLevel = playerTechLevel;
-                float progress = 0f;
-                if (TryGetTechLevelStats(currentTechLevel, out var currentStats) && currentStats.total > 0)
-                    progress = (float)currentStats.completed / currentStats.total;
-
                 // Node Research and Genesis have no percentage threshold, so only the line and arrow are drawn.
                 if (!noPercentageThreshold)
                 {
+                    float progress = ProgressionCoreProgress(playerTechLevel, out _, out _);
                     string thresholdLabel = progress >= requiredProgress
                         ? "CM_Semi_Random_Research_ReadyToAdvance".Translate()
                         : "CM_Semi_Random_Research_AdvanceTechLevel".Translate();
@@ -439,17 +474,18 @@ namespace CM_Semi_Random_Research
             else if (ProgressionCoreActive && techLevel == Faction.OfPlayer.def.techLevel)
             {
                 float requiredProgress = cachedRequiredProgress;
+                float coreProgress = ProgressionCoreProgress(techLevel, out int coreCompleted, out int coreTotal);
                 tooltip += "\n\n" + "CM_Semi_Random_Research_ProgressionCoreTooltip".Translate(
-                    (progress * 100f).ToString("F0"),
+                    (coreProgress * 100f).ToString("F0"),
                     (requiredProgress * 100f).ToString("F0"));
 
-                if (progress >= requiredProgress)
+                if (coreProgress >= requiredProgress)
                 {
                     tooltip += "\n" + "CM_Semi_Random_Research_ProgressionCoreReady".Translate();
                 }
                 else
                 {
-                    int remaining = (int)((requiredProgress * stats.total) - stats.completed + 0.999f);
+                    int remaining = (int)((requiredProgress * coreTotal) - coreCompleted + 0.999f);
                     tooltip += "\n" + "CM_Semi_Random_Research_ProgressionCoreNeedMore".Translate(remaining);
                 }
             }

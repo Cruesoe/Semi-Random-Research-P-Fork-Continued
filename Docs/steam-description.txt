@@ -11,7 +11,7 @@ Instead of choosing freely from the entire research tree, you choose from a few 
 [*]Auto research starts the cheapest offer for you when the research tab closes with nothing being researched.
 [*]Research can be paused and resumed from the research tab.
 [*]Every offer shows how long it will take at your colony's research speed.
-[*]A timings panel under the current research shows your research speed, the time left on the current project and the time to finish all remaining research, with an optional rate graph.
+[*]A timings panel under the current research shows your research speed, the time left on the current project and the time to finish all remaining research or your current tech level, with an optional rate graph.
 [*]A progress bar shows completed research for each tech level, with your faction's and the world's tech level.
 [*]Each project lists what it unlocks, its unfinished prerequisites, and the unfinished projects that require it.
 [*]A history view lists recently completed research and what each project unlocked.
@@ -25,7 +25,7 @@ Instead of choosing freely from the entire research tree, you choose from a few 
 [*][b]Rerolls[/b]: reroll every choice when a project is finished, and allow manual rerolls never, once per project or always.
 [*][b]Which projects are offered[/b]: restrict offers to your faction's tech level, finish the lowest tech level first, allow one higher-tech project, and balance the cost of the offers.
 [*][b]Partially researched projects[/b]: offer them normally, never, as a replacement choice or as an extra choice.
-[*][b]Display[/b]: the rate graph, the completion letter, opening the research tab on completion, and adaptive window size can each be turned off, and estimates can show the in-game date they finish instead of the time left.
+[*][b]Display[/b]: the rate graph, the completion letter, opening the research tab on completion, and adaptive window size can each be turned off, estimates can show the in-game date they finish instead of the time left, and the timings panel can time your current tech level instead of all research.
 [*][b]Snoozing[/b]: allow snoozing, and ask before snoozing a project other research depends on.
 [/list]
 
