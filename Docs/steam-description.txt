@@ -30,7 +30,7 @@ Instead of choosing freely from the entire research tree, you choose from a few 
 [/list]
 
 [h2]Compatibility[/h2]
-Works with Node Research, YART, Sleek Research Tab, Nice Research Tab and Research: Organized, with a button in each to switch back. Also supports Progression: Core, Genesis, Vanilla Factions Expanded - Tribals, Vanilla Gravship Expanded and Save Our Ship 2.
+Works with Node Research, YART, Sleek Research Tab, Nice Research Tab and Research: Organized, with a button in each to switch back. Also supports Progression: Core, Genesis, Vanilla Factions Expanded - Tribals, Vanilla Gravship Expanded and Save Our Ship 2. Medieval Overhaul research that needs a schematic is offered once that schematic is on a bookshelf in a research room, and Triumphant Research's completion screen works alongside this mod's letter.
 Not compatible with Research: Auto or Research Queue, because they choose your research for you.
 Remove any other version of Semi Random Research before enabling this one.
 Safe to add to an existing save.
