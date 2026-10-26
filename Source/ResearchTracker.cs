@@ -796,18 +796,18 @@ namespace CM_Semi_Random_Research
                 return new List<ResearchProjectDef>();
             }
 
+            // Tech levels of this type's current offers only: other types' offers must not cap this type's tier.
             TechLevel maxCurrentProjectTechlevel = TechLevel.Archotech;
             TechLevel minCurrentProjectTechlevel = TechLevel.Archotech;
-            if (currentAvailableProjects.Count > 0)
+            bool anyOfType = false;
+            for (int i = 0; i < currentAvailableProjects.Count; i++)
             {
-                maxCurrentProjectTechlevel = currentAvailableProjects[0].techLevel;
-                minCurrentProjectTechlevel = currentAvailableProjects[0].techLevel;
-                for (int i = 1; i < currentAvailableProjects.Count; i++)
-                {
-                    TechLevel techLevel = currentAvailableProjects[i].techLevel;
-                    if (techLevel > maxCurrentProjectTechlevel) maxCurrentProjectTechlevel = techLevel;
-                    if (techLevel < minCurrentProjectTechlevel) minCurrentProjectTechlevel = techLevel;
-                }
+                if (GetCategoryKey(currentAvailableProjects[i]) != typeKey)
+                    continue;
+                TechLevel techLevel = currentAvailableProjects[i].techLevel;
+                if (!anyOfType || techLevel > maxCurrentProjectTechlevel) maxCurrentProjectTechlevel = techLevel;
+                if (!anyOfType || techLevel < minCurrentProjectTechlevel) minCurrentProjectTechlevel = techLevel;
+                anyOfType = true;
             }
 
             // Hidden projects stay in the cache and are skipped below: the Entity Codex and the SoS2 uplink reveal them mid-game.
