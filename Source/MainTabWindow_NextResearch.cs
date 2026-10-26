@@ -348,8 +348,14 @@ namespace CM_Semi_Random_Research
             }
         }
 
+        // Sorts dependents by tech level, then label.
         private static readonly Comparison<ResearchProjectDef> DependentLabelComparison = (left, right) =>
-            string.Compare(SafeLabel(left), SafeLabel(right), StringComparison.CurrentCultureIgnoreCase);
+        {
+            int tech = ((int)left.techLevel).CompareTo((int)right.techLevel);
+            if (tech != 0)
+                return tech;
+            return string.Compare(SafeLabel(left), SafeLabel(right), StringComparison.CurrentCultureIgnoreCase);
+        };
 
         // Reuses the shared map unless the def database has changed. Hidden projects are kept and skipped when shown,
         // since the Entity Codex and the SoS2 uplink reveal them mid-game.
