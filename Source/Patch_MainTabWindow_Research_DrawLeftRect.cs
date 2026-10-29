@@ -9,6 +9,7 @@ namespace CM_Semi_Random_Research
     // Button in the top right of the vanilla tree's info pane that switches back to this mod's window.
     // Research: Organized finds this class by name to place its settings button beside it, so keep the name.
     [HarmonyPatch(typeof(MainTabWindow_Research), "DrawLeftRect")]
+    [StaticConstructorOnStartup]
     public static class Patch_MainTabWindow_Research_DrawLeftRect
     {
         // Loaded on first draw: PatchAll runs off the main thread, where textures cannot load.
