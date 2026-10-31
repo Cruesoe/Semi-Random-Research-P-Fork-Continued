@@ -524,19 +524,7 @@ namespace CM_Semi_Random_Research
                 case FooterStartMode.CanStart:
                     if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_StartResearch".Translate(), FooterStartButtonColor))
                     {
-                        SoundDefOf.ResearchStart.PlayOneShotOnCamera();
-                        // Ungated: this button is only drawn when PlayerCanStartProject allows it.
-                        researchTracker.SetCurrentProjectByKey(selectedProject, ResearchTracker.GetCategoryKey(selectedProject));
-                        InvalidateLeftColumnCache();
-                        CopyAvailableProjects(researchTracker.PeekAvailableProjects());
-                        cachedCanStartNowTick = -1;
-                        RefreshCanStartNow(Find.TickManager.TicksGame);
-
-                        TutorSystem.Notify_Event("StartResearchProject");
-                        if (!ColonistsHaveResearchBench)
-                        {
-                            Messages.Message("MessageResearchMenuWithoutBench".Translate(), MessageTypeDefOf.CautionInput);
-                        }
+                        StartSelectedProject(researchTracker);
                     }
                     break;
                 case FooterStartMode.Finished:
@@ -547,19 +535,7 @@ namespace CM_Semi_Random_Research
                     {
                         if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_ResumeResearch".Translate(), FooterStartButtonColor))
                         {
-                            SoundDefOf.ResearchStart.PlayOneShotOnCamera();
-                            researchTracker.ResumeResearch(selectedProject);
-                            InvalidateLeftColumnCache();
-                            if (cachedTracker != null)
-                                CopyAvailableProjects(cachedTracker.PeekAvailableProjects());
-                            cachedCanStartNowTick = -1;
-                            RefreshCanStartNow(Find.TickManager.TicksGame);
-
-                            TutorSystem.Notify_Event("StartResearchProject");
-                            if (!ColonistsHaveResearchBench)
-                            {
-                                Messages.Message("MessageResearchMenuWithoutBench".Translate(), MessageTypeDefOf.CautionInput);
-                            }
+                            ResumeSelectedProject(researchTracker);
                         }
                         TooltipHandler.TipRegion(researchButtonRect, "CM_Semi_Random_Research_ResumeResearchTip".Translate());
                     }
@@ -589,6 +565,57 @@ namespace CM_Semi_Random_Research
 
             Text.Anchor = TextAnchor.UpperLeft;
             GUI.color = Color.white;
+        }
+
+        private void StartSelectedProject(ResearchTracker tracker)
+        {
+            SoundDefOf.ResearchStart.PlayOneShotOnCamera();
+            // Ungated: only called when PlayerCanStartProject allows it.
+            tracker.SetCurrentProjectByKey(selectedProject, ResearchTracker.GetCategoryKey(selectedProject));
+            AfterProjectBegun(tracker);
+        }
+
+        private void ResumeSelectedProject(ResearchTracker tracker)
+        {
+            SoundDefOf.ResearchStart.PlayOneShotOnCamera();
+            tracker.ResumeResearch(selectedProject);
+            AfterProjectBegun(tracker);
+        }
+
+        private void AfterProjectBegun(ResearchTracker tracker)
+        {
+            InvalidateLeftColumnCache();
+            CopyAvailableProjects(tracker.PeekAvailableProjects());
+            cachedCanStartNowTick = -1;
+            RefreshCanStartNow(Find.TickManager.TicksGame);
+
+            TutorSystem.Notify_Event("StartResearchProject");
+            if (!ColonistsHaveResearchBench)
+            {
+                Messages.Message("MessageResearchMenuWithoutBench".Translate(), MessageTypeDefOf.CautionInput);
+            }
+        }
+
+        // A second click on the same card within the window starts or resumes it, under the footer button's rules.
+        private void HandleCardClick(ResearchProjectDef projectDef)
+        {
+            float now = Time.realtimeSinceStartup;
+            bool doubleClick = lastClickedCard == projectDef && now - lastCardClickTime <= CardDoubleClickSeconds;
+            lastClickedCard = doubleClick ? null : projectDef;
+            lastCardClickTime = now;
+
+            selectedProject = projectDef;
+            relatedProjectHistory.Clear();
+            browsingRelatedProject = false;
+            cachedCanStartNowTick = -1;
+            RefreshCanStartNow(Find.TickManager.TicksGame);
+
+            if (doubleClick && cachedFooterStartMode == FooterStartMode.CanStart)
+                StartSelectedProject(cachedTracker);
+            else if (doubleClick && cachedFooterStartMode == FooterStartMode.InProgress && cachedTracker.IsProjectPaused(projectDef))
+                ResumeSelectedProject(cachedTracker);
+            else
+                SoundDefOf.Click.PlayOneShotOnCamera();
         }
 
         private static void DrawInactiveFooterButton(Rect rect, string label, Color fill)
@@ -777,12 +804,7 @@ namespace CM_Semi_Random_Research
                 }
                 else if (Clicked(drawRect))
                 {
-                    SoundDefOf.Click.PlayOneShotOnCamera();
-                    selectedProject = projectDef;
-                    relatedProjectHistory.Clear();
-                    browsingRelatedProject = false;
-                    cachedCanStartNowTick = -1;
-                    RefreshCanStartNow(Find.TickManager.TicksGame);
+                    HandleCardClick(projectDef);
                 }
             }
 

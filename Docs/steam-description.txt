@@ -9,6 +9,7 @@ Instead of choosing freely from the entire research tree, you choose from a few 
 [*]Right-click an offer to snooze it: it is not offered again until you unsnooze it, and its place stays empty until the next reroll.
 [*]Snoozing a project also sets aside the research that depends on it, after a confirmation listing every project affected, and the snoozed list shows what is set aside.
 [*]Auto research starts the cheapest offer for you when the research tab closes with nothing being researched.
+[*]Double-click an offer to start researching it.
 [*]Research can be paused and resumed from the research tab.
 [*]Every offer shows how long it will take at your colony's research speed.
 [*]A timings panel under the current research shows your research speed, the time left on the current project and the time to finish all remaining research or your current tech level, with an optional rate graph.
