@@ -68,6 +68,10 @@ namespace CM_Semi_Random_Research
         private const float ITEM_DELAY = 0.05f; // Very short delay between items
         private List<ResearchProjectDef> animationOrder = new List<ResearchProjectDef>();
 
+        private ResearchProjectDef lastClickedCard;
+        private float lastCardClickTime;
+        private const float CardDoubleClickSeconds = 0.4f;
+
         // Indexed by TechLevel.
         internal static readonly int TechLevelCount = (int)TechLevel.Archotech + 1;
         private float[] techLevelHeaderProgress = new float[TechLevelCount];
