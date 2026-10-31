@@ -596,7 +596,7 @@ namespace CM_Semi_Random_Research
             }
         }
 
-        // A second click on the same card within the window starts or resumes it, under the footer button's rules.
+        // A second click on the same card within the window starts or resumes it, under the footer button's rules, and closes the window.
         private void HandleCardClick(ResearchProjectDef projectDef)
         {
             float now = Time.realtimeSinceStartup;
@@ -611,11 +611,19 @@ namespace CM_Semi_Random_Research
             RefreshCanStartNow(Find.TickManager.TicksGame);
 
             if (doubleClick && cachedFooterStartMode == FooterStartMode.CanStart)
+            {
                 StartSelectedProject(cachedTracker);
+                Close(doCloseSound: false);
+            }
             else if (doubleClick && cachedFooterStartMode == FooterStartMode.InProgress && cachedTracker.IsProjectPaused(projectDef))
+            {
                 ResumeSelectedProject(cachedTracker);
+                Close(doCloseSound: false);
+            }
             else
+            {
                 SoundDefOf.Click.PlayOneShotOnCamera();
+            }
         }
 
         private static void DrawInactiveFooterButton(Rect rect, string label, Color fill)
