@@ -535,7 +535,19 @@ namespace CM_Semi_Random_Research
                     {
                         if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_ResumeResearch".Translate(), FooterStartButtonColor))
                         {
-                            ResumeSelectedProject(researchTracker);
+                            SoundDefOf.ResearchStart.PlayOneShotOnCamera();
+                            researchTracker.ResumeResearch(selectedProject);
+                            InvalidateLeftColumnCache();
+                            if (cachedTracker != null)
+                                CopyAvailableProjects(cachedTracker.PeekAvailableProjects());
+                            cachedCanStartNowTick = -1;
+                            RefreshCanStartNow(Find.TickManager.TicksGame);
+
+                            TutorSystem.Notify_Event("StartResearchProject");
+                            if (!ColonistsHaveResearchBench)
+                            {
+                                Messages.Message("MessageResearchMenuWithoutBench".Translate(), MessageTypeDefOf.CautionInput);
+                            }
                         }
                         TooltipHandler.TipRegion(researchButtonRect, "CM_Semi_Random_Research_ResumeResearchTip".Translate());
                     }
@@ -572,18 +584,6 @@ namespace CM_Semi_Random_Research
             SoundDefOf.ResearchStart.PlayOneShotOnCamera();
             // Ungated: only called when PlayerCanStartProject allows it.
             tracker.SetCurrentProjectByKey(selectedProject, ResearchTracker.GetCategoryKey(selectedProject));
-            AfterProjectBegun(tracker);
-        }
-
-        private void ResumeSelectedProject(ResearchTracker tracker)
-        {
-            SoundDefOf.ResearchStart.PlayOneShotOnCamera();
-            tracker.ResumeResearch(selectedProject);
-            AfterProjectBegun(tracker);
-        }
-
-        private void AfterProjectBegun(ResearchTracker tracker)
-        {
             InvalidateLeftColumnCache();
             CopyAvailableProjects(tracker.PeekAvailableProjects());
             cachedCanStartNowTick = -1;
@@ -596,7 +596,7 @@ namespace CM_Semi_Random_Research
             }
         }
 
-        // A second click on the same card within the window starts or resumes it, under the footer button's rules, and closes the window.
+        // A second click on the same card within the window starts it, under the footer button's rules, and closes the window.
         private void HandleCardClick(ResearchProjectDef projectDef)
         {
             float now = Time.realtimeSinceStartup;
@@ -613,11 +613,6 @@ namespace CM_Semi_Random_Research
             if (doubleClick && cachedFooterStartMode == FooterStartMode.CanStart)
             {
                 StartSelectedProject(cachedTracker);
-                Close(doCloseSound: false);
-            }
-            else if (doubleClick && cachedFooterStartMode == FooterStartMode.InProgress && cachedTracker.IsProjectPaused(projectDef))
-            {
-                ResumeSelectedProject(cachedTracker);
                 Close(doCloseSound: false);
             }
             else
