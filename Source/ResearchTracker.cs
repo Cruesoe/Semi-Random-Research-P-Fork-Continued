@@ -693,6 +693,7 @@ namespace CM_Semi_Random_Research
                 / SemiRandomResearchMod.settings.additionalProjectPerXColonists
                 : 0;
 
+            bool refreshHandled = false;
             foreach (string typeKey in all_typeKeys)
             {
                 List<ResearchProjectDef> currentAvailableValidProjectsOfType = currentAvailableProjects.Where(x => GetCategoryKey(x) == typeKey && x.CanStartNow).ToList();
@@ -763,13 +764,16 @@ namespace CM_Semi_Random_Research
 
                         result.AddRange(currentAvailableValidProjectsOfType);
                     }
-                    additionalProjectsRefresh = false;
+                    refreshHandled = true;
                 }
                 else
                 {
                     result.AddRange(currentProjectOfType);
                 }
             }
+            if (refreshHandled)
+                additionalProjectsRefresh = false;
+
             // The saved offer list matches what is published.
             currentAvailableProjects = result.Distinct().ToList();
             PublishOffers(result);
@@ -866,7 +870,7 @@ namespace CM_Semi_Random_Research
 
             ResearchProjectDef randomProject = null;
             if (allAvailableProjects.Any() && SemiRandomResearchMod.settings.AllowOneHigherTechProjectActive &&
-                (!SemiRandomResearchMod.settings.RestrictToFactionTechLevelActive || maxCurrentProjectTechlevel <= Faction.OfPlayer.def.techLevel) &&
+                (!SemiRandomResearchMod.settings.RestrictToFactionTechLevelActive || !anyOfType || maxCurrentProjectTechlevel <= Faction.OfPlayer.def.techLevel) &&
                 (!SemiRandomResearchMod.settings.forceLowestTechLevel || maxCurrentProjectTechlevel == minCurrentProjectTechlevel))
             {
                 randomProject = allAvailableProjects.RandomElement();
@@ -985,17 +989,26 @@ namespace CM_Semi_Random_Research
                 if (amountToPick > 0)
                 {
                     float averageAvailableCost = allAvailableProjects.Select(x => x.CostApparent).Sum() / allAvailableProjects.Count();
-                    float averageCurrentCost = (currentAvailableProjects.Select(x => x.CostApparent).Sum() + selectedProjectsFirstHalf.Select(x => x.CostApparent).Sum() + selectedProjects.Sum(x => x.CostApparent))
-                        / Math.Max(currentAvailableProjects.Count + selectedProjects.Count + selectedProjectsFirstHalf.Count, 1);
-                    float targetAddedAverageCost = ((averageAvailableCost * (currentAvailableProjects.Count + count))
-                        - (currentAvailableProjects.Count + selectedProjectsFirstHalf.Count) * averageCurrentCost) / (amountToPick);
+                    // This category's offers plus everything picked so far, which already includes the random half.
+                    float pickedCost = selectedProjects.Sum(x => x.CostApparent);
+                    int pickedCount = selectedProjects.Count;
+                    for (int i = 0; i < currentAvailableProjects.Count; i++)
+                    {
+                        if (GetCategoryKey(currentAvailableProjects[i]) == typeKey)
+                        {
+                            pickedCost += currentAvailableProjects[i].CostApparent;
+                            pickedCount++;
+                        }
+                    }
+                    float averageCurrentCost = pickedCost / Math.Max(pickedCount, 1);
+                    float targetAddedAverageCost = (averageAvailableCost * (pickedCount + amountToPick) - pickedCost) / amountToPick;
                     // Materialized once and shuffled in place for each of the 25 tries.
                     List<ResearchProjectDef> equalizePool = allAvailableProjects.Where(x => !selectedProjectsFirstHalf.Contains(x)).ToList();
                     allAvailableProjects = equalizePool;
 
                     if (SemiRandomResearchMod.settings.verboseLogging)
                     {
-                        LogIfNewMessage("equalizeCostPick1" + typeKey, $"Picking projects to equalize: Average research cost of all still available projects: {averageAvailableCost} \nAverage cost of the randomly selected projects: {averageCurrentCost}  \nTarget that the other projects added should have on average: {targetAddedAverageCost} \nThere were {amountToRandomlyGenerate} projects selected randomly. \nBefore adding projects there were {currentAvailableProjects.Count} already in the list. \nThere will be picked {amountToPick} projects.");
+                        LogIfNewMessage("equalizeCostPick1" + typeKey, $"Picking projects to equalize: Average research cost of all still available projects: {averageAvailableCost} \nAverage cost of the randomly selected projects: {averageCurrentCost}  \nTarget that the other projects added should have on average: {targetAddedAverageCost} \nThere were {amountToRandomlyGenerate} projects selected randomly. \nBefore picking there are {pickedCount} projects in the list. \nThere will be picked {amountToPick} projects.");
                     }
 
                     List<ResearchProjectDef> bestSelectedProjects = new List<ResearchProjectDef>();
@@ -1081,7 +1094,10 @@ namespace CM_Semi_Random_Research
                     currentAvailableProjects.Add(newCurrentProject);
 
                 if (SemiRandomResearchMod.settings.rerollAllEveryTime && !SemiRandomResearchMod.settings.allowSwitchingResearch)
+                {
+                    RecordUnchosenOffers(typeKey, newCurrentProject);
                     currentAvailableProjects = currentAvailableProjects.Where(projectDef => GetCategoryKey(projectDef) != typeKey || projectDef == newCurrentProject).ToList();
+                }
             }
             else
             {
@@ -1137,6 +1153,21 @@ namespace CM_Semi_Random_Research
             SetCurrentProjectByKey(project, GetCategoryKey(project));
         }
 
+        // The other offers leave when a project starts, but their reroll only counts when it finishes, so they take that count now.
+        private void RecordUnchosenOffers(string typeKey, ResearchProjectDef chosen)
+        {
+            if (SemiRandomResearchMod.settings.reofferAfterAmountOfRerolls <= 0)
+                return;
+
+            currentRerollState.TryGetValue(typeKey, out int rerollState);
+            for (int i = 0; i < currentAvailableProjects.Count; i++)
+            {
+                ResearchProjectDef project = currentAvailableProjects[i];
+                if (project != chosen && GetCategoryKey(project) == typeKey)
+                    notChosenProjects[project] = rerollState + 1;
+            }
+        }
+
         public void ManageNotChosenByKey(string typeKey)
         {
             if (SemiRandomResearchMod.settings.reofferAfterAmountOfRerolls == 0)
@@ -1154,7 +1185,8 @@ namespace CM_Semi_Random_Research
                 {
                     notChosenProjects[rdef] = currentRerollState[typeKey];
                 }
-                notChosenProjects = notChosenProjects.Where(x => x.Value > currentRerollState[typeKey] - SemiRandomResearchMod.settings.reofferAfterAmountOfRerolls).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                // Each category counts its own rerolls.
+                notChosenProjects = notChosenProjects.Where(x => GetCategoryKey(x.Key) != typeKey || x.Value > currentRerollState[typeKey] - SemiRandomResearchMod.settings.reofferAfterAmountOfRerolls).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             }
         }
 

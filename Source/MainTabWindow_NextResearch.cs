@@ -68,6 +68,10 @@ namespace CM_Semi_Random_Research
         private const float ITEM_DELAY = 0.05f; // Very short delay between items
         private List<ResearchProjectDef> animationOrder = new List<ResearchProjectDef>();
 
+        private ResearchProjectDef lastClickedCard;
+        private float lastCardClickTime;
+        private const float CardDoubleClickSeconds = 0.4f;
+
         // Indexed by TechLevel.
         internal static readonly int TechLevelCount = (int)TechLevel.Archotech + 1;
         private float[] techLevelHeaderProgress = new float[TechLevelCount];
@@ -89,6 +93,7 @@ namespace CM_Semi_Random_Research
         private List<ResearchProjectDef> cachedAnomalyBasic = new List<ResearchProjectDef>();
         private List<ResearchProjectDef> cachedAnomalyAdvanced = new List<ResearchProjectDef>();
         private List<ResearchProjectDef> cachedGravshipProjects = new List<ResearchProjectDef>();
+        private readonly List<Pair<KnowledgeCategoryDef, List<ResearchProjectDef>>> cachedOtherGroups = new List<Pair<KnowledgeCategoryDef, List<ResearchProjectDef>>>();
         private readonly HashSet<ResearchProjectDef> cachedFoundationProjects = new HashSet<ResearchProjectDef>();
         private readonly HashSet<ResearchProjectDef> cachedEmergenceProjects = new HashSet<ResearchProjectDef>();
         private float cachedSharedCostWidth;
@@ -580,6 +585,7 @@ namespace CM_Semi_Random_Research
             base.Notify_ResolutionChanged();
             leftScrollOutHeight = 0f;
             snoozedOutHeight = 0f;
+            historyOutHeight = 0f;
         }
 
         public override Vector2 RequestedTabSize => InitialSize;
@@ -768,11 +774,15 @@ namespace CM_Semi_Random_Research
                     viewHeight = snoozedViewHeight;
                     outHeight = snoozedOutHeight;
                 }
+                else if (showingHistory)
+                {
+                    viewHeight = historyViewHeight;
+                    outHeight = historyOutHeight;
+                }
                 else
                 {
-                    // Kept at the current height in the history view, and while the reroll animation skips hidden
-                    // tech level groups, which would measure the list short.
-                    if (showingHistory || lastRerollTime > 0f)
+                    // Kept at the current height while the reroll animation skips hidden tech level groups, which would measure the list short.
+                    if (lastRerollTime > 0f)
                         return;
                     viewHeight = leftScrollViewHeight;
                     outHeight = leftScrollOutHeight;
@@ -793,10 +803,12 @@ namespace CM_Semi_Random_Research
             {
                 leftScrollPosition = Vector2.zero;
                 snoozedScrollPosition = Vector2.zero;
+                historyScrollPosition = Vector2.zero;
             }
             // The resized list is measured again before the next resize.
             leftScrollOutHeight = 0f;
             snoozedOutHeight = 0f;
+            historyOutHeight = 0f;
         }
 
         // True when the left column hides the selected offer because its category is busy. Mirrors RebuildLeftColumnLists.
