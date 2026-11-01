@@ -38,6 +38,15 @@ namespace CM_Semi_Random_Research
             return hash;
         }
 
+        // A knowledge category from a mod: not Anomaly's two, and not on a Gravship tab, which takes priority.
+        private static bool IsOtherCategory(ResearchProjectDef project)
+        {
+            return project.knowledgeCategory != null &&
+                project.knowledgeCategory != KnowledgeCategoryDefOf.Basic &&
+                project.knowledgeCategory != KnowledgeCategoryDefOf.Advanced &&
+                ResearchTracker.GetCategoryKey(project) != "Gravship";
+        }
+
         private void RebuildLeftColumnLists(ResearchTracker researchTracker)
         {
             int revision = researchTracker != null ? researchTracker.OffersRevision : -1;
@@ -60,6 +69,7 @@ namespace CM_Semi_Random_Research
             ResearchProjectDef activeGravshipProject = null;
 
             bool anomalyOn = AnomalyContentEnabled();
+            List<ResearchProjectDef> activeOtherProjects = new List<ResearchProjectDef>();
 
             if (researchTracker != null && researchTracker.CurrentProject != null)
             {
@@ -71,7 +81,9 @@ namespace CM_Semi_Random_Research
                         continue;
 
                     string key = ResearchTracker.GetCategoryKey(p);
-                    if (key == "Standard" && activeNonAnomalyProject == null)
+                    if (IsOtherCategory(p))
+                        activeOtherProjects.Add(p);
+                    else if (key == "Standard" && activeNonAnomalyProject == null)
                         activeNonAnomalyProject = p;
                     else if (key == "Gravship" && activeGravshipProject == null)
                         activeGravshipProject = p;
@@ -97,6 +109,11 @@ namespace CM_Semi_Random_Research
                 cachedActiveProjects.Add(activeAnomalyProjectAdvanced);
             if (activeGravshipProject != null && !cachedActiveProjects.Contains(activeGravshipProject))
                 cachedActiveProjects.Add(activeGravshipProject);
+            for (int i = 0; i < activeOtherProjects.Count; i++)
+            {
+                if (!cachedActiveProjects.Contains(activeOtherProjects[i]))
+                    cachedActiveProjects.Add(activeOtherProjects[i]);
+            }
 
             cachedFoundationProjects.Clear();
             cachedEmergenceProjects.Clear();
@@ -105,6 +122,7 @@ namespace CM_Semi_Random_Research
             cachedAnomalyAdvanced.Clear();
             cachedGravshipProjects.Clear();
             cachedStandardGroups.Clear();
+            cachedOtherGroups.Clear();
 
             // With switching off, a busy category's other offers are hidden rather than shown locked. The tracker keeps them.
             bool hideBusyCategoryOffers = SemiRandomResearchMod.settings == null || !SemiRandomResearchMod.settings.allowSwitchingResearch;
@@ -153,6 +171,32 @@ namespace CM_Semi_Random_Research
                     continue;
                 }
 
+                if (IsOtherCategory(p))
+                {
+                    bool otherBusy = false;
+                    for (int j = 0; j < activeOtherProjects.Count; j++)
+                    {
+                        if (activeOtherProjects[j] == p || (hideBusyCategoryOffers && IsCategoryBusy(activeOtherProjects[j]) && ResearchTracker.GetCategoryKey(activeOtherProjects[j]) == key))
+                            otherBusy = true;
+                    }
+                    if (!otherBusy)
+                    {
+                        List<ResearchProjectDef> otherList = null;
+                        for (int j = 0; j < cachedOtherGroups.Count; j++)
+                        {
+                            if (cachedOtherGroups[j].First == p.knowledgeCategory)
+                                otherList = cachedOtherGroups[j].Second;
+                        }
+                        if (otherList == null)
+                        {
+                            otherList = new List<ResearchProjectDef>();
+                            cachedOtherGroups.Add(new Pair<KnowledgeCategoryDef, List<ResearchProjectDef>>(p.knowledgeCategory, otherList));
+                        }
+                        otherList.Add(p);
+                    }
+                    continue;
+                }
+
                 if (key == "Standard" && p != activeNonAnomalyProject && !standardBusy)
                 {
                     if (!standardByLevel.TryGetValue(p.techLevel, out List<ResearchProjectDef> list))
@@ -167,6 +211,8 @@ namespace CM_Semi_Random_Research
             cachedAnomalyBasic.Sort((a, b) => a.CostApparent.CompareTo(b.CostApparent));
             cachedAnomalyAdvanced.Sort((a, b) => a.CostApparent.CompareTo(b.CostApparent));
             cachedGravshipProjects.Sort((a, b) => a.CostApparent.CompareTo(b.CostApparent));
+            for (int i = 0; i < cachedOtherGroups.Count; i++)
+                cachedOtherGroups[i].Second.Sort((a, b) => a.CostApparent.CompareTo(b.CostApparent));
 
             var levels = new List<TechLevel>(standardByLevel.Keys);
             levels.Sort();
@@ -222,6 +268,7 @@ namespace CM_Semi_Random_Research
             bool hasAnomalyToShowBasic = cachedAnomalyBasic.Count > 0;
             bool hasAnomalyToShowAdvanced = cachedAnomalyAdvanced.Count > 0;
             bool hasGravshipToShow = cachedGravshipProjects.Count > 0;
+            bool hasOtherToShow = cachedOtherGroups.Count > 0;
             float sharedCostColumnWidth = cachedSharedCostWidth;
 
             Text.Font = GameFont.Medium;
@@ -297,7 +344,7 @@ namespace CM_Semi_Random_Research
 
             bool hasStandardToShow = cachedStandardGroups.Count > 0;
 
-            if (hasStandardToShow || hasAnomalyToShowBasic || hasAnomalyToShowAdvanced || hasGravshipToShow)
+            if (hasStandardToShow || hasAnomalyToShowBasic || hasAnomalyToShowAdvanced || hasGravshipToShow || hasOtherToShow)
             {
                 Text.Font = GameFont.Medium;
                 GUI.color = Color.white;
@@ -346,8 +393,8 @@ namespace CM_Semi_Random_Research
                 }
             }
 
-            // Anomaly and Gravship offers.
-            if ((anomalyOn && (hasAnomalyToShowBasic || hasAnomalyToShowAdvanced)) || hasGravshipToShow)
+            // Anomaly, Gravship and other categories' offers.
+            if ((anomalyOn && (hasAnomalyToShowBasic || hasAnomalyToShowAdvanced)) || hasGravshipToShow || hasOtherToShow)
             {
                 if (currentY > 0)
                 {
@@ -416,6 +463,24 @@ namespace CM_Semi_Random_Research
                 {
                     Rect buttonRect = new Rect(0f, currentY, scrollViewRect.width, buttonHeight);
                     DrawResearchButton(ref buttonRect, cachedGravshipProjects[i], sharedCostColumnWidth);
+                    currentY += buttonHeight + researchProjectGapHeight;
+                }
+            }
+
+            for (int g = 0; g < cachedOtherGroups.Count; g++)
+            {
+                if (g > 0 || hasAnomalyToShowBasic || hasAnomalyToShowAdvanced || hasGravshipToShow) currentY += gapHeight;
+
+                Text.Font = GameFont.Small;
+                Text.Anchor = TextAnchor.MiddleLeft;
+                Widgets.Label(new Rect(0f, currentY, scrollViewRect.width, techLevelHeaderHeight), SafeDefLabel(cachedOtherGroups[g].First));
+                currentY += techLevelHeaderHeight;
+
+                List<ResearchProjectDef> otherProjects = cachedOtherGroups[g].Second;
+                for (int i = 0; i < otherProjects.Count; i++)
+                {
+                    Rect buttonRect = new Rect(0f, currentY, scrollViewRect.width, buttonHeight);
+                    DrawResearchButton(ref buttonRect, otherProjects[i], sharedCostColumnWidth);
                     currentY += buttonHeight + researchProjectGapHeight;
                 }
             }

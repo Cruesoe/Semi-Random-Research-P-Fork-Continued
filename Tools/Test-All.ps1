@@ -1,4 +1,4 @@
-# Checks run by Deploy-Mod before deploying: translation keys match the source, no tiny fonts, keyed XML whitespace, preview size.
+# Checks run by Deploy-Mod before deploying: translation keys match the source, no tiny fonts, no unused textures, keyed XML whitespace, preview size.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $failures = New-Object System.Collections.Generic.List[string]
@@ -41,6 +41,10 @@ foreach ($key in $used) { if (-not $keyed.Contains($key)) { $failures.Add("Missi
 foreach ($key in $keyed) { if (-not $used.Contains($key)) { $failures.Add("Unused translation: $key") } }
 
 if ($sourceText -match 'GameFont\.Tiny') { $failures.Add('GameFont.Tiny is used') }
+
+foreach ($texture in Get-ChildItem (Join-Path $root 'Textures') -Recurse -File) {
+    if (-not $sourceText.Contains($texture.BaseName)) { $failures.Add("Unused texture: $($texture.Name)") }
+}
 
 $preview = Join-Path $root 'About\Preview.png'
 if ((Get-Item $preview).Length -ge 1000000) { $failures.Add('About\Preview.png is 1,000,000 bytes or more') }

@@ -16,11 +16,21 @@ namespace CM_Semi_Random_Research
         private bool showingSnoozed;
         private ResearchProjectDef selectionBeforeHistory;
 
+        // Measured on layout for adaptive size, like the offer list's scroll heights.
+        private Vector2 historyScrollPosition = Vector2.zero;
+        private float historyViewHeight;
+        private float historyOutHeight;
+        private float historyCostWidth;
+        private int historyCostWidthRevision = -1;
+
         private void OpenHistory()
         {
             showingHistory = true;
             showingSnoozed = false;
             selectionBeforeHistory = selectedProject;
+            historyOutHeight = 0f;
+            historyScrollPosition = Vector2.zero;
+            historyCostWidthRevision = -1;
 
             List<ResearchHistoryEntry> history = cachedTracker?.CompletedHistory;
             if (history != null)
@@ -83,8 +93,15 @@ namespace CM_Semi_Random_Research
 
                 float listHeight = leftRect.height - totalFooterHeight - currentY;
                 float listWidth = leftRect.width;
+                int entryCount = history?.Count ?? 0;
+                float viewHeight = Mathf.Max(0f, entryCount * (HistoryCardHeight + HistoryCardGap) - HistoryCardGap);
+                if (Event.current.type == EventType.Layout)
+                {
+                    historyViewHeight = viewHeight;
+                    historyOutHeight = listHeight;
+                }
 
-                if (history == null || history.Count == 0)
+                if (entryCount == 0)
                 {
                     GUI.color = new Color(0.7f, 0.7f, 0.7f);
                     Widgets.Label(new Rect(0f, currentY, listWidth, 30f), "CM_Semi_Random_Research_HistoryEmpty".Translate());
@@ -92,19 +109,39 @@ namespace CM_Semi_Random_Research
                 }
                 else
                 {
-                    int maxCards = Mathf.FloorToInt((listHeight + HistoryCardGap) / (HistoryCardHeight + HistoryCardGap));
-                    int shown = Mathf.Clamp(maxCards, 0, history.Count);
-                    float costColumnWidth = MeasureHistoryCostWidth(history, shown);
-
-                    for (int i = 0; i < shown; i++)
+                    int revision = drawTracker?.CompletionRevision ?? 0;
+                    if (historyCostWidthRevision != revision)
                     {
-                        ResearchHistoryEntry entry = history[i];
-                        if (entry?.project == null)
-                            continue;
-                        CacheFirstUnlockable(entry.project);
-                        Rect cardRect = new Rect(0f, currentY, listWidth, HistoryCardHeight);
-                        DrawHistoryCard(cardRect, entry, costColumnWidth);
-                        currentY += HistoryCardHeight + HistoryCardGap;
+                        historyCostWidthRevision = revision;
+                        historyCostWidth = MeasureHistoryCostWidth(history, entryCount);
+                    }
+
+                    Rect outRect = new Rect(0f, currentY, listWidth, listHeight);
+                    bool useScroll = viewHeight > listHeight + 1f;
+                    Rect viewRect = new Rect(0f, 0f, useScroll ? listWidth - 16f : listWidth, viewHeight);
+                    if (useScroll)
+                        Widgets.BeginScrollView(outRect, ref historyScrollPosition, viewRect);
+                    else
+                        GUI.BeginGroup(outRect);
+                    try
+                    {
+                        float cardY = 0f;
+                        for (int i = 0; i < entryCount; i++)
+                        {
+                            ResearchHistoryEntry entry = history[i];
+                            if (entry?.project == null)
+                                continue;
+                            CacheFirstUnlockable(entry.project);
+                            DrawHistoryCard(new Rect(0f, cardY, viewRect.width, HistoryCardHeight), entry, historyCostWidth);
+                            cardY += HistoryCardHeight + HistoryCardGap;
+                        }
+                    }
+                    finally
+                    {
+                        if (useScroll)
+                            Widgets.EndScrollView();
+                        else
+                            GUI.EndGroup();
                     }
                 }
             }
