@@ -319,6 +319,13 @@ namespace CM_Semi_Random_Research
 
             ResearchTabWindowSwitcher.Apply();
 
+            // Auto research is a global setting; a newly generated world starts with it off.
+            if (!fromLoad && SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.autoPickNextResearch)
+            {
+                SemiRandomResearchMod.settings.autoPickNextResearch = false;
+                SemiRandomResearchMod.Instance?.SaveSettingsOnly();
+            }
+
             // Rolling needs Faction.OfPlayer, which does not exist yet during world generation.
             if (Faction.OfPlayerSilentFail != null)
                 SettingsChanged();
