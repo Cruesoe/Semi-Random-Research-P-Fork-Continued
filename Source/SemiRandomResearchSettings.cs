@@ -168,10 +168,11 @@ namespace CM_Semi_Random_Research
             listing.Begin(inRect);
 
             // Column 1: general, display, research trees.
-            // Auto research is toggled from the research tab, not here.
+            // Auto research and auto-open are toggled from the research tab; auto-open stays here while another tree owns that tab.
             SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_General");
             Checkbox(listing, "Feature_Enabled", ref featureEnabled);
-            Checkbox(listing, "AutoOpen", ref autoOpenOnCompletion);
+            if (!ResearchTabWindowSwitcher.SemiRandomOwnsResearchTab)
+                Checkbox(listing, "AutoOpen", ref autoOpenOnCompletion);
             Checkbox(listing, "ShowLetter", ref showCompletionLetter);
             Checkbox(listing, "AllowSnoozing", ref allowSnoozing);
             Checkbox(listing, "ConfirmDependentSnooze", ref confirmDependentSnooze);
