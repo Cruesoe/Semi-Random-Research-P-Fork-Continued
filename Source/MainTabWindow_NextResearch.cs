@@ -1005,9 +1005,15 @@ namespace CM_Semi_Random_Research
             DrawHistoryToggleButton(new Rect(nextIconX, iconY, iconSize, iconSize));
 
             float autoToggleHeight = 24f;
-            DrawAutoPickToggle(new Rect(
+            float autoToggleY = footerButtonY + (footerButtonHeight - autoToggleHeight) / 2f;
+            float autoPickEnd = DrawAutoPickToggle(new Rect(
                 rightFooterRect.x,
-                footerButtonY + (footerButtonHeight - autoToggleHeight) / 2f,
+                autoToggleY,
+                autoToggleHeight * 1.78f,
+                autoToggleHeight));
+            DrawAutoOpenToggle(new Rect(
+                autoPickEnd + 16f,
+                autoToggleY,
                 autoToggleHeight * 1.78f,
                 autoToggleHeight));
 
@@ -1092,12 +1098,35 @@ namespace CM_Semi_Random_Research
         }
 
         // Toggling auto research picks nothing while the window is open; ResearchTracker.AutoPickNow runs on close.
-        private void DrawAutoPickToggle(Rect toggleRect)
+        private float DrawAutoPickToggle(Rect toggleRect)
         {
-            bool on = SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.autoPickNextResearch;
+            SemiRandomResearchSettings settings = SemiRandomResearchMod.settings;
+            bool on = settings != null && settings.autoPickNextResearch;
+            if (DrawFooterToggle(toggleRect, on, "CM_Semi_Random_Research_AutoToggleLabel".Translate(),
+                    "CM_Semi_Random_Research_AutoToggleTip".Translate(), out float xMax) && settings != null)
+            {
+                settings.autoPickNextResearch = !on;
+                SemiRandomResearchMod.Instance?.SaveSettingsOnly();
+            }
+            return xMax;
+        }
 
+        private void DrawAutoOpenToggle(Rect toggleRect)
+        {
+            SemiRandomResearchSettings settings = SemiRandomResearchMod.settings;
+            bool on = settings != null && settings.autoOpenOnCompletion;
+            if (DrawFooterToggle(toggleRect, on, "CM_Semi_Random_Research_AutoOpenToggleLabel".Translate(),
+                    "CM_Semi_Random_Research_Setting_AutoOpen_Description".Translate(), out _) && settings != null)
+            {
+                settings.autoOpenOnCompletion = !on;
+                SemiRandomResearchMod.Instance?.SaveSettingsOnly();
+            }
+        }
+
+        // Draws a switch with its label to the right; returns true when clicked and gives the label's right edge.
+        private bool DrawFooterToggle(Rect toggleRect, bool on, string label, string tip, out float xMax)
+        {
             Text.Font = GameFont.Small;
-            string label = "CM_Semi_Random_Research_AutoToggleLabel".Translate();
             float labelWidth = Text.CalcSize(label).x + 4f;
             Rect labelRect = new Rect(toggleRect.xMax + 6f, toggleRect.y, labelWidth, toggleRect.height);
             Rect hitRect = new Rect(toggleRect.x, toggleRect.y, labelRect.xMax - toggleRect.x, toggleRect.height);
@@ -1117,20 +1146,16 @@ namespace CM_Semi_Random_Research
                 GUI.color = old;
             }
 
-            if (Clicked(hitRect))
-            {
-                SoundDefOf.Click.PlayOneShotOnCamera();
-                if (SemiRandomResearchMod.settings != null)
-                {
-                    SemiRandomResearchMod.settings.autoPickNextResearch = !on;
-                    SemiRandomResearchMod.Instance?.SaveSettingsOnly();
-                }
-            }
-
-            TooltipHandler.TipRegion(hitRect, "CM_Semi_Random_Research_AutoToggleTip".Translate() + "\n\n" +
+            TooltipHandler.TipRegion(hitRect, tip + "\n\n" +
                 (on
                     ? "CM_Semi_Random_Research_AutoToggleStateOn".Translate()
                     : "CM_Semi_Random_Research_AutoToggleStateOff".Translate()));
+
+            xMax = labelRect.xMax;
+            if (!Clicked(hitRect))
+                return false;
+            SoundDefOf.Click.PlayOneShotOnCamera();
+            return true;
         }
 
         private const string ResearchInflationPackageId = "cruesoe.research.inflation";

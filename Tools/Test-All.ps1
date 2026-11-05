@@ -15,9 +15,9 @@ foreach ($m in [regex]::Matches($sourceText, '(?:Checkbox|IntSetting)\(listing, 
     [void]$used.Add("${prefix}Setting_$($m.Groups[1].Value)_Label")
     [void]$used.Add("${prefix}Setting_$($m.Groups[1].Value)_Description")
 }
-$settingsText = [IO.File]::ReadAllText((Join-Path $root 'Source\SemiRandomResearchSettings.cs'))
 foreach ($pair in @(@('ManualReroll', 'Manual_Reroll_'), @('ProgressAddsChoice', 'Progress_Adds_Choice_'))) {
-    $body = [regex]::Match($settingsText, "enum $($pair[0])\s*\{([^}]*)\}").Groups[1].Value
+    $enumText = [IO.File]::ReadAllText((Join-Path $root "Source\$($pair[0]).cs"))
+    $body = [regex]::Match($enumText, "enum $($pair[0])\s*\{([^}]*)\}").Groups[1].Value
     foreach ($name in ($body -split ',') | ForEach-Object { $_.Trim() } | Where-Object { $_ }) {
         [void]$used.Add("${prefix}Setting_$($pair[1])$($name)_Label")
         [void]$used.Add("${prefix}Setting_$($pair[1])$($name)_Description")

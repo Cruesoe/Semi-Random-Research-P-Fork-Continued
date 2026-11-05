@@ -1,4 +1,4 @@
-﻿using RimWorld;
+using RimWorld;
 using System.Collections.Generic;
 using UnityEngine;
 using Verse;
@@ -6,49 +6,6 @@ using Verse.Sound;
 
 namespace CM_Semi_Random_Research
 {
-    public enum ManualReroll
-    {
-        None,
-        Once,
-        Always
-    }
-
-    public enum ChoiceAmountSelection
-    {
-        Static,
-        PerColonist
-    }
-
-    public enum ProgressAddsChoice
-    {
-        Always,
-        Never,
-        ReplaceChoice,
-        AddChoice,
-        AddChoiceOnlyOnGain
-    }
-
-    public enum PreferredResearchTree
-    {
-        NodeResearch,
-        YART,
-        Sleek,
-        NiceResearchTab,
-        Organized
-    }
-
-    // Which window the Research main tab button opens. PreferredResearchTree is where this mod's tree button goes.
-    public enum ResearchTabOwner
-    {
-        SemiRandom,
-        Vanilla,
-        NodeResearch,
-        YART,
-        Sleek,
-        NiceResearchTab,
-        Organized
-    }
-
     public class SemiRandomResearchSettings : ModSettings
     {
         public bool featureEnabled = true;
@@ -168,10 +125,11 @@ namespace CM_Semi_Random_Research
             listing.Begin(inRect);
 
             // Column 1: general, display, research trees.
-            // Auto research is toggled from the research tab, not here.
+            // Auto research and auto-open are toggled from the research tab; auto-open stays here while another tree owns that tab.
             SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_General");
             Checkbox(listing, "Feature_Enabled", ref featureEnabled);
-            Checkbox(listing, "AutoOpen", ref autoOpenOnCompletion);
+            if (!ResearchTabWindowSwitcher.SemiRandomOwnsResearchTab)
+                Checkbox(listing, "AutoOpen", ref autoOpenOnCompletion);
             Checkbox(listing, "ShowLetter", ref showCompletionLetter);
             Checkbox(listing, "AllowSnoozing", ref allowSnoozing);
             Checkbox(listing, "ConfirmDependentSnooze", ref confirmDependentSnooze);

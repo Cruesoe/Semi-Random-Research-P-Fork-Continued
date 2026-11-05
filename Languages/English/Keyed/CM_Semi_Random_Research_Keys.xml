@@ -147,6 +147,7 @@
   <CM_Semi_Random_Research_AutoToggleTip>Auto research: when nothing is being researched, the cheapest project on offer is started for you. The pick only happens once you close this window, so you always get the chance to choose yourself first.</CM_Semi_Random_Research_AutoToggleTip>
   <CM_Semi_Random_Research_AutoToggleStateOn>Currently on. Click to turn off.</CM_Semi_Random_Research_AutoToggleStateOn>
   <CM_Semi_Random_Research_AutoToggleStateOff>Currently off. Click to turn on.</CM_Semi_Random_Research_AutoToggleStateOff>
+  <CM_Semi_Random_Research_AutoOpenToggleLabel>Auto open</CM_Semi_Random_Research_AutoOpenToggleLabel>
   <CM_Semi_Random_Research_InflationSettingsTip>Open Research: Inflation settings</CM_Semi_Random_Research_InflationSettingsTip>
   <CM_Semi_Random_Research_TotalSettingsTip>Open Research: Total settings</CM_Semi_Random_Research_TotalSettingsTip>
   <CM_Semi_Random_Research_PacingSettingsTip>Open Pacing Manager settings</CM_Semi_Random_Research_PacingSettingsTip>
