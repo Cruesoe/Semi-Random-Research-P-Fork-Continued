@@ -8,7 +8,8 @@ Instead of choosing freely from the entire research tree, you choose from a few 
 [*]Anomaly dark research and Vanilla Gravship Expanded gravtech research get their own offers alongside standard research.
 [*]Right-click an offer to snooze it: it is not offered again until you unsnooze it, and its place stays empty until the next reroll.
 [*]Snoozing a project also sets aside the research that depends on it, after a confirmation listing every project affected, and the snoozed list shows what is set aside.
-[*]Auto research starts the cheapest offer for you when the research tab closes with nothing being researched.
+[*]Auto research starts the cheapest offer for you when the research tab closes with nothing being researched. It is turned off for each new world.
+[*]An Auto open switch in the research tab footer opens the tab when a project is finished.
 [*]Double-click an offer to start researching it and close the research window.
 [*]Research can be paused and resumed from the research tab.
 [*]Every offer shows how long it will take at your colony's research speed.
@@ -26,7 +27,7 @@ Instead of choosing freely from the entire research tree, you choose from a few 
 [*][b]Rerolls[/b]: reroll every choice when a project is finished, and allow manual rerolls never, once per project or always.
 [*][b]Which projects are offered[/b]: restrict offers to your faction's tech level, finish the lowest tech level first, allow one higher-tech project, and balance the cost of the offers.
 [*][b]Partially researched projects[/b]: offer them normally, never, as a replacement choice or as an extra choice.
-[*][b]Display[/b]: the rate graph, the completion letter, opening the research tab on completion, and adaptive window size can each be turned off, estimates can show the in-game date they finish instead of the time left, and the timings panel can time your current tech level instead of all research.
+[*][b]Display[/b]: the rate graph, the completion letter and adaptive window size can each be turned off, estimates can show the in-game date they finish instead of the time left, and the timings panel can time your current tech level instead of all research.
 [*][b]Snoozing[/b]: allow snoozing, and ask before snoozing a project other research depends on.
 [/list]
 
