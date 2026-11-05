@@ -12,6 +12,12 @@ namespace CM_Semi_Random_Research
         [HarmonyPrefix]
         public static void Prefix(ResearchProjectDef proj)
         {
+            OfferOnProgress(proj);
+        }
+
+        // Also called for progress that doesn't go through AddProgress (Research Reinvented).
+        public static void OfferOnProgress(ResearchProjectDef proj)
+        {
             if (proj == null)
                 return;
 

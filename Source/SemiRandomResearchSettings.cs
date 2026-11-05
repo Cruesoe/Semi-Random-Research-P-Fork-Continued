@@ -1,4 +1,4 @@
-﻿using RimWorld;
+using RimWorld;
 using System.Collections.Generic;
 using UnityEngine;
 using Verse;
@@ -6,49 +6,6 @@ using Verse.Sound;
 
 namespace CM_Semi_Random_Research
 {
-    public enum ManualReroll
-    {
-        None,
-        Once,
-        Always
-    }
-
-    public enum ChoiceAmountSelection
-    {
-        Static,
-        PerColonist
-    }
-
-    public enum ProgressAddsChoice
-    {
-        Always,
-        Never,
-        ReplaceChoice,
-        AddChoice,
-        AddChoiceOnlyOnGain
-    }
-
-    public enum PreferredResearchTree
-    {
-        NodeResearch,
-        YART,
-        Sleek,
-        NiceResearchTab,
-        Organized
-    }
-
-    // Which window the Research main tab button opens. PreferredResearchTree is where this mod's tree button goes.
-    public enum ResearchTabOwner
-    {
-        SemiRandom,
-        Vanilla,
-        NodeResearch,
-        YART,
-        Sleek,
-        NiceResearchTab,
-        Organized
-    }
-
     public class SemiRandomResearchSettings : ModSettings
     {
         public bool featureEnabled = true;
