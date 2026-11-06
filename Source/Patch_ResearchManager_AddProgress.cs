@@ -18,7 +18,7 @@ namespace CM_Semi_Random_Research
         // Also called for progress that doesn't go through AddProgress (Research Reinvented).
         public static void OfferOnProgress(ResearchProjectDef proj)
         {
-            if (proj == null)
+            if (proj == null || Compatibility.IsCommissionProject(proj))
                 return;
 
             SemiRandomResearchSettings settings = SemiRandomResearchMod.settings;

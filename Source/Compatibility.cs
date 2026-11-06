@@ -45,6 +45,18 @@ namespace CM_Semi_Random_Research
             return false;
         }
 
+        // Research Commission's generated commission projects: that mod offers, starts and finishes them itself.
+        public static bool IsCommissionProject(ResearchProjectDef rpd)
+        {
+            return rpd?.defName != null && rpd.defName.StartsWith("RC_Commission_", StringComparison.Ordinal);
+        }
+
+        // Whether a commission holds vanilla's standard project slot.
+        public static bool CommissionIsCurrent(string typeKey)
+        {
+            return typeKey == "Standard" && IsCommissionProject(Find.ResearchManager?.GetProject());
+        }
+
         public static bool IsDummyResearch(this ResearchProjectDef rpd)
         {
             if (rpd == null)
