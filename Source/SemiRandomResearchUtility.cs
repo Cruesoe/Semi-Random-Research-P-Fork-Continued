@@ -13,12 +13,12 @@ namespace CM_Semi_Random_Research
 
         public static bool CanSelectNormalResearchNow(ResearchProjectDef rpd)
         {
-            return !IsControllingResearchSelection && rpd.CanStartNow;
+            return (!IsControllingResearchSelection || Compatibility.IsCommissionProject(rpd)) && rpd.CanStartNow;
         }
 
         public static bool IsCurrentProject(ResearchProjectDef rpd)
         {
-            return !IsControllingResearchSelection && Find.ResearchManager.IsCurrentProject(rpd);
+            return (!IsControllingResearchSelection || Compatibility.IsCommissionProject(rpd)) && Find.ResearchManager.IsCurrentProject(rpd);
         }
 
         private static float lastRejectionMessageTime = -99f;

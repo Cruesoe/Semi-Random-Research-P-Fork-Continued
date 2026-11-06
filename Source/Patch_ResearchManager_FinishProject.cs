@@ -53,6 +53,11 @@ namespace CM_Semi_Random_Research
             List<ResearchProjectDef> chain = new List<ResearchProjectDef>(finishedChain);
             finishedChain.Clear();
 
+            // Finished commissions get no history, reroll, letter or auto-open.
+            chain.RemoveAll(Compatibility.IsCommissionProject);
+            if (chain.Count == 0)
+                return;
+
             try
             {
                 ResearchTracker tracker = SemiRandomResearchUtility.Tracker;

@@ -13,10 +13,10 @@ namespace CM_Semi_Random_Research
     public static class Patch_MainTabWindow_Research_DrawStartButton
     {
         [HarmonyPrefix]
-        public static void Prefix(List<string> ___lockedReasons)
+        public static void Prefix(List<string> ___lockedReasons, ResearchProjectDef ___selectedProject)
         {
             ___lockedReasons.Clear();
-            if (SemiRandomResearchUtility.IsControllingResearchSelection)
+            if (SemiRandomResearchUtility.IsControllingResearchSelection && !Compatibility.IsCommissionProject(___selectedProject))
                 ___lockedReasons.Add("CM_Semi_Random_Research_Active".Translate());
         }
 
