@@ -12,7 +12,7 @@ namespace CM_Semi_Random_Research
         [HarmonyPrefix]
         public static bool Prefix(ResearchProjectDef proj)
         {
-            if (proj == null || !SemiRandomResearchUtility.IsControllingResearchSelection)
+            if (proj == null || Compatibility.IsCommissionProject(proj) || !SemiRandomResearchUtility.IsControllingResearchSelection)
                 return true;
 
             if (ResearchTracker.ApplyingTrackedProject)

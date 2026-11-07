@@ -521,6 +521,10 @@ namespace CM_Semi_Random_Research
                     if (finished)
                         ConsiderProjectFinished(finishedProject);
 
+                    // A running commission keeps the slot: no auto research and no swap back to the tracked project until it ends.
+                    if (Compatibility.CommissionIsCurrent(typeKey))
+                        continue;
+
                     // Auto research waits until the tab has been opened once and is closed again (see AutoPickNow).
                     if ((currentProjectOfType.Count == 0 || finished) && !IsPaused(typeKey) &&
                         SemiRandomResearchMod.settings.autoPickNextResearch && AutoPickArmed &&
@@ -623,7 +627,7 @@ namespace CM_Semi_Random_Research
             for (int k = 0; k < all_typeKeys.Count; k++)
             {
                 string typeKey = all_typeKeys[k];
-                if (IsPaused(typeKey))
+                if (IsPaused(typeKey) || Compatibility.CommissionIsCurrent(typeKey))
                     continue;
                 if (currentProjects.Any(x => !x.IsFinished && GetCategoryKey(x) == typeKey))
                     continue;
@@ -683,6 +687,7 @@ namespace CM_Semi_Random_Research
 
             currentAvailableProjects = currentAvailableProjects.Where(projectDef => projectDef != null &&
                 !projectDef.IsFinished &&
+                !Compatibility.IsCommissionProject(projectDef) &&
                 !Compatibility.IsHiddenResearch(projectDef) &&
                 Find.Storyteller.difficulty.AllowedBy(projectDef.hideWhen) &&
                 !ResearchSnoozeTracker.IsExcludedNow(projectDef)).ToList();
@@ -847,6 +852,8 @@ namespace CM_Semi_Random_Research
             {
                 ResearchProjectDef projectDef = projectsOfType[i];
                 if (currentlyOffered.Contains(projectDef))
+                    continue;
+                if (Compatibility.IsCommissionProject(projectDef))
                     continue;
                 if (projectDef.IsDummyResearch() || Compatibility.IsHiddenResearch(projectDef) || ResearchSnoozeTracker.IsExcludedNow(projectDef))
                     continue;
@@ -1231,6 +1238,13 @@ namespace CM_Semi_Random_Research
         // bypassing ResearchManager.SetCurrentProject, so the selection gate is applied here too. Clearing is always allowed.
         public void SetCurrentProject(ResearchProjectDef newCurrentProject, KnowledgeCategoryDef type)
         {
+            // Commissions run in vanilla's slot without being tracked.
+            if (Compatibility.IsCommissionProject(newCurrentProject))
+            {
+                Find.ResearchManager.SetCurrentProject(newCurrentProject);
+                return;
+            }
+
             if (newCurrentProject != null &&
                 !applyingTrackedProject &&
                 SemiRandomResearchUtility.IsControllingResearchSelection)
