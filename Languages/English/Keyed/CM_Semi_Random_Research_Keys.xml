@@ -130,7 +130,7 @@
   <CM_Semi_Random_Research_Locked>Locked</CM_Semi_Random_Research_Locked>
   <CM_Semi_Random_Research_Foundation>Foundation</CM_Semi_Random_Research_Foundation>
   <CM_Semi_Random_Research_Emergence>Emergence</CM_Semi_Random_Research_Emergence>
-  <CM_Semi_Random_Research_FinishNow>Finish now</CM_Semi_Random_Research_FinishNow>
+  <CM_Semi_Random_Research_FinishNowTip>Dev: finish the selected project now</CM_Semi_Random_Research_FinishNowTip>
   <CM_Semi_Random_Research_SettingsTip>Open Semi Random Research settings</CM_Semi_Random_Research_SettingsTip>
 
   <!-- Research history -->

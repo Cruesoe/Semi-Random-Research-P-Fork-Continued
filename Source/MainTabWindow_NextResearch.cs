@@ -34,6 +34,7 @@ namespace CM_Semi_Random_Research
         private static Texture2D TotalIcon;
         private static Texture2D PacingIcon;
         private static Texture2D HistoryIcon;
+        private static Texture2D FinishNowIcon;
         private static Texture2D ToggleOnIcon;
         private static Texture2D ToggleOffIcon;
 
@@ -47,6 +48,7 @@ namespace CM_Semi_Random_Research
             TotalIcon = ContentFinder<Texture2D>.Get("UI/Total", true);
             PacingIcon = ContentFinder<Texture2D>.Get("UI/Pacing", true);
             HistoryIcon = ContentFinder<Texture2D>.Get("UI/History", true);
+            FinishNowIcon = ContentFinder<Texture2D>.Get("UI/FinishNow", true);
             ToggleOnIcon = ContentFinder<Texture2D>.Get("UI/ToggleOn", true);
             ToggleOffIcon = ContentFinder<Texture2D>.Get("UI/ToggleOff", true);
         }
@@ -58,7 +60,6 @@ namespace CM_Semi_Random_Research
         private static readonly Color FooterRerollButtonColor = new Color(0.55f, 0.38f, 0.14f);
         private static readonly Color FooterPauseButtonColor = new Color(0.50f, 0.42f, 0.16f);
         private static readonly Color FooterStartButtonColor = new Color(0.22f, 0.48f, 0.28f);
-        private static readonly Color FooterDebugButtonColor = new Color(0.55f, 0.22f, 0.22f);
 
         private int currentRandomSeed = 0;
 
@@ -944,7 +945,6 @@ namespace CM_Semi_Random_Research
             // Same footer strip as the left column.
             float rightFooterPaddingTop = 12f;
             float footerButtonHeight = 40f;
-            float footerButtonWidth = 120f;
             float iconSize = 28f;
             float rightFooterPaddingBottom = 12f;
             float rightFooterHeight = rightFooterPaddingTop + footerButtonHeight + rightFooterPaddingBottom;
@@ -974,22 +974,6 @@ namespace CM_Semi_Random_Research
 
             float footerButtonY = rightFooterRect.y + rightFooterPaddingTop;
 
-            if (Prefs.DevMode && selectedProject != null && !selectedProject.IsFinished)
-            {
-                Rect debugButtonRect = new Rect(
-                    rightFooterRect.x + (rightFooterRect.width - footerButtonWidth) / 2f,
-                    footerButtonY,
-                    footerButtonWidth,
-                    footerButtonHeight);
-
-                if (ColoredButtonText(debugButtonRect, "CM_Semi_Random_Research_FinishNow".Translate(), FooterDebugButtonColor))
-                {
-                    // The FinishProject patch hands the completion to the tracker.
-                    Find.ResearchManager.FinishProject(selectedProject);
-                    InvalidateLeftColumnCache();
-                }
-            }
-
             float iconGap = 4f;
             float iconY = footerButtonY + (footerButtonHeight - iconSize) / 2f;
             float nextIconX = rightFooterRect.xMax - iconSize;
@@ -1003,6 +987,18 @@ namespace CM_Semi_Random_Research
 
             nextIconX -= iconSize + iconGap;
             DrawHistoryToggleButton(new Rect(nextIconX, iconY, iconSize, iconSize));
+
+            if (Prefs.DevMode && selectedProject != null && !selectedProject.IsFinished)
+            {
+                nextIconX -= iconSize + iconGap;
+                DrawFooterIconButton(new Rect(nextIconX, iconY, iconSize, iconSize), FinishNowIcon, null,
+                    "CM_Semi_Random_Research_FinishNowTip", () =>
+                    {
+                        // The FinishProject patch hands the completion to the tracker.
+                        Find.ResearchManager.FinishProject(selectedProject);
+                        InvalidateLeftColumnCache();
+                    });
+            }
 
             float autoToggleHeight = 24f;
             float autoToggleY = footerButtonY + (footerButtonHeight - autoToggleHeight) / 2f;
