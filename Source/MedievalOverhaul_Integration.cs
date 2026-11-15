@@ -13,7 +13,7 @@ namespace CM_Semi_Random_Research
     public static class MedievalOverhaul_Integration
     {
         private static readonly HashSet<ResearchProjectDef> schematicProjects = new HashSet<ResearchProjectDef>();
-        private static FieldInfo cacheStaleAfterTicksField;
+        private static AccessTools.FieldRef<int> cacheStaleAfterTicks;
         private static ResearchProjectDef lastProject;
 
         static MedievalOverhaul_Integration()
@@ -23,12 +23,13 @@ namespace CM_Semi_Random_Research
             if (canStartNowPatch == null || requiredSchematic == null)
                 return;
 
-            cacheStaleAfterTicksField = AccessTools.Field(canStartNowPatch, "cacheStaleAfterTicks");
-            if (cacheStaleAfterTicksField == null || cacheStaleAfterTicksField.FieldType != typeof(int))
+            FieldInfo cacheStaleAfterTicksField = AccessTools.Field(canStartNowPatch, "cacheStaleAfterTicks");
+            if (cacheStaleAfterTicksField == null || !cacheStaleAfterTicksField.IsStatic || cacheStaleAfterTicksField.FieldType != typeof(int))
             {
                 Log.Warning("[CM_Semi_Random_Research] Medieval Overhaul's schematic cache wasn't found; schematic projects may be offered inconsistently.");
                 return;
             }
+            cacheStaleAfterTicks = AccessTools.StaticFieldRefAccess<int>(cacheStaleAfterTicksField);
 
             foreach (ResearchProjectDef def in DefDatabase<ResearchProjectDef>.AllDefsListForReading)
             {
@@ -56,7 +57,7 @@ namespace CM_Semi_Random_Research
             if (__instance == lastProject || !schematicProjects.Contains(__instance))
                 return;
             lastProject = __instance;
-            cacheStaleAfterTicksField.SetValue(null, -1);
+            cacheStaleAfterTicks() = -1;
         }
     }
 }

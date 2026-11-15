@@ -33,7 +33,7 @@ foreach ($file in Get-ChildItem (Join-Path $root 'Languages\English\Keyed') -Fil
     }
     [xml]$xml = $text
     foreach ($node in $xml.LanguageData.ChildNodes) {
-        if ($node.NodeType -eq 'Element' -and -not $keyed.Add($node.Name)) { $failures.Add("Duplicate key $($node.Name)") }
+        if ($node.NodeType -eq 'Element' -and -not $keyed.Add($node.get_Name())) { $failures.Add("Duplicate key $($node.get_Name())") }
     }
 }
 
