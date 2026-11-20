@@ -96,10 +96,10 @@
   <CM_Semi_Random_Research_Setting_MatchUIRethemed_Description>When enabled, the research window, the snooze confirmation and this settings page use UI Rethemed's look: its palette, rounded cards, title bar and buttons. Era colors can be changed on UI Rethemed - Core's settings page.</CM_Semi_Random_Research_Setting_MatchUIRethemed_Description>
   <CM_Semi_Random_Research_Setting_MatchUIRethemed_LockedTip>Needs UI Rethemed - Core.</CM_Semi_Random_Research_Setting_MatchUIRethemed_LockedTip>
   <CM_Semi_Random_Research_Setting_TreeButtonOpens_Label>Switch button opens</CM_Semi_Random_Research_Setting_TreeButtonOpens_Label>
-  <CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>Which research tree the switch button at the bottom of Semi Random Research opens. That button is named after the tree it will take you to. Only trees you have installed are listed. The Research tab itself reopens whichever window you last switched to, so this button is how you change it. Defaults to Node Research when it is installed, then YART, then Sleek Research Tab, then Nice Research Tab, then Research: Organized, then UI Rethemed - Research.</CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>
+  <CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>Which research tree the switch button at the bottom of Semi Random Research opens. That button is named after the tree it will take you to. Only trees you have installed are listed. The Research tab itself reopens whichever window you last switched to, so this button is how you change it. Defaults to Node Research when it is installed, then YART, then Sleek Research Tab, then Nice Research Tab, then Research: Organized 2, then Research: Organized, then UI Rethemed - Research.</CM_Semi_Random_Research_Setting_TreeButtonOpens_Description>
   <CM_Semi_Random_Research_Setting_SuppressHandover_Label>Suppress handover messages</CM_Semi_Random_Research_Setting_SuppressHandover_Label>
-  <CM_Semi_Random_Research_Setting_SuppressHandover_Description>Hide the messages shown when switching between Semi Random Research and another research tree (Node Research, YART, Sleek Research Tab, Nice Research Tab, Research: Organized or UI Rethemed - Research).</CM_Semi_Random_Research_Setting_SuppressHandover_Description>
-  <CM_Semi_Random_Research_Setting_Trees_LockedTip>Install Node Research, YART, Sleek Research Tab, Nice Research Tab, Research: Organized or UI Rethemed - Research to use these. Without one, the switch button opens the vanilla research tree.</CM_Semi_Random_Research_Setting_Trees_LockedTip>
+  <CM_Semi_Random_Research_Setting_SuppressHandover_Description>Hide the messages shown when switching between Semi Random Research and another research tree (Node Research, YART, Sleek Research Tab, Nice Research Tab, Research: Organized, Research: Organized 2 or UI Rethemed - Research).</CM_Semi_Random_Research_Setting_SuppressHandover_Description>
+  <CM_Semi_Random_Research_Setting_Trees_LockedTip>Install Node Research, YART, Sleek Research Tab, Nice Research Tab, Research: Organized, Research: Organized 2 or UI Rethemed - Research to use these. Without one, the switch button opens the vanilla research tree.</CM_Semi_Random_Research_Setting_Trees_LockedTip>
   <CM_Semi_Random_Research_Setting_RestrictFaction_LockedTip>Locked on while Node Research is installed. Node Research controls tech-level progression.</CM_Semi_Random_Research_Setting_RestrictFaction_LockedTip>
   <CM_Semi_Random_Research_Setting_OneHigher_DisabledTip>Disabled while Node Research is installed. Node Research controls tech-level progression.</CM_Semi_Random_Research_Setting_OneHigher_DisabledTip>
   <CM_Semi_Random_Research_Tree_NodeResearch>Node Research</CM_Semi_Random_Research_Tree_NodeResearch>
@@ -107,6 +107,7 @@
   <CM_Semi_Random_Research_Tree_Sleek>Sleek Research Tab</CM_Semi_Random_Research_Tree_Sleek>
   <CM_Semi_Random_Research_Tree_Nice>Nice Research Tab</CM_Semi_Random_Research_Tree_Nice>
   <CM_Semi_Random_Research_Tree_Organized>Research: Organized</CM_Semi_Random_Research_Tree_Organized>
+  <CM_Semi_Random_Research_Tree_Organized2>Research: Organized 2</CM_Semi_Random_Research_Tree_Organized2>
   <CM_Semi_Random_Research_Tree_UIRethemed>UI Rethemed - Research</CM_Semi_Random_Research_Tree_UIRethemed>
 
   <!-- Research tab -->
@@ -232,6 +233,8 @@
   <CM_Semi_Random_Research_Handover_Nice>Switched to Nice Research Tab.</CM_Semi_Random_Research_Handover_Nice>
   <CM_Semi_Random_Research_Handover_Organized_Restricted>Switched to Research: Organized. Prohibit normal project selection is still on.</CM_Semi_Random_Research_Handover_Organized_Restricted>
   <CM_Semi_Random_Research_Handover_Organized>Switched to Research: Organized.</CM_Semi_Random_Research_Handover_Organized>
+  <CM_Semi_Random_Research_Handover_Organized2_Restricted>Switched to Research: Organized 2. Prohibit normal project selection is still on.</CM_Semi_Random_Research_Handover_Organized2_Restricted>
+  <CM_Semi_Random_Research_Handover_Organized2>Switched to Research: Organized 2.</CM_Semi_Random_Research_Handover_Organized2>
   <CM_Semi_Random_Research_Handover_UIRethemed_Restricted>Switched to UI Rethemed - Research. Prohibit normal project selection is still on.</CM_Semi_Random_Research_Handover_UIRethemed_Restricted>
   <CM_Semi_Random_Research_Handover_UIRethemed>Switched to UI Rethemed - Research.</CM_Semi_Random_Research_Handover_UIRethemed>
 </LanguageData>
