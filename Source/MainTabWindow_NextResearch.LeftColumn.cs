@@ -514,6 +514,9 @@ namespace CM_Semi_Random_Research
 
             bool showRerollButton = SemiRandomResearchMod.settings.allowManualReroll != ManualReroll.None;
             int buttonCount = showRerollButton ? 3 : 2;
+            // Two buttons share the row evenly: the same gap at each edge and between them.
+            if (!showRerollButton)
+                buttonSpacing = Mathf.Max(buttonSpacing, (footerContainerRect.width - footerButtonWidth * 2) / 3);
             float totalButtonsWidth = (footerButtonWidth * buttonCount) + (buttonSpacing * (buttonCount - 1));
             float startX = (footerContainerRect.width - totalButtonsWidth) / 2;
             float footerButtonY = footerContainerRect.y + footerPaddingTop;
