@@ -20,11 +20,10 @@ namespace CM_Semi_Random_Research
         public const string NicePackageId = "Andromeda.NiceResearchTab";
         public const string NiceWindowTypeName = "NiceResearchTab.MainTabWindow_ResearchTree";
         public const string OrganizedPackageId = "cruesoe.research.organized";
-        public const string Organized2PackageId = "cruesoe.research.organized2";
-        public const string Organized2WindowTypeName = "ResearchOrganized2.MainTabWindow_Organized";
+        public const string OrganizedDisplayModeTypeName = "ResearchOrganized.DisplayMode";
         public const string UIRethemedPackageId = "LazyFridayStudio.UIRethemed.Research";
 
-        private static Type cachedOrganized2WindowType;
+        private static Func<Type> organizedRethemedWindow;
         private static Type cachedNodeResearchWindowType;
         private static Type cachedYartWindowType;
         private static Type cachedNiceWindowType;
@@ -44,7 +43,6 @@ namespace CM_Semi_Random_Research
         private static bool? sleekInstalledCached;
         private static bool? niceResearchTabInstalledCached;
         private static bool? organizedInstalledCached;
-        private static bool? organized2InstalledCached;
         private static bool? uiRethemedInstalledCached;
 
         private static bool IsInstalled(ref bool? cache, string packageId)
@@ -84,15 +82,28 @@ namespace CM_Semi_Random_Research
         public static bool UIRethemedInstalled =>
             IsInstalled(ref uiRethemedInstalledCached, UIRethemedPackageId);
 
-        // Research: Organized 2 has a window of its own, which also takes the place of the vanilla one.
-        public static bool Organized2Installed =>
-            IsInstalled(ref organized2InstalledCached, Organized2PackageId);
+        // Research: Organized's Rethemed window, while it is chosen in its settings; it also takes the place of the vanilla one.
+        public static bool Organized2Installed => OrganizedInstalled && Organized2WindowType != null;
 
-        public static Type Organized2WindowType =>
-            cachedOrganized2WindowType
-            ?? (cachedOrganized2WindowType = AccessTools.TypeByName(Organized2WindowTypeName));
+        // Read from Research: Organized each call, since its display mode can change during play.
+        public static Type Organized2WindowType
+        {
+            get
+            {
+                if (organizedRethemedWindow == null)
+                {
+                    organizedRethemedWindow = () => null;
+                    var getter = OrganizedInstalled
+                        ? AccessTools.PropertyGetter(AccessTools.TypeByName(OrganizedDisplayModeTypeName), "ActiveWindowType")
+                        : null;
+                    if (getter != null && getter.IsStatic && getter.ReturnType == typeof(Type))
+                        organizedRethemedWindow = (Func<Type>)Delegate.CreateDelegate(typeof(Func<Type>), getter);
+                }
+                return organizedRethemedWindow();
+            }
+        }
 
-        // The vanilla tree's window: Research: Organized 2's when it is installed.
+        // The vanilla tree's window: Research: Organized's Rethemed window while it is in use.
         private static Type VanillaWindowType =>
             Organized2Installed && Organized2WindowType != null ? Organized2WindowType : typeof(MainTabWindow_Research);
 
@@ -117,12 +128,13 @@ namespace CM_Semi_Random_Research
                     return IsTreeAvailable(PreferredResearchTree.Sleek);
                 case ResearchTabOwner.NiceResearchTab:
                     return IsTreeAvailable(PreferredResearchTree.NiceResearchTab);
+                // Both open whichever window Research: Organized's display mode chooses, so either survives a mode change.
                 case ResearchTabOwner.Organized:
-                    return IsTreeAvailable(PreferredResearchTree.Organized);
+                    return OrganizedInstalled;
                 case ResearchTabOwner.UIRethemed:
                     return IsTreeAvailable(PreferredResearchTree.UIRethemed);
                 case ResearchTabOwner.Organized2:
-                    return IsTreeAvailable(PreferredResearchTree.Organized2);
+                    return OrganizedInstalled;
                 default:
                     return false;
             }
@@ -151,12 +163,11 @@ namespace CM_Semi_Random_Research
                     return YartWindowType;
                 case ResearchTabOwner.NiceResearchTab:
                     return NiceWindowType;
+                case ResearchTabOwner.Organized:
                 case ResearchTabOwner.Organized2:
-                    return Organized2WindowType;
                 case ResearchTabOwner.Vanilla:
                     return VanillaWindowType;
                 case ResearchTabOwner.Sleek:
-                case ResearchTabOwner.Organized:
                 case ResearchTabOwner.UIRethemed:
                     return typeof(MainTabWindow_Research);
                 default:
@@ -316,7 +327,7 @@ namespace CM_Semi_Random_Research
                 return;
 
             ShowHandoverMessage("CM_Semi_Random_Research_Handover_Organized_Restricted", "CM_Semi_Random_Research_Handover_Organized");
-            OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose, ResearchTabOwner.Organized);
+            OpenResearchWindow(VanillaWindowType, windowToClose, ResearchTabOwner.Organized);
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
 
@@ -353,17 +364,17 @@ namespace CM_Semi_Random_Research
                 case PreferredResearchTree.NiceResearchTab:
                     return NiceResearchTabInstalled && NiceWindowType != null;
                 case PreferredResearchTree.Organized:
-                    return OrganizedInstalled;
+                    return OrganizedInstalled && Organized2WindowType == null;
                 case PreferredResearchTree.UIRethemed:
                     return UIRethemedInstalled;
                 case PreferredResearchTree.Organized2:
-                    return Organized2Installed && Organized2WindowType != null;
+                    return Organized2Installed;
                 default:
                     return false;
             }
         }
 
-        // Fallback order: Node Research, YART, Sleek, Nice Research Tab, Research: Organized 2, Research: Organized, UI Rethemed - Research, then vanilla.
+        // Fallback order: Node Research, YART, Sleek, Nice Research Tab, Research: Organized, UI Rethemed - Research, then vanilla.
         public static PreferredResearchTree GetEffectivePreferredTree()
         {
             PreferredResearchTree preferred = SemiRandomResearchMod.settings != null
