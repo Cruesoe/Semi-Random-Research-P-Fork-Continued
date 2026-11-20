@@ -429,9 +429,9 @@ namespace CM_Semi_Random_Research
 
             // Tiles in as many columns as fit, each a large icon in a sunken well over its name.
             const int maxVisibleIcons = 20;
-            const float minTileWidth = 112f;
-            const float tileGap = 8f;
-            const float tileHeight = 120f;
+            const float minTileWidth = 100f;
+            const float tileGap = 6f;
+            const float tileHeight = 107f;
             const float moreHeight = 26f;
             int total = 0;
             for (int i = 0; i < unlocked.Count; i++)
@@ -475,10 +475,10 @@ namespace CM_Semi_Random_Research
         // One unlock: its icon in a sunken well above its name (two lines at most), the full name as a tooltip; a click opens its info card.
         private void DrawUnlockTile(Rect tile, Def def, Color accent)
         {
-            const float iconSize = 48f;
-            const float wellSize = 60f;
+            const float iconSize = 42f;
+            const float wellSize = 52f;
             bool isMouseOver = Mouse.IsOver(tile);
-            Rect wellRect = new Rect(tile.center.x - wellSize / 2f, tile.y + 8f, wellSize, wellSize);
+            Rect wellRect = new Rect(tile.center.x - wellSize / 2f, tile.y + 6f, wellSize, wellSize);
             ResearchSkin skin = ResearchSkin.Active;
             if ((skin == null || !skin.Tile(tile, wellRect, accent)) && IsRepaint)
             {
@@ -508,7 +508,7 @@ namespace CM_Semi_Random_Research
                 Text.Font = GameFont.Small;
                 Text.Anchor = TextAnchor.UpperCenter;
                 GUI.color = isMouseOver ? Color.white : skin != null ? skin.TextBright : new Color(0.85f, 0.85f, 0.85f);
-                Rect labelRect = new Rect(tile.x + 4f, wellRect.yMax + 5f, tile.width - 8f, tile.yMax - wellRect.yMax - 7f);
+                Rect labelRect = new Rect(tile.x + 4f, wellRect.yMax + 3f, tile.width - 8f, tile.yMax - wellRect.yMax - 4f);
                 GUI.BeginGroup(labelRect);
                 Widgets.Label(new Rect(0f, 0f, labelRect.width, 200f), label);
                 GUI.EndGroup();
