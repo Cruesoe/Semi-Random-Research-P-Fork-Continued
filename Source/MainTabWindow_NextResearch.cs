@@ -341,7 +341,10 @@ namespace CM_Semi_Random_Research
             CacheFirstUnlockable(selectedProject);
             try
             {
+                // What finishing it makes available, else everything it leads to (as the card icon does).
                 cachedSelectedUnlocks = UnlocksNow.Filter(selectedProject, selectedProject.UnlockedDefs);
+                if (cachedSelectedUnlocks.Count == 0)
+                    cachedSelectedUnlocks = selectedProject.UnlockedDefs;
             }
             catch (Exception)
             {
