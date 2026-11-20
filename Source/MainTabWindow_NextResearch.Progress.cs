@@ -1,4 +1,4 @@
-﻿using RimWorld;
+using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -281,7 +281,9 @@ namespace CM_Semi_Random_Research
             float currentBarX = barRect.x;
             float barWidth = barRect.width;
 
-            if (IsRepaint)
+            ResearchSkin skin = ResearchSkin.Active;
+            bool themed = skin != null && skin.BarTrack(barRect);
+            if (!themed && IsRepaint)
             {
                 Widgets.DrawBoxSolid(barRect, new Color(0.1f, 0.1f, 0.1f));
             }
@@ -315,7 +317,13 @@ namespace CM_Semi_Random_Research
 
                 Rect segmentRect = new Rect(currentBarX, barRect.y, segmentWidth, barRect.height);
 
-                if (IsRepaint)
+                if (themed)
+                {
+                    skin.BarFill(segmentRect, progress, GetTechLevelColor(techLevel));
+                    if (techLevelIndex > 0 && IsRepaint)
+                        Widgets.DrawBoxSolid(new Rect(segmentRect.x, segmentRect.y + 2f, 1f, segmentRect.height - 4f), skin.TextFaint);
+                }
+                else if (IsRepaint)
                 {
                     GUI.color = GetTechLevelColor(techLevel);
                     Widgets.DrawBoxSolid(new Rect(segmentRect.x, segmentRect.y, segmentWidth * progress, segmentRect.height), GUI.color);
@@ -354,11 +362,12 @@ namespace CM_Semi_Random_Research
 
                 if (IsRepaint)
                 {
-                    Color lineColor = new Color(0.6f, 0.6f, 0.6f, 0.8f);
+                    Color lineColor = themed ? skin.TextFaint : new Color(0.6f, 0.6f, 0.6f, 0.8f);
                     Vector2 lineStart = new Vector2(centerX, labelY + labelHeight);
                     Vector2 lineEnd = new Vector2(centerX, barRect.y - 1);
                     Widgets.DrawLine(lineStart, lineEnd, lineColor, 1f);
-                    Widgets.DrawBoxSolid(labelRect.ExpandedBy(3f), new Color(0.1f, 0.1f, 0.1f, 0.7f));
+                    if (!themed)
+                        Widgets.DrawBoxSolid(labelRect.ExpandedBy(3f), new Color(0.1f, 0.1f, 0.1f, 0.7f));
                 }
 
                 GUI.color = GetTechLevelColor(techLevel);
@@ -366,7 +375,7 @@ namespace CM_Semi_Random_Research
                 techNameRect.width = label.nameWidth;
                 Widgets.Label(techNameRect, techLevelName);
 
-                GUI.color = new Color(0.95f, 0.95f, 0.95f);
+                GUI.color = themed ? skin.TextBright : new Color(0.95f, 0.95f, 0.95f);
                 Rect statsRect = new Rect(
                     techNameRect.xMax,
                     labelRect.y,
@@ -567,7 +576,9 @@ namespace CM_Semi_Random_Research
             float actualBarHeight = 50f;
             Rect barRect = new Rect(rect.x, rect.y, rect.width, actualBarHeight);
 
-            if (IsRepaint)
+            ResearchSkin skin = ResearchSkin.Active;
+            bool themed = skin != null && skin.BarTrack(barRect) && skin.BarFill(barRect, progress, skin.TextFaint);
+            if (!themed && IsRepaint)
             {
                 Widgets.DrawBoxSolid(barRect, new Color(0.1f, 0.1f, 0.1f));
                 Color fillColor = Color.Lerp(TexUI.AvailResearchColor, Color.white, 0.45f);
@@ -588,14 +599,15 @@ namespace CM_Semi_Random_Research
 
             if (IsRepaint)
             {
-                Color lineColor = new Color(0.6f, 0.6f, 0.6f, 0.8f);
+                Color lineColor = themed ? skin.TextFaint : new Color(0.6f, 0.6f, 0.6f, 0.8f);
                 Vector2 lineStart = new Vector2(barRect.center.x, labelRect.yMax);
                 Vector2 lineEnd = new Vector2(barRect.center.x, barRect.y - 1f);
                 Widgets.DrawLine(lineStart, lineEnd, lineColor, 1f);
-                Widgets.DrawBoxSolid(labelRect.ExpandedBy(3f), new Color(0.1f, 0.1f, 0.1f, 0.7f));
+                if (!themed)
+                    Widgets.DrawBoxSolid(labelRect.ExpandedBy(3f), new Color(0.1f, 0.1f, 0.1f, 0.7f));
             }
 
-            GUI.color = new Color(0.95f, 0.95f, 0.95f);
+            GUI.color = themed ? skin.TextBright : new Color(0.95f, 0.95f, 0.95f);
             Widgets.Label(labelRect, label);
 
             // Stable id, see BuildEraTooltip: the rate inside this text changes while hovering.

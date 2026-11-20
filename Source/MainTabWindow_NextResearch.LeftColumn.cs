@@ -337,9 +337,7 @@ namespace CM_Semi_Random_Research
             }
 
             currentY += 8f;
-            GUI.color = new Color(0.4f, 0.4f, 0.4f, 0.4f);
-            Widgets.DrawLineHorizontal(0f, currentY, scrollViewRect.width);
-            GUI.color = Color.white;
+            DrawDivider(0f, currentY, scrollViewRect.width, 0.4f);
             currentY += 16f;
 
             bool hasStandardToShow = cachedStandardGroups.Count > 0;
@@ -399,9 +397,7 @@ namespace CM_Semi_Random_Research
                 if (currentY > 0)
                 {
                     currentY += gapHeight;
-                    GUI.color = new Color(0.4f, 0.4f, 0.4f, 0.4f);
-                    Widgets.DrawLineHorizontal(0f, currentY, scrollViewRect.width);
-                    GUI.color = Color.white;
+                    DrawDivider(0f, currentY, scrollViewRect.width, 0.4f);
                     currentY += gapHeight;
                 }
             }
@@ -514,15 +510,13 @@ namespace CM_Semi_Random_Research
 
             Rect footerContainerRect = new Rect(leftRect.x, leftRect.yMax - totalFooterHeight, leftRect.width, totalFooterHeight);
 
-            if (IsRepaint)
-            {
-                GUI.color = new Color(0.4f, 0.4f, 0.4f, 0.6f);
-                Widgets.DrawLineHorizontal(footerContainerRect.x, footerContainerRect.y, footerContainerRect.width);
-                GUI.color = Color.white;
-            }
+            DrawDivider(footerContainerRect.x, footerContainerRect.y, footerContainerRect.width, 0.6f);
 
             bool showRerollButton = SemiRandomResearchMod.settings.allowManualReroll != ManualReroll.None;
             int buttonCount = showRerollButton ? 3 : 2;
+            // Two buttons share the row evenly: the same gap at each edge and between them.
+            if (!showRerollButton)
+                buttonSpacing = Mathf.Max(buttonSpacing, (footerContainerRect.width - footerButtonWidth * 2) / 3);
             float totalButtonsWidth = (footerButtonWidth * buttonCount) + (buttonSpacing * (buttonCount - 1));
             float startX = (footerContainerRect.width - totalButtonsWidth) / 2;
             float footerButtonY = footerContainerRect.y + footerPaddingTop;
@@ -550,7 +544,7 @@ namespace CM_Semi_Random_Research
                 ? "CM_Semi_Random_Research_TreeButtonTip_Node".Translate()
                 : "CM_Semi_Random_Research_TreeButtonTip".Translate();
 
-            if (ColoredButtonText(researchTreeButtonRect, treeButtonLabel, FooterTreeButtonColor))
+            if (ColoredButtonText(researchTreeButtonRect, treeButtonLabel, FooterTreeButtonColor, SkinTone.Blue))
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 ResearchTabWindowSwitcher.SwitchToPreferredTree(this);
@@ -567,7 +561,7 @@ namespace CM_Semi_Random_Research
 
                 if (cachedCanReroll)
                 {
-                    if (ColoredButtonText(rerollButtonRect, "CM_Semi_Random_Research_Reroll_Label".Translate(), FooterRerollButtonColor))
+                    if (ColoredButtonText(rerollButtonRect, "CM_Semi_Random_Research_Reroll_Label".Translate(), FooterRerollButtonColor, SkinTone.Yellow))
                     {
                         SoundDefOf.Click.PlayOneShotOnCamera();
                         SoundDefOf.TabOpen.PlayOneShotOnCamera();
@@ -587,7 +581,7 @@ namespace CM_Semi_Random_Research
             switch (cachedFooterStartMode)
             {
                 case FooterStartMode.CanStart:
-                    if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_StartResearch".Translate(), FooterStartButtonColor))
+                    if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_StartResearch".Translate(), FooterStartButtonColor, SkinTone.Green))
                     {
                         StartSelectedProject(researchTracker);
                     }
@@ -598,7 +592,7 @@ namespace CM_Semi_Random_Research
                 case FooterStartMode.InProgress:
                     if (researchTracker.IsProjectPaused(selectedProject))
                     {
-                        if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_ResumeResearch".Translate(), FooterStartButtonColor))
+                        if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_ResumeResearch".Translate(), FooterStartButtonColor, SkinTone.Green))
                         {
                             SoundDefOf.ResearchStart.PlayOneShotOnCamera();
                             researchTracker.ResumeResearch(selectedProject);
@@ -618,7 +612,7 @@ namespace CM_Semi_Random_Research
                     }
                     else
                     {
-                        if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_PauseResearch".Translate(), FooterPauseButtonColor))
+                        if (ColoredButtonText(researchButtonRect, "CM_Semi_Random_Research_PauseResearch".Translate(), FooterPauseButtonColor, SkinTone.Yellow))
                         {
                             SoundDefOf.Click.PlayOneShotOnCamera();
                             researchTracker.PauseResearch(selectedProject);
@@ -688,6 +682,10 @@ namespace CM_Semi_Random_Research
 
         private static void DrawInactiveFooterButton(Rect rect, string label, Color fill)
         {
+            ResearchSkin skin = ResearchSkin.Active;
+            if (skin != null && skin.Button(rect, label, SkinTone.Gray, false))
+                return;
+
             if (IsRepaint)
             {
                 Widgets.DrawBoxSolid(rect, fill);
@@ -703,7 +701,7 @@ namespace CM_Semi_Random_Research
             GUI.color = Color.white;
         }
 
-        private static bool ColoredButtonText(Rect rect, string label, Color fill) => ResearchWidgets.ColoredButton(rect, label, fill);
+        private static bool ColoredButtonText(Rect rect, string label, Color fill, SkinTone tone) => ResearchWidgets.ColoredButton(rect, label, fill, tone);
 
         private void DrawTechLevelText(Rect rect, string prefix, TechLevel techLevel)
         {
@@ -758,23 +756,6 @@ namespace CM_Semi_Random_Research
             Color techColor = GetCategoryColor(projectDef);
             Color structureAccent = GetCardStructureAccent(projectDef, techColor);
 
-            Color backgroundColor = isMouseOver
-                ? Color.Lerp(TexUI.AvailResearchColor, techColor, 0.4f)
-                : Color.Lerp(TexUI.AvailResearchColor, techColor, 0.3f);
-
-            backgroundColor.a *= animProgress;
-            if (IsRepaint)
-            {
-                Widgets.DrawBoxSolid(drawRect, backgroundColor);
-
-                if (isMouseOver)
-                {
-                    Color glowColor = structureAccent;
-                    glowColor.a = 0.1f * animProgress;
-                    Widgets.DrawBoxSolid(drawRect.ExpandedBy(2f), glowColor);
-                }
-            }
-
             float progressFraction = 0f;
             if (projectDef.CostApparent > 0f)
             {
@@ -786,7 +767,27 @@ namespace CM_Semi_Random_Research
                     progressFraction = Mathf.Clamp01(currentProg / projectDef.CostApparent);
             }
 
-            if (progressFraction > 0f && IsRepaint)
+            ResearchSkin skin = ResearchSkin.Active;
+            bool themed = skin != null && skin.Card(drawRect, structureAccent, progressFraction, selectedProject == projectDef, false, animProgress);
+
+            Color backgroundColor = isMouseOver
+                ? Color.Lerp(TexUI.AvailResearchColor, techColor, 0.4f)
+                : Color.Lerp(TexUI.AvailResearchColor, techColor, 0.3f);
+
+            backgroundColor.a *= animProgress;
+            if (!themed && IsRepaint)
+            {
+                Widgets.DrawBoxSolid(drawRect, backgroundColor);
+
+                if (isMouseOver)
+                {
+                    Color glowColor = structureAccent;
+                    glowColor.a = 0.1f * animProgress;
+                    Widgets.DrawBoxSolid(drawRect.ExpandedBy(2f), glowColor);
+                }
+            }
+
+            if (!themed && progressFraction > 0f && IsRepaint)
             {
                 Rect progressRect = new Rect(drawRect.x, drawRect.y, drawRect.width * progressFraction, drawRect.height);
 
@@ -803,7 +804,13 @@ namespace CM_Semi_Random_Research
                 cardBorderColor = Color.Lerp(structureAccent, Color.white, 0.2f);
             cardBorderColor.a *= animProgress;
 
-            if (IsRepaint)
+            if (themed && IsRepaint)
+            {
+                GUI.color = new Color(1f, 1f, 1f, animProgress);
+                DrawProjectIcon(iconRect, projectDef);
+                GUI.color = Color.white;
+            }
+            else if (IsRepaint)
             {
                 GUI.color = cardBorderColor;
                 Widgets.DrawBox(drawRect);
@@ -832,6 +839,11 @@ namespace CM_Semi_Random_Research
             if (isMouseOver)
             {
                 usedTextColor = Color.white;
+                usedTextColor.a *= animProgress;
+            }
+            else if (themed)
+            {
+                usedTextColor = skin.TextBright;
                 usedTextColor.a *= animProgress;
             }
 
@@ -876,7 +888,7 @@ namespace CM_Semi_Random_Research
                 }
             }
 
-            if (selectedProject == projectDef && IsRepaint)
+            if (!themed && selectedProject == projectDef && IsRepaint)
             {
                 Color highlightColor = Color.Lerp(structureAccent, Color.white, 0.3f);
                 highlightColor.a *= animProgress;

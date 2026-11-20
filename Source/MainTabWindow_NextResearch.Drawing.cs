@@ -9,7 +9,27 @@ namespace CM_Semi_Random_Research
 {
     public partial class MainTabWindow_NextResearch
     {
+        // UI Rethemed color keys by TechLevel (SemiRandomResearch_Theme), so players can recolor eras in Core's settings.
+        private static readonly string[] TechLevelColorKeys =
+            { null, "Animal", "Neolithic", "Medieval", "Industrial", "Spacer", "Ultra", "Archotech" };
+
+        // The player's UI Rethemed color for key while the theme is on, else fallback.
+        private static Color ThemedColor(string key, Color fallback)
+        {
+            ResearchSkin skin = ResearchSkin.Active;
+            Color? color = skin?.CategoryColor(key);
+            return color ?? fallback;
+        }
+
         internal static Color GetTechLevelColor(TechLevel techLevel)
+        {
+            int index = (int)techLevel;
+            if (index > 0 && index < TechLevelColorKeys.Length && ResearchSkin.Active != null)
+                return ThemedColor(TechLevelColorKeys[index], OwnTechLevelColor(techLevel));
+            return OwnTechLevelColor(techLevel);
+        }
+
+        private static Color OwnTechLevelColor(TechLevel techLevel)
         {
             switch (techLevel)
             {
@@ -33,9 +53,13 @@ namespace CM_Semi_Random_Research
         }
 
         // Colors for the Anomaly and Gravship pseudo-categories, shared by headers and cards.
-        private static readonly Color AnomalyBasicColor = new Color(0.65f, 0.35f, 0.5f);
-        private static readonly Color AnomalyAdvancedColor = new Color(0.45f, 0.35f, 0.5f);
-        private static readonly Color GravshipColor = new Color(0.2f, 0.6f, 0.8f);
+        private static readonly Color OwnAnomalyBasicColor = new Color(0.65f, 0.35f, 0.5f);
+        private static readonly Color OwnAnomalyAdvancedColor = new Color(0.45f, 0.35f, 0.5f);
+        private static readonly Color OwnGravshipColor = new Color(0.2f, 0.6f, 0.8f);
+
+        private static Color AnomalyBasicColor => ThemedColor("AnomalyBasic", OwnAnomalyBasicColor);
+        private static Color AnomalyAdvancedColor => ThemedColor("AnomalyAdvanced", OwnAnomalyAdvancedColor);
+        private static Color GravshipColor => ThemedColor("Gravship", OwnGravshipColor);
 
         // A project's card color: the Anomaly/Gravship color, else its tech level color (or neutral with grouping off).
         internal static Color GetCategoryColor(ResearchProjectDef projectDef)
@@ -67,7 +91,10 @@ namespace CM_Semi_Random_Research
         internal static Color GetCardStructureAccent(ResearchProjectDef projectDef, Color categoryColor)
         {
             if (UsesFlatNeutralCardColor(projectDef))
-                return Color.Lerp(TexUI.AvailResearchColor, Color.white, 0.45f);
+            {
+                ResearchSkin skin = ResearchSkin.Active;
+                return skin != null ? skin.TextFaint : Color.Lerp(TexUI.AvailResearchColor, Color.white, 0.45f);
+            }
 
             return categoryColor;
         }

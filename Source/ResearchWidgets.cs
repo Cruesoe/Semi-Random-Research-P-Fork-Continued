@@ -61,5 +61,14 @@ namespace CM_Semi_Random_Research
             DrawColoredButton(rect, label, fill);
             return Clicked(rect);
         }
+
+        // The research window's own buttons: the UI Rethemed face in the given tone when the theme is on.
+        public static bool ColoredButton(Rect rect, string label, Color fill, SkinTone tone)
+        {
+            ResearchSkin skin = ResearchSkin.Active;
+            if (skin == null || !skin.Button(rect, label, tone, true))
+                DrawColoredButton(rect, label, fill);
+            return Clicked(rect);
+        }
     }
 }

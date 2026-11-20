@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <!-- Semi Random Research's tab on UI Rethemed - Core's settings page. The mod reads these colors by key
+       (UIRethemedSkin.CategoryColor); the defaults are the mod's own era, Anomaly and Gravship colors. -->
+  <UIRethemed.Core.ModThemeDef>
+    <defName>SemiRandomResearch_Theme</defName>
+    <label>semi random research</label>
+    <description>The research window: its project cards, era headers and the progress bar.</description>
+    <mod>cruesoe.semirandompfork.continued</mod>
+    <icon>flask</icon>
+    <order>200</order>
+    <colors>
+      <li>
+        <key>Animal</key>
+        <label>animal</label>
+        <description>Animal-era projects: their cards, header and share of the progress bar.</description>
+        <group>Eras</group>
+        <color>806633</color>
+      </li>
+      <li>
+        <key>Neolithic</key>
+        <label>neolithic</label>
+        <description>Neolithic projects: their cards, header and share of the progress bar.</description>
+        <group>Eras</group>
+        <color>995959</color>
+      </li>
+      <li>
+        <key>Medieval</key>
+        <label>medieval</label>
+        <description>Medieval projects: their cards, header and share of the progress bar.</description>
+        <group>Eras</group>
+        <color>99994D</color>
+      </li>
+      <li>
+        <key>Industrial</key>
+        <label>industrial</label>
+        <description>Industrial projects: their cards, header and share of the progress bar.</description>
+        <group>Eras</group>
+        <color>66994D</color>
+      </li>
+      <li>
+        <key>Spacer</key>
+        <label>spacer</label>
+        <description>Spacer projects: their cards, header and share of the progress bar.</description>
+        <group>Eras</group>
+        <color>4D8099</color>
+      </li>
+      <li>
+        <key>Ultra</key>
+        <label>ultra</label>
+        <description>Ultra projects: their cards, header and share of the progress bar.</description>
+        <group>Eras</group>
+        <color>735999</color>
+      </li>
+      <li>
+        <key>Archotech</key>
+        <label>archotech</label>
+        <description>Archotech projects: their cards, header and share of the progress bar.</description>
+        <group>Eras</group>
+        <color>995999</color>
+      </li>
+      <li>
+        <key>AnomalyBasic</key>
+        <label>basic dark study</label>
+        <description>Anomaly's basic dark study projects: their cards and header.</description>
+        <group>Other categories</group>
+        <color>A65980</color>
+      </li>
+      <li>
+        <key>AnomalyAdvanced</key>
+        <label>advanced dark study</label>
+        <description>Anomaly's advanced dark study projects: their cards and header.</description>
+        <group>Other categories</group>
+        <color>735980</color>
+      </li>
+      <li>
+        <key>Gravship</key>
+        <label>gravtech</label>
+        <description>Gravship research: its cards and header.</description>
+        <group>Other categories</group>
+        <color>3399CC</color>
+      </li>
+    </colors>
+  </UIRethemed.Core.ModThemeDef>
+</Defs>

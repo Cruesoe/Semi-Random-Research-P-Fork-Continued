@@ -4,4 +4,10 @@
     <AssemblyName>SemiRandomResearchProgressionContinued</AssemblyName>
     <Nullable>disable</Nullable>
   </PropertyGroup>
+
+  <!-- The UI Rethemed add-on is its own project, built against UI Rethemed - Core. -->
+  <ItemGroup>
+    <Compile Remove="UIRethemed\**" />
+    <None Remove="UIRethemed\**" />
+  </ItemGroup>
 </Project>

@@ -13,7 +13,17 @@ namespace CM_Semi_Random_Research
     {
         protected ResearchProjectDef selectedProject;
 
-        protected override float Margin => 6f;
+        // The UI Rethemed frame draws its own edge, so the window's contents start at its border.
+        protected override float Margin => ResearchSkin.Active != null ? 0f : 6f;
+
+        // Space the UI Rethemed title bar takes, added to the window so the columns keep their size.
+        private const float SkinTitleHeight = 46f;
+
+        private float openedAt;
+        private bool closeRequested;
+        // Set each frame: the UI Rethemed title bar is drawn with its settings gear, so the footer leaves its own out.
+        private bool settingsInTitle;
+        private Action closeFromTitle;
 
         private Vector2 leftScrollPosition = Vector2.zero;
 
@@ -283,7 +293,10 @@ namespace CM_Semi_Random_Research
             Def result = null;
             try
             {
-                List<Def> unlocked = project.UnlockedDefs;
+                // Pick from what finishing it makes available, else from everything it leads to.
+                List<Def> unlocked = UnlocksNow.Filter(project, project.UnlockedDefs);
+                if (unlocked.Count == 0)
+                    unlocked = project.UnlockedDefs;
                 if (!unlocked.NullOrEmpty())
                 {
                     int randomIndex = Rand.RangeInclusiveSeeded(0, unlocked.Count - 1, currentRandomSeed);
@@ -328,8 +341,7 @@ namespace CM_Semi_Random_Research
             CacheFirstUnlockable(selectedProject);
             try
             {
-                List<Def> unlocked = selectedProject.UnlockedDefs;
-                cachedSelectedUnlocks = unlocked;
+                cachedSelectedUnlocks = UnlocksNow.Filter(selectedProject, selectedProject.UnlockedDefs);
             }
             catch (Exception)
             {
@@ -579,7 +591,8 @@ namespace CM_Semi_Random_Research
         // Vanilla MainTabWindow sits its bottom edge this far above the screen bottom, on top of the main button bar.
         private const float BottomBarHeight = 35f;
 
-        public override Vector2 InitialSize => new Vector2(UI.screenWidth * 0.585f, UI.screenHeight * 0.7f);
+        public override Vector2 InitialSize => new Vector2(UI.screenWidth * 0.585f,
+            Mathf.Min(UI.screenHeight * 0.7f + (ResearchSkin.Active != null ? SkinTitleHeight : 0f), UI.screenHeight - BottomBarHeight));
 
         public override void Notify_ResolutionChanged()
         {
@@ -604,11 +617,16 @@ namespace CM_Semi_Random_Research
             this.closeOnClickedOutside = false;
             this.absorbInputAroundWindow = false;
             this.preventCameraMotion = false;
+            closeFromTitle = () => closeRequested = true;
         }
 
         public override void PreOpen()
         {
             base.PreOpen();
+
+            doWindowBackground = ResearchSkin.Active == null;
+            openedAt = Time.realtimeSinceStartup;
+            closeRequested = false;
 
             // The history view is never remembered between openings.
             showingHistory = false;
@@ -665,6 +683,17 @@ namespace CM_Semi_Random_Research
         public override void WindowUpdate()
         {
             base.WindowUpdate();
+
+            // The title bar's close button asks during OnGUI; the tab closes here, between frames.
+            if (closeRequested)
+            {
+                closeRequested = false;
+                if (Find.MainTabsRoot.OpenTab == def)
+                    Find.MainTabsRoot.EscapeCurrentTab();
+                else
+                    Close();
+                return;
+            }
 
             try
             {
@@ -762,8 +791,10 @@ namespace CM_Semi_Random_Research
         // the space above the bottom button bar. Runs outside OnGUI so the new rect lands between frames.
         private void ApplyAdaptiveSize()
         {
-            float baseHeight = InitialSize.y;
-            float maxHeight = Mathf.Max(baseHeight, UI.screenHeight - BottomBarHeight);
+            // The window keeps the bottom edge it was placed at: above the vanilla bar, or above a taller bar from a UI mod.
+            float bottom = windowRect.yMax;
+            float baseHeight = Mathf.Min(InitialSize.y, bottom);
+            float maxHeight = Mathf.Max(baseHeight, bottom);
             float targetHeight = baseHeight;
 
             if (SemiRandomResearchMod.settings != null && SemiRandomResearchMod.settings.adaptiveSize)
@@ -799,7 +830,7 @@ namespace CM_Semi_Random_Research
                 return;
 
             windowRect.height = targetHeight;
-            windowRect.y = UI.screenHeight - BottomBarHeight - targetHeight;
+            windowRect.y = bottom - targetHeight;
             if (targetHeight < maxHeight)
             {
                 leftScrollPosition = Vector2.zero;
@@ -896,8 +927,26 @@ namespace CM_Semi_Random_Research
 
             EnsureIconsLoaded();
 
+            ResearchSkin skin = ResearchSkin.Active;
+            // Set every frame so turning the theme on or off (or a theme failure) applies at once.
+            doWindowBackground = skin == null;
+            settingsInTitle = false;
+            bool grouped = false;
             try
             {
+                if (skin != null)
+                {
+                    skin.Begin();
+                    string title = def != null ? (string)def.LabelCap : string.Empty;
+                    if (skin.Frame(canvas, title, null, Time.realtimeSinceStartup - openedAt,
+                            closeFromTitle, SemiRandomResearchMod.Instance, out Rect content))
+                    {
+                        GUI.BeginGroup(content);
+                        grouped = true;
+                        settingsInTitle = skin.TitleHasSettings;
+                        canvas = new Rect(0f, 0f, content.width, content.height);
+                    }
+                }
                 DrawWindowBody(canvas);
             }
             catch (Exception ex)
@@ -907,6 +956,12 @@ namespace CM_Semi_Random_Research
                     loggedDrawError = true;
                     Log.Error("[Semi Random Research] DoWindowContents failed: " + ex);
                 }
+            }
+            finally
+            {
+                if (grouped)
+                    GUI.EndGroup();
+                skin?.End();
             }
         }
 
@@ -965,12 +1020,7 @@ namespace CM_Semi_Random_Research
 
             DrawRightColumn(rightContentRect);
 
-            if (IsRepaint)
-            {
-                GUI.color = new Color(0.4f, 0.4f, 0.4f, 0.6f);
-                Widgets.DrawLineHorizontal(rightFooterRect.x, rightFooterRect.y, rightFooterRect.width);
-                GUI.color = Color.white;
-            }
+            DrawDivider(rightFooterRect.x, rightFooterRect.y, rightFooterRect.width, 0.6f);
 
             float footerButtonY = rightFooterRect.y + rightFooterPaddingTop;
 
@@ -978,14 +1028,17 @@ namespace CM_Semi_Random_Research
             float iconY = footerButtonY + (footerButtonHeight - iconSize) / 2f;
             float nextIconX = rightFooterRect.xMax - iconSize;
 
-            Rect settingsBtnRect = new Rect(nextIconX, iconY, iconSize, iconSize);
-            DrawFooterIconButton(settingsBtnRect, SettingsIcon, null, "CM_Semi_Random_Research_SettingsTip", () =>
+            if (!settingsInTitle)
             {
-                Mod ourMod = LoadedModManager.GetMod<SemiRandomResearchMod>();
-                Find.WindowStack.Add(new Dialog_ModSettings(ourMod));
-            });
+                Rect settingsBtnRect = new Rect(nextIconX, iconY, iconSize, iconSize);
+                DrawFooterIconButton(settingsBtnRect, SettingsIcon, null, "CM_Semi_Random_Research_SettingsTip", () =>
+                {
+                    Mod ourMod = LoadedModManager.GetMod<SemiRandomResearchMod>();
+                    Find.WindowStack.Add(new Dialog_ModSettings(ourMod));
+                });
+                nextIconX -= iconSize + iconGap;
+            }
 
-            nextIconX -= iconSize + iconGap;
             DrawHistoryToggleButton(new Rect(nextIconX, iconY, iconSize, iconSize));
 
             if (Prefs.DevMode && selectedProject != null && !selectedProject.IsFinished)
@@ -1037,11 +1090,26 @@ namespace CM_Semi_Random_Research
             });
         }
 
+        // A section divider: the theme's when UI Rethemed is on, else a gray line at the given opacity.
+        private static void DrawDivider(float x, float y, float width, float alpha)
+        {
+            ResearchSkin skin = ResearchSkin.Active;
+            if (skin != null && skin.Divider(x, y, width))
+                return;
+            if (!IsRepaint)
+                return;
+            GUI.color = new Color(0.4f, 0.4f, 0.4f, alpha);
+            Widgets.DrawLineHorizontal(x, y, width);
+            GUI.color = Color.white;
+        }
+
         private void DrawFooterIconButton(Rect rect, Texture2D icon, string fallbackText, string tooltipKey, Action onClicked)
         {
-            if (IsRepaint && icon != null)
+            ResearchSkin skin = ResearchSkin.Active;
+            bool themed = icon != null && skin != null && skin.IconButton(rect, icon, false);
+            if (!themed && IsRepaint && icon != null)
                 Widgets.DrawTextureFitted(rect, icon, 1f);
-            else if (IsRepaint && !string.IsNullOrEmpty(fallbackText))
+            else if (IsRepaint && icon == null && !string.IsNullOrEmpty(fallbackText))
             {
                 Text.Font = GameFont.Medium;
                 Text.Anchor = TextAnchor.MiddleCenter;
@@ -1062,7 +1130,9 @@ namespace CM_Semi_Random_Research
 
         private void DrawHistoryToggleButton(Rect rect)
         {
-            if (IsRepaint && HistoryIcon != null)
+            ResearchSkin skin = ResearchSkin.Active;
+            bool themed = HistoryIcon != null && skin != null && skin.IconButton(rect, HistoryIcon, showingHistory);
+            if (!themed && IsRepaint && HistoryIcon != null)
             {
                 Color old = GUI.color;
                 GUI.color = showingHistory ? ActiveProjectLabelColor : Color.white;
@@ -1127,7 +1197,20 @@ namespace CM_Semi_Random_Research
             Rect labelRect = new Rect(toggleRect.xMax + 6f, toggleRect.y, labelWidth, toggleRect.height);
             Rect hitRect = new Rect(toggleRect.x, toggleRect.y, labelRect.xMax - toggleRect.x, toggleRect.height);
 
-            if (IsRepaint)
+            ResearchSkin skin = ResearchSkin.Active;
+            if (skin != null && skin.Switch(toggleRect.ContractedBy(0f, 2f), on))
+            {
+                if (IsRepaint)
+                {
+                    Color old = GUI.color;
+                    Text.Anchor = TextAnchor.MiddleLeft;
+                    GUI.color = on ? skin.TextBright : skin.TextDim;
+                    Widgets.Label(labelRect, label);
+                    Text.Anchor = TextAnchor.UpperLeft;
+                    GUI.color = old;
+                }
+            }
+            else if (IsRepaint)
             {
                 Color old = GUI.color;
                 GUI.color = on ? AutoToggleOnColor : Color.white;

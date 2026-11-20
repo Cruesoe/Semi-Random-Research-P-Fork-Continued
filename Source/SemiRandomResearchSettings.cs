@@ -40,6 +40,7 @@ namespace CM_Semi_Random_Research
         public bool confirmDependentSnooze = true;
         public bool showCompletionDates = false;
         public bool timingsShowCurrentEra = false;
+        public bool matchUIRethemed = true;
 
         public bool AllowOneHigherTechProjectActive =>
             allowOneHigherTechProject && !ResearchTabWindowSwitcher.NodeResearchInstalled;
@@ -82,6 +83,7 @@ namespace CM_Semi_Random_Research
             Scribe_Values.Look(ref confirmDependentSnooze, "confirmDependentSnooze", true);
             Scribe_Values.Look(ref showCompletionDates, "showCompletionDates", false);
             Scribe_Values.Look(ref timingsShowCurrentEra, "timingsShowCurrentEra", false);
+            Scribe_Values.Look(ref matchUIRethemed, "matchUIRethemed", true);
         }
 
         private static readonly Color SectionColor = new Color(0.62f, 0.72f, 0.80f);
@@ -114,38 +116,88 @@ namespace CM_Semi_Random_Research
             }
         }
 
+        // Sections by column, built on first draw; each body draws into either page's listing.
+        private List<SkinSettingsSection> leftSections;
+        private List<SkinSettingsSection> rightSections;
+
+        private void BuildSections()
+        {
+            if (leftSections != null)
+                return;
+            leftSections = new List<SkinSettingsSection>
+            {
+                new SkinSettingsSection("General", "CM_Semi_Random_Research_Setting_Section_General".Translate(), GeneralSection),
+                new SkinSettingsSection("Display", "CM_Semi_Random_Research_Setting_Section_Display".Translate(), DisplaySection),
+                new SkinSettingsSection("Trees", "CM_Semi_Random_Research_Setting_Section_Trees".Translate(), TreesSection),
+                new SkinSettingsSection("Debug", "CM_Semi_Random_Research_Setting_Section_Debug".Translate(), DebugSection)
+            };
+            rightSections = new List<SkinSettingsSection>
+            {
+                new SkinSettingsSection("Gameplay", "CM_Semi_Random_Research_Setting_Section_Gameplay".Translate(), GameplaySection),
+                new SkinSettingsSection("Reroll", "CM_Semi_Random_Research_Setting_Section_Reroll".Translate(), RerollSection),
+                new SkinSettingsSection("Limits", "CM_Semi_Random_Research_Setting_Section_Limits".Translate(), LimitsSection)
+            };
+        }
+
         public void DoSettingsWindowContents(Rect inRect)
         {
             ApplyPendingChoices(false);
+            BuildSections();
 
-            Listing_Standard listing = new Listing_Standard();
+            // With UI Rethemed, the sections are Core's settings cards.
+            ResearchSkin skin = ResearchSkin.Active;
+            if (skin == null || !skin.SettingsPage(inRect, leftSections, rightSections))
+            {
+                Listing_Standard listing = new Listing_Standard();
 
-            // Two columns, each half the window minus the gutter.
-            listing.ColumnWidth = (inRect.width - 34f) / 2f;
-            listing.Begin(inRect);
+                // Two columns, each half the window minus the gutter.
+                listing.ColumnWidth = (inRect.width - 34f) / 2f;
+                listing.Begin(inRect);
+                DrawColumn(listing, leftSections);
+                listing.NewColumn();
+                DrawColumn(listing, rightSections);
+                listing.End();
+            }
 
-            // Column 1: general, display, research trees.
-            // Auto research and auto-open are toggled from the research tab; auto-open stays here while another tree owns that tab.
-            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_General");
+            DumpSettingToLog();
+        }
+
+        private static void DrawColumn(Listing_Standard listing, List<SkinSettingsSection> sections)
+        {
+            for (int i = 0; i < sections.Count; i++)
+            {
+                if (i > 0)
+                    listing.GapLine();
+                SectionHeader(listing, sections[i].title);
+                sections[i].body(listing);
+            }
+        }
+
+        // Auto research and auto-open are toggled from the research tab; auto-open stays here while another tree owns that tab.
+        private void GeneralSection(Listing_Standard listing)
+        {
             Checkbox(listing, "Feature_Enabled", ref featureEnabled);
             if (!ResearchTabWindowSwitcher.SemiRandomOwnsResearchTab)
                 Checkbox(listing, "AutoOpen", ref autoOpenOnCompletion);
             Checkbox(listing, "ShowLetter", ref showCompletionLetter);
             Checkbox(listing, "AllowSnoozing", ref allowSnoozing);
             Checkbox(listing, "ConfirmDependentSnooze", ref confirmDependentSnooze);
+        }
 
-            listing.GapLine();
-
-            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Display");
+        private void DisplaySection(Listing_Standard listing)
+        {
             Checkbox(listing, "ColorGroup", ref colorAndGroupByTechLevel);
             Checkbox(listing, "ShowGraph", ref showResearchRateGraph);
             Checkbox(listing, "ShowCompletionDates", ref showCompletionDates);
             Checkbox(listing, "TimingsCurrentEra", ref timingsShowCurrentEra);
             Checkbox(listing, "AdaptiveSize", ref adaptiveSize);
+            // Only with UI Rethemed - Core, which loads the add-on that supplies the look.
+            Checkbox(listing, "MatchUIRethemed", ref matchUIRethemed,
+                ResearchSkin.Available ? null : "CM_Semi_Random_Research_Setting_MatchUIRethemed_LockedTip".Translate().ToString());
+        }
 
-            listing.GapLine();
-            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Trees");
-
+        private void TreesSection(Listing_Standard listing)
+        {
             // Without a tree mod the switch button always opens the vanilla tree, so these are greyed out.
             bool anyTree = ResearchTabWindowSwitcher.AnyTreeInstalled;
             string noTreeTip = anyTree ? null : "CM_Semi_Random_Research_Setting_Trees_LockedTip".Translate().ToString();
@@ -159,7 +211,9 @@ namespace CM_Semi_Random_Research
             AddTreeOption(treeOptions, PreferredResearchTree.YART);
             AddTreeOption(treeOptions, PreferredResearchTree.Sleek);
             AddTreeOption(treeOptions, PreferredResearchTree.NiceResearchTab);
+            AddTreeOption(treeOptions, PreferredResearchTree.Organized2);
             AddTreeOption(treeOptions, PreferredResearchTree.Organized);
+            AddTreeOption(treeOptions, PreferredResearchTree.UIRethemed);
 
             if (anyTree && !ResearchTabWindowSwitcher.IsTreeAvailable(preferredResearchTree))
                 preferredResearchTree = ResearchTabWindowSwitcher.GetEffectivePreferredTree();
@@ -171,49 +225,35 @@ namespace CM_Semi_Random_Research
                 treeOptions, treeButtonOptionRect.width / 10, treeButtonOptionRect.width / 10, anyTree);
 
             Checkbox(listing, "SuppressHandover", ref suppressHandoverMessages, noTreeTip);
+        }
 
-            listing.GapLine();
-
-            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Debug");
+        private void DebugSection(Listing_Standard listing)
+        {
             Checkbox(listing, "Verbose_Logging", ref verboseLogging,
                 Prefs.DevMode ? null : "CM_Semi_Random_Research_Setting_Verbose_Logging_LockedTip".Translate().ToString());
+        }
 
-            // Column 2: selection rules, rerolls, amounts.
-            listing.NewColumn();
-
-            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Gameplay");
+        private void GameplaySection(Listing_Standard listing)
+        {
             Checkbox(listing, "Force_Lowest_Tech_Level", ref forceLowestTechLevel);
 
             // Node Research owns tech-level progression, so these two are locked while it is installed.
-            bool restrictFaction = restrictToFactionTechLevel;
-            string restrictFactionTip = "CM_Semi_Random_Research_Setting_Restrict_To_Faction_Tech_Level_Description".Translate();
-            if (ResearchTabWindowSwitcher.NodeResearchInstalled)
-            {
-                restrictFaction = true;
-                restrictFactionTip = "CM_Semi_Random_Research_Setting_RestrictFaction_LockedTip".Translate();
-                GUI.enabled = false;
-            }
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Restrict_To_Faction_Tech_Level_Label".Translate(), ref restrictFaction, restrictFactionTip);
-            GUI.enabled = true;
-            if (!ResearchTabWindowSwitcher.NodeResearchInstalled)
-            {
+            bool nodeResearch = ResearchTabWindowSwitcher.NodeResearchInstalled;
+            bool restrictFaction = nodeResearch || restrictToFactionTechLevel;
+            string restrictFactionTip = nodeResearch
+                ? "CM_Semi_Random_Research_Setting_RestrictFaction_LockedTip".Translate()
+                : "CM_Semi_Random_Research_Setting_Restrict_To_Faction_Tech_Level_Description".Translate();
+            CheckRow(listing, "CM_Semi_Random_Research_Setting_Restrict_To_Faction_Tech_Level_Label".Translate(), ref restrictFaction, restrictFactionTip, !nodeResearch);
+            if (!nodeResearch)
                 restrictToFactionTechLevel = restrictFaction;
-            }
 
-            bool oneHigher = allowOneHigherTechProject;
-            string oneHigherTip = "CM_Semi_Random_Research_Setting_Allow_One_Higher_Tech_Project_Description".Translate();
-            if (ResearchTabWindowSwitcher.NodeResearchInstalled)
-            {
-                oneHigher = false;
-                oneHigherTip = "CM_Semi_Random_Research_Setting_OneHigher_DisabledTip".Translate();
-                GUI.enabled = false;
-            }
-            listing.CheckboxLabeled("CM_Semi_Random_Research_Setting_Allow_One_Higher_Tech_Project_Label".Translate(), ref oneHigher, oneHigherTip);
-            GUI.enabled = true;
-            if (!ResearchTabWindowSwitcher.NodeResearchInstalled)
-            {
+            bool oneHigher = !nodeResearch && allowOneHigherTechProject;
+            string oneHigherTip = nodeResearch
+                ? "CM_Semi_Random_Research_Setting_OneHigher_DisabledTip".Translate()
+                : "CM_Semi_Random_Research_Setting_Allow_One_Higher_Tech_Project_Description".Translate();
+            CheckRow(listing, "CM_Semi_Random_Research_Setting_Allow_One_Higher_Tech_Project_Label".Translate(), ref oneHigher, oneHigherTip, !nodeResearch);
+            if (!nodeResearch)
                 allowOneHigherTechProject = oneHigher;
-            }
 
             Checkbox(listing, "Allow_Switching_Research", ref allowSwitchingResearch);
             Checkbox(listing, "Equalize_Cost", ref equalizeCost);
@@ -235,10 +275,10 @@ namespace CM_Semi_Random_Research
             DoButtonOption(progressAddsRect,
                 ("CM_Semi_Random_Research_Setting_Progress_Adds_Choice_" + (pendingProgressAddsChoice ?? progressAddsChoice) + "_Label").Translate(),
                 progressAddChoiceTooltip, progressAddsChoiceOptions, progressAddsRect.width / 10, progressAddsRect.width / 10);
+        }
 
-            listing.GapLine();
-
-            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Reroll");
+        private void RerollSection(Listing_Standard listing)
+        {
             Checkbox(listing, "Reroll_All_Every_Time", ref rerollAllEveryTime);
 
             string rerollTooltip = EnumTooltip<ManualReroll>(
@@ -263,10 +303,10 @@ namespace CM_Semi_Random_Research
             bool rerollsHappen = allowManualReroll != ManualReroll.None || rerollAllEveryTime;
             IntSetting(listing, "Prevent_Rerolled_From_Appearing", ref reofferAfterAmountOfRerolls, 0,
                 rerollsHappen ? null : "CM_Semi_Random_Research_Setting_Prevent_Rerolled_LockedTip".Translate().ToString());
+        }
 
-            listing.GapLine();
-
-            SectionHeader(listing, "CM_Semi_Random_Research_Setting_Section_Limits");
+        private void LimitsSection(Listing_Standard listing)
+        {
             string amountTooltip = "CM_Semi_Random_Research_Setting_Type_Of_Projects_Count_Description".Translate();
             listing.Label("CM_Semi_Random_Research_Setting_Type_Of_Projects_Count_Label".Translate(), -1, amountTooltip);
             ChoiceAmountSelection shownAmountSelection = pendingAmountSelection ?? amountSelection;
@@ -298,16 +338,43 @@ namespace CM_Semi_Random_Research
             {
                 availableProjectCount = maxProjectCount;
             }
-
-            listing.End();
-
-            DumpSettingToLog();
         }
 
-        private static void SectionHeader(Listing_Standard listing, string translationKey)
+        private static void SectionHeader(Listing_Standard listing, string title)
         {
             Text.Font = GameFont.Small;
-            listing.Label(translationKey.Translate().Colorize(SectionColor));
+            listing.Label(title.Colorize(SectionColor));
+        }
+
+        // A checkbox row: the UI Rethemed tick inside a settings card, else the listing's own. Disabled rows are greyed out and inert.
+        private static void CheckRow(Listing_Standard listing, string label, ref bool value, string tip, bool enabled)
+        {
+            ResearchSkin skin = ResearchSkin.Active;
+            if (skin != null && skin.Tick(listing, label, ref value, tip, enabled))
+                return;
+
+            if (enabled)
+            {
+                listing.CheckboxLabeled(label, ref value, tip);
+                return;
+            }
+            Rect rect = listing.GetRect(Text.CalcHeight(label, listing.ColumnWidth));
+            if (Mouse.IsOver(rect))
+                Widgets.DrawHighlight(rect);
+            TooltipHandler.TipRegion(rect, tip);
+            GUI.color = Color.gray;
+            Widgets.CheckboxLabeled(rect, label, ref value, disabled: true);
+            GUI.color = Color.white;
+            listing.Gap(listing.verticalSpacing);
+        }
+
+        // A settings button: the UI Rethemed face when the theme is on, else the game's.
+        private static bool SettingsButton(Rect rect, string label, bool active)
+        {
+            ResearchSkin skin = ResearchSkin.Active;
+            if (skin != null && skin.Button(rect, label, SkinTone.Gray, active))
+                return active && Widgets.ButtonInvisible(rect);
+            return Widgets.ButtonText(rect, label, active: active);
         }
 
         // Checkbox labeled by <stem>_Label with <stem>_Description as its tooltip. With lockedTip it is greyed out and inert,
@@ -315,20 +382,8 @@ namespace CM_Semi_Random_Research
         private static void Checkbox(Listing_Standard listing, string keyStem, ref bool value, string lockedTip = null)
         {
             string label = ("CM_Semi_Random_Research_Setting_" + keyStem + "_Label").Translate();
-            if (lockedTip == null)
-            {
-                listing.CheckboxLabeled(label, ref value, ("CM_Semi_Random_Research_Setting_" + keyStem + "_Description").Translate());
-                return;
-            }
-
-            Rect rect = listing.GetRect(Text.CalcHeight(label, listing.ColumnWidth));
-            if (Mouse.IsOver(rect))
-                Widgets.DrawHighlight(rect);
-            TooltipHandler.TipRegion(rect, lockedTip);
-            GUI.color = Color.gray;
-            Widgets.CheckboxLabeled(rect, label, ref value, disabled: true);
-            GUI.color = Color.white;
-            listing.Gap(listing.verticalSpacing);
+            string tip = lockedTip ?? ("CM_Semi_Random_Research_Setting_" + keyStem + "_Description").Translate();
+            CheckRow(listing, label, ref value, tip, lockedTip == null);
         }
 
         // Label with its value and tooltip, and -/+ buttons on the same row so the limits section fits the window's height.
@@ -354,12 +409,12 @@ namespace CM_Semi_Random_Research
 
             Rect minusRect = new Rect(row.xMax - buttonsWidth, row.y + (row.height - 24f) / 2f, buttonWidth, 24f);
             Rect plusRect = new Rect(minusRect.xMax + 2f, minusRect.y, buttonWidth, 24f);
-            if (Widgets.ButtonText(minusRect, "-1", active: active))
+            if (SettingsButton(minusRect, "-1", active))
             {
                 SoundDefOf.DragSlider.PlayOneShotOnCamera();
                 value = Mathf.Max(min, value - GenUI.CurrentAdjustmentMultiplier());
             }
-            if (Widgets.ButtonText(plusRect, "+1", active: active))
+            if (SettingsButton(plusRect, "+1", active))
             {
                 SoundDefOf.DragSlider.PlayOneShotOnCamera();
                 value += GenUI.CurrentAdjustmentMultiplier();
@@ -401,6 +456,10 @@ namespace CM_Semi_Random_Research
                 return "CM_Semi_Random_Research_Tree_Nice".Translate();
             if (preferred == PreferredResearchTree.Organized)
                 return "CM_Semi_Random_Research_Tree_Organized".Translate();
+            if (preferred == PreferredResearchTree.Organized2)
+                return "CM_Semi_Random_Research_Tree_Organized2".Translate();
+            if (preferred == PreferredResearchTree.UIRethemed)
+                return "CM_Semi_Random_Research_Tree_UIRethemed".Translate();
             return "CM_Semi_Random_Research_Tree_NodeResearch".Translate();
         }
 
@@ -412,7 +471,7 @@ namespace CM_Semi_Random_Research
             if (!tooltip.NullOrEmpty())
                 TooltipHandler.TipRegion(rect, tooltip);
 
-            if (Widgets.ButtonText(rect, text, active: active) && options.Count > 0)
+            if (SettingsButton(rect, text, active) && options.Count > 0)
             {
                 Find.WindowStack.Add(new FloatMenu(options));
             }

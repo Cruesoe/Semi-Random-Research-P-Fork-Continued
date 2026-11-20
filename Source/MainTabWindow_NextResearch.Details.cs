@@ -1,4 +1,4 @@
-﻿using RimWorld;
+using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,7 +38,7 @@ namespace CM_Semi_Random_Research
                     Rect backButtonRect = new Rect(0f, currentY, viewRect.width, backButtonHeight);
                     if (ColoredButtonText(backButtonRect,
                         "CM_Semi_Random_Research_BackToResearch".Translate(SafeLabel(previousProject)),
-                        FooterTreeButtonColor))
+                        FooterTreeButtonColor, SkinTone.Blue))
                     {
                         SoundDefOf.Click.PlayOneShotOnCamera();
                         ReturnToPreviousRelatedProject();
@@ -102,14 +102,11 @@ namespace CM_Semi_Random_Research
             {
                 return 0f;
             }
-            float xMin = rect.xMin;
             float yMin = rect.yMin;
 
-            Text.Font = GameFont.Medium;
-            Widgets.LabelCacheHeight(ref rect, "Prerequisites".Translate() + ":");
-            rect.yMin += rect.height + 6f;
-
-            Text.Font = GameFont.Small;
+            int rows = CountUnfinished(project.prerequisites) + CountUnfinished(project.hiddenPrerequisites);
+            Rect rowsRect = SectionBegin(rect, "Prerequisites".Translate(), "lock", rows * (ListRowHeight + 4f) - 4f, GameFont.Medium);
+            rect = new Rect(rowsRect.x - 6f, rowsRect.y, rowsRect.width + 6f, rect.height);
 
             if (project.prerequisites != null)
             {
@@ -130,9 +127,44 @@ namespace CM_Semi_Random_Research
             }
 
             GUI.color = Color.white;
-            rect.xMin = xMin;
-            rect.yMin += 6f;
-            return rect.yMin - yMin;
+            return SectionEnd(rowsRect) - yMin;
+        }
+
+        private const float ListRowHeight = 42f;
+        private const float SectionTitleHeight = 30f;
+        private const float SectionPad = 8f;
+
+        // Opens a titled section: a panel when themed, else a heading. Returns the area for its rows.
+        private static Rect SectionBegin(Rect rect, string title, string icon, float rowsHeight, GameFont headingFont)
+        {
+            ResearchSkin skin = ResearchSkin.Active;
+            if (skin != null)
+            {
+                Rect box = new Rect(rect.x, rect.y, rect.width, SectionTitleHeight + rowsHeight + SectionPad * 2f);
+                if (skin.Section(box, title, icon))
+                    return new Rect(box.x + SectionPad, box.y + SectionTitleHeight + SectionPad, box.width - SectionPad * 2f, rowsHeight);
+            }
+            Text.Font = headingFont;
+            Rect heading = new Rect(rect.x, rect.y, rect.width, 0f);
+            Widgets.LabelCacheHeight(ref heading, title + ":");
+            Text.Font = GameFont.Small;
+            return new Rect(rect.x, heading.yMax + 6f, rect.width, rowsHeight);
+        }
+
+        // The y below a section opened by SectionBegin, with the gap before the next one.
+        private static float SectionEnd(Rect rowsRect) => rowsRect.yMax + (ResearchSkin.Active != null ? SectionPad + 10f : 10f);
+
+        private static int CountUnfinished(List<ResearchProjectDef> projects)
+        {
+            int count = 0;
+            if (projects == null)
+                return count;
+            for (int i = 0; i < projects.Count; i++)
+            {
+                if (projects[i] != null && !projects[i].IsFinished)
+                    count++;
+            }
+            return count;
         }
 
         private static bool HasUnfinished(List<ResearchProjectDef> projects)
@@ -152,7 +184,7 @@ namespace CM_Semi_Random_Research
             if (prereq == null)
                 return;
 
-            const float itemHeight = 42f;
+            const float itemHeight = ListRowHeight;
             const float iconSize = 28f;
             const float iconPadding = 8f;
             Rect prereqRect = new Rect(rect.xMin + 6f, rect.yMin, rect.width - 6f, itemHeight);
@@ -161,7 +193,8 @@ namespace CM_Semi_Random_Research
                 ? GetTechLevelColor(prereq.techLevel)
                 : TexUI.AvailResearchColor;
             Color bgColor = Color.Lerp(TexUI.AvailResearchColor, techColor, 0.3f);
-            if (IsRepaint)
+            ResearchSkin skin = ResearchSkin.Active;
+            if ((skin == null || !skin.Card(prereqRect, techColor, 0f, false, false, 1f)) && IsRepaint)
             {
                 Widgets.DrawBoxSolid(prereqRect, bgColor);
                 DrawTransparentBox(prereqRect, techColor, 1f);
@@ -215,11 +248,9 @@ namespace CM_Semi_Random_Research
                 return 0f;
 
             float yMin = rect.yMin;
-            Text.Font = GameFont.Medium;
-            Widgets.LabelCacheHeight(ref rect, "CM_Semi_Random_Research_RequiredForResearch".Translate() + ":");
-            rect.yMin += rect.height + 6f;
-
-            Text.Font = GameFont.Small;
+            Rect rowsRect = SectionBegin(rect, "CM_Semi_Random_Research_RequiredForResearch".Translate(), "tree-structure",
+                unfinishedCount * (ListRowHeight + 4f) - 4f, GameFont.Medium);
+            rect = new Rect(rowsRect.x - 6f, rowsRect.y, rowsRect.width + 6f, rect.height);
             for (int i = 0; i < dependents.Count; i++)
             {
                 ResearchProjectDef dependent = dependents[i];
@@ -229,20 +260,20 @@ namespace CM_Semi_Random_Research
                 DrawDependentResearchRow(project, dependent, ref rect);
             }
 
-            rect.yMin += 6f;
-            return rect.yMin - yMin;
+            return SectionEnd(rowsRect) - yMin;
         }
 
         private void DrawDependentResearchRow(ResearchProjectDef prerequisite, ResearchProjectDef dependent, ref Rect rect)
         {
-            const float itemHeight = 42f;
+            const float itemHeight = ListRowHeight;
             const float iconSize = 28f;
             const float iconPadding = 8f;
             Rect rowRect = new Rect(rect.xMin + 6f, rect.yMin, rect.width - 6f, itemHeight);
 
             Color techColor = GetCategoryColor(dependent);
             Color bgColor = Color.Lerp(TexUI.AvailResearchColor, techColor, 0.3f);
-            if (IsRepaint)
+            ResearchSkin skin = ResearchSkin.Active;
+            if ((skin == null || !skin.Card(rowRect, techColor, 0f, false, false, 1f)) && IsRepaint)
             {
                 Widgets.DrawBoxSolid(rowRect, bgColor);
                 DrawTransparentBox(rowRect, techColor, 1f);
@@ -377,7 +408,7 @@ namespace CM_Semi_Random_Research
             Def firstUnlockable = GetFirstUnlockable(project);
             if (firstUnlockable != null)
             {
-                try { Widgets.DefIcon(rect, firstUnlockable); }
+                try { DefIcons.Draw(rect, firstUnlockable); }
                 catch (Exception) { }
                 return;
             }
@@ -395,49 +426,100 @@ namespace CM_Semi_Random_Research
             }
 
             float yMin = rect.yMin;
-            float x = rect.x;
 
-            Text.Font = GameFont.Small;
-            Widgets.LabelCacheHeight(ref rect, "Unlocks".Translate() + ":");
-            rect.yMin += rect.height + 6f;
+            // Tiles in as many columns as fit, each a large icon in a sunken well over its name.
+            const int maxVisibleIcons = 20;
+            const float minTileWidth = 100f;
+            const float tileGap = 6f;
+            const float tileHeight = 107f;
+            const float moreHeight = 26f;
+            int total = 0;
+            for (int i = 0; i < unlocked.Count; i++)
+            {
+                if (unlocked[i] != null)
+                    total++;
+            }
+            int shown = Mathf.Min(total, maxVisibleIcons);
+            float innerWidth = ResearchSkin.Active != null ? rect.width - SectionPad * 2f : rect.width;
+            int columns = Mathf.Max(1, Mathf.FloorToInt((innerWidth + tileGap) / (minTileWidth + tileGap)));
+            int rows = (shown + columns - 1) / columns;
+            float rowsHeight = rows * (tileHeight + tileGap) - tileGap + (total > shown ? moreHeight + 4f : 0f);
+
+            Rect area = SectionBegin(rect, "Unlocks".Translate(), "package", rowsHeight, GameFont.Small);
+            float tileWidth = (area.width - tileGap * (columns - 1)) / columns;
+            Color accent = GetCategoryColor(project);
 
             int visibleDrawn = 0;
-            const int maxVisibleIcons = 20;
-            const float itemHeight = 48f;
-            for (int i = 0; i < unlocked.Count; i++)
+            for (int i = 0; i < unlocked.Count && visibleDrawn < shown; i++)
             {
                 Def def = unlocked[i];
                 if (def == null)
                     continue;
 
-                Rect itemRect = new Rect(rect.x, rect.yMin, rect.width, itemHeight);
-                bool isMouseOver = Mouse.IsOver(itemRect);
-                if (IsRepaint)
-                {
-                    Widgets.DrawBoxSolid(itemRect, isMouseOver
-                        ? new Color(0.3f, 0.3f, 0.3f, 0.3f)
-                        : new Color(0.1f, 0.1f, 0.1f, 0.1f));
-                    DrawTransparentBox(itemRect, isMouseOver
-                        ? new Color(0.8f, 0.8f, 0.8f, 0.5f)
-                        : new Color(0.4f, 0.4f, 0.4f, 0.3f), isMouseOver ? 1.5f : 1f);
-                }
-
-                DrawDefLink(itemRect, def, SafeDefLabel(def), 32f);
+                int column = visibleDrawn % columns;
+                int row = visibleDrawn / columns;
+                Rect tile = new Rect(area.x + column * (tileWidth + tileGap), area.y + row * (tileHeight + tileGap), tileWidth, tileHeight);
+                DrawUnlockTile(tile, def, accent);
                 visibleDrawn++;
-                if (visibleDrawn >= maxVisibleIcons)
-                {
-                    rect.yMin += itemHeight + 8f;
-                    Widgets.Label(new Rect(rect.x, rect.yMin, rect.width, 24f), "CM_Semi_Random_Research_MoreUnlocks".Translate(unlocked.Count - i - 1));
-                    rect.yMin += 26f;
-                    break;
-                }
-
-                rect.yMin += itemHeight + 8f;
+            }
+            if (total > shown)
+            {
+                GUI.color = ResearchSkin.Active != null ? ResearchSkin.Active.TextDim : Color.white;
+                Widgets.Label(new Rect(area.x, area.yMax - moreHeight, area.width, moreHeight), "CM_Semi_Random_Research_MoreUnlocks".Translate(total - shown));
             }
 
-            rect.x = x;
             GUI.color = Color.white;
-            return rect.yMin - yMin;
+            return SectionEnd(area) - yMin;
+        }
+
+        // One unlock: its icon in a sunken well above its name (two lines at most), the full name as a tooltip; a click opens its info card.
+        private void DrawUnlockTile(Rect tile, Def def, Color accent)
+        {
+            const float iconSize = 42f;
+            const float wellSize = 52f;
+            bool isMouseOver = Mouse.IsOver(tile);
+            Rect wellRect = new Rect(tile.center.x - wellSize / 2f, tile.y + 6f, wellSize, wellSize);
+            ResearchSkin skin = ResearchSkin.Active;
+            if ((skin == null || !skin.Tile(tile, wellRect, accent)) && IsRepaint)
+            {
+                Widgets.DrawBoxSolid(tile, isMouseOver
+                    ? new Color(0.3f, 0.3f, 0.3f, 0.3f)
+                    : new Color(0.1f, 0.1f, 0.1f, 0.1f));
+                DrawTransparentBox(tile, isMouseOver
+                    ? new Color(0.8f, 0.8f, 0.8f, 0.5f)
+                    : new Color(0.4f, 0.4f, 0.4f, 0.3f), isMouseOver ? 1.5f : 1f);
+                Widgets.DrawBoxSolid(wellRect, new Color(0f, 0f, 0f, 0.35f));
+                DrawTransparentBox(wellRect, new Color(accent.r, accent.g, accent.b, isMouseOver ? 0.8f : 0.4f), 1f);
+            }
+
+            string label = SafeDefLabel(def) ?? string.Empty;
+            Rect iconRect = new Rect(wellRect.center.x - iconSize / 2f, wellRect.center.y - iconSize / 2f, iconSize, iconSize);
+            if (IsRepaint)
+            {
+                try
+                {
+                    GUI.color = isMouseOver ? Color.white : new Color(0.9f, 0.9f, 0.9f);
+                    DefIcons.Draw(iconRect, def);
+                }
+                catch (Exception)
+                {
+                }
+
+                Text.Font = GameFont.Small;
+                Text.Anchor = TextAnchor.UpperCenter;
+                GUI.color = isMouseOver ? Color.white : skin != null ? skin.TextBright : new Color(0.85f, 0.85f, 0.85f);
+                Rect labelRect = new Rect(tile.x + 4f, wellRect.yMax + 3f, tile.width - 8f, tile.yMax - wellRect.yMax - 4f);
+                GUI.BeginGroup(labelRect);
+                Widgets.Label(new Rect(0f, 0f, labelRect.width, 200f), label);
+                GUI.EndGroup();
+                Text.Anchor = TextAnchor.UpperLeft;
+                GUI.color = Color.white;
+            }
+
+            if (isMouseOver)
+                TooltipHandler.TipRegion(tile, label);
+            if (Clicked(tile))
+                Find.WindowStack.Add(new Dialog_InfoCard(def));
         }
 
         private void DrawDefLink(Rect rect, Def def, string text, float iconSize = 24f)
@@ -450,7 +532,7 @@ namespace CM_Semi_Random_Research
                 try
                 {
                     GUI.color = Mouse.IsOver(rect) ? Color.white : new Color(0.9f, 0.9f, 0.9f);
-                    Widgets.DefIcon(iconRect, def);
+                    DefIcons.Draw(iconRect, def);
                 }
                 catch (Exception)
                 {

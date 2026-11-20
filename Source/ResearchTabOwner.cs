@@ -9,6 +9,8 @@ namespace CM_Semi_Random_Research
         YART,
         Sleek,
         NiceResearchTab,
-        Organized
+        Organized,
+        UIRethemed,
+        Organized2
     }
 }
