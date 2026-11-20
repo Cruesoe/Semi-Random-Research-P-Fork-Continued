@@ -110,9 +110,15 @@ namespace CM_Semi_Random_Research
         private void DrawTimings(Rect rect)
         {
             RefreshTimings();
-            Widgets.DrawMenuSection(rect);
+            ResearchSkin skin = ResearchSkin.Active;
+            bool themed = skin != null && skin.Panel(rect);
+            if (!themed)
+                Widgets.DrawMenuSection(rect);
             if (timings.Count == 0)
                 return;
+            Color dividerColor = themed ? skin.TextFaint : TimingsDividerColor;
+            Color labelColor = themed ? skin.TextDim : Color.gray;
+            Color valueColor = themed ? skin.TextBright : Color.white;
             Rect inner = rect.ContractedBy(8f, 4f);
             float width = inner.width / timings.Count;
             float x = inner.x;
@@ -126,14 +132,15 @@ namespace CM_Semi_Random_Research
             {
                 Rect tile = new Rect(x, inner.y, width, inner.height);
                 if (x > inner.x && IsRepaint)
-                    Widgets.DrawLine(new Vector2(x, inner.y + 4f), new Vector2(x, inner.yMax - 4f), TimingsDividerColor, 1f);
+                    Widgets.DrawLine(new Vector2(x, inner.y + 4f), new Vector2(x, inner.yMax - 4f), dividerColor, 1f);
                 x += width;
                 Widgets.DrawHighlightIfMouseover(tile);
                 Rect text = tile.ContractedBy(6f, 0f);
-                GUI.color = Color.gray;
+                GUI.color = labelColor;
                 Widgets.Label(new Rect(text.x, top, text.width, lineHeight), stat.Label.Truncate(text.width));
-                GUI.color = Color.white;
+                GUI.color = valueColor;
                 Widgets.Label(new Rect(text.x, top + lineHeight, text.width, lineHeight), stat.Value.Truncate(text.width));
+                GUI.color = Color.white;
                 TooltipHandler.TipRegion(tile, stat.Tip);
             }
             Text.Anchor = TextAnchor.UpperLeft;

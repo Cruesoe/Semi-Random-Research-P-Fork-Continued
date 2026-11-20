@@ -56,7 +56,7 @@ namespace CM_Semi_Random_Research
         private static readonly Dictionary<ResearchProjectDef, Texture2D> emergenceIcons =
             new Dictionary<ResearchProjectDef, Texture2D>();
 
-        // Node's own era icon (UI/TechLevels/<level>) for the era an emergence project leads to; null for other projects.
+        // Node's own era icon (NodeResearch/TechLevels/<level>, formerly UI/TechLevels/<level>) for the era an emergence project leads to; null for other projects.
         public static Texture2D EmergenceIcon(ResearchProjectDef def)
         {
             if (!IsEmergenceTech(def))
@@ -70,7 +70,8 @@ namespace CM_Semi_Random_Research
                 if (extension == null || extension.GetType().Name != "EmergenceExtension")
                     continue;
                 if (extension.GetType().GetField("targetLevel")?.GetValue(extension) is TechLevel target)
-                    icon = ContentFinder<Texture2D>.Get("UI/TechLevels/" + target, false);
+                    icon = ContentFinder<Texture2D>.Get("NodeResearch/TechLevels/" + target, false)
+                        ?? ContentFinder<Texture2D>.Get("UI/TechLevels/" + target, false);
                 break;
             }
 

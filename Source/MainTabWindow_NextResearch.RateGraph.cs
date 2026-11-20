@@ -61,10 +61,13 @@ namespace CM_Semi_Random_Research
                 structureAccent = PausedTint(structureAccent);
             }
 
+            ResearchSkin skin = ResearchSkin.Active;
+            bool themed = skin != null && skin.Card(headerRect, structureAccent, project.ProgressPercent, selectedProject == project, false, 1f);
+
             Color backgroundColor = Color.Lerp(TexUI.AvailResearchColor, techColor, 0.3f);
             if (isPaused)
                 backgroundColor = PausedTint(backgroundColor);
-            if (IsRepaint)
+            if (!themed && IsRepaint)
             {
                 Widgets.DrawBoxSolid(headerRect, backgroundColor);
             }
@@ -72,20 +75,20 @@ namespace CM_Semi_Random_Research
             Rect progressRect = new Rect(headerRect.x, headerRect.y, headerRect.width * project.ProgressPercent, headerRect.height);
             Color progressColor = isPaused ? new Color(0.45f, 0.45f, 0.47f) : GetProgressFillAccent(project, techColor);
             progressColor.a = 0.55f;
-            if (IsRepaint)
+            if (!themed && IsRepaint)
             {
                 Widgets.DrawBoxSolid(progressRect, progressColor);
             }
 
             Color borderColor = Color.Lerp(structureAccent, Color.white, 0.35f);
-            if (IsRepaint)
+            if (!themed && IsRepaint)
             {
                 GUI.color = borderColor;
                 Widgets.DrawBox(headerRect);
                 GUI.color = Color.white;
             }
 
-            if (selectedProject == project && IsRepaint)
+            if (!themed && selectedProject == project && IsRepaint)
             {
                 DrawTransparentBox(headerRect, borderColor, 2f);
             }
@@ -94,8 +97,11 @@ namespace CM_Semi_Random_Research
             {
                 DrawProjectIcon(iconRect, project);
 
-                Widgets.DrawLine(new Vector2(firstSeparator.x, firstSeparator.y), new Vector2(firstSeparator.x, firstSeparator.yMax), borderColor, separatorWidth);
-                Widgets.DrawLine(new Vector2(secondSeparator.x, secondSeparator.y), new Vector2(secondSeparator.x, secondSeparator.yMax), borderColor, separatorWidth);
+                if (!themed)
+                {
+                    Widgets.DrawLine(new Vector2(firstSeparator.x, firstSeparator.y), new Vector2(firstSeparator.x, firstSeparator.yMax), borderColor, separatorWidth);
+                    Widgets.DrawLine(new Vector2(secondSeparator.x, secondSeparator.y), new Vector2(secondSeparator.x, secondSeparator.yMax), borderColor, separatorWidth);
+                }
             }
 
             // The Foundation/Emergence tag and the Paused tag share the line under the name.
@@ -124,7 +130,7 @@ namespace CM_Semi_Random_Research
             else
             {
                 Text.Anchor = TextAnchor.MiddleLeft;
-                GUI.color = Color.white;
+                GUI.color = themed ? skin.TextBright : Color.white;
                 Widgets.Label(nameRect, SafeLabel(project));
             }
 
@@ -176,16 +182,19 @@ namespace CM_Semi_Random_Research
                     Rect graphRect = new Rect(rect.x + graphPadding, currentY, rect.width - (graphPadding * 2), graphHeight);
                     if (IsRepaint)
                     {
-                        Widgets.DrawBoxSolid(graphRect, new Color(0.1f, 0.1f, 0.1f, 0.2f));
-                        DrawTransparentBox(graphRect, new Color(0.4f, 0.4f, 0.4f, 0.3f), 1f);
-                        if (cachedGraphSamples != null && cachedGraphSamples.Count > 0)
+                        bool hasSamples = cachedGraphSamples != null && cachedGraphSamples.Count > 0;
+                        if (skin == null || !skin.Graph(graphRect, cachedGraphSamples, cachedGraphAverage,
+                                "CM_Semi_Random_Research_GraphAverage".Translate(), cachedGraphTick))
                         {
-                            DrawRateGraph(graphRect, cachedGraphSamples, cachedGraphAverage);
+                            Widgets.DrawBoxSolid(graphRect, new Color(0.1f, 0.1f, 0.1f, 0.2f));
+                            DrawTransparentBox(graphRect, new Color(0.4f, 0.4f, 0.4f, 0.3f), 1f);
+                            if (hasSamples)
+                                DrawRateGraph(graphRect, cachedGraphSamples, cachedGraphAverage);
                         }
-                        else
+                        if (!hasSamples)
                         {
                             Text.Anchor = TextAnchor.MiddleCenter;
-                            GUI.color = new Color(0.6f, 0.6f, 0.6f, 0.6f);
+                            GUI.color = skin != null ? skin.TextFaint : new Color(0.6f, 0.6f, 0.6f, 0.6f);
                             Widgets.Label(graphRect, "CM_Semi_Random_Research_CollectingData".Translate());
                         }
                     }

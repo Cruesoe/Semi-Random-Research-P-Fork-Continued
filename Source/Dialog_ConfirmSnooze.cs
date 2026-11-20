@@ -21,6 +21,12 @@ namespace CM_Semi_Random_Research
         private readonly float[] cardY;
         private readonly float listHeight;
         private Vector2 scroll;
+        private float openedAt;
+        private readonly string title;
+        private readonly Action closeAction;
+
+        // The UI Rethemed frame draws its own edge and title bar.
+        protected override float Margin => ResearchSkin.Active != null ? 0f : base.Margin;
 
         public Dialog_ConfirmSnooze(ResearchProjectDef project, List<ResearchProjectDef> blocked, Action onConfirm)
         {
@@ -28,6 +34,8 @@ namespace CM_Semi_Random_Research
             this.blocked = blocked;
             this.onConfirm = onConfirm;
             body = "CM_Semi_Random_Research_ConfirmSnooze".Translate();
+            title = "CM_Semi_Random_Research_ConfirmSnoozeTitle".Translate(project.LabelCap);
+            closeAction = () => Close();
             // Projects arrive sorted by tech level; each new tech level starts after a wider gap.
             cardY = new float[blocked.Count];
             float next = 0f;
@@ -42,6 +50,13 @@ namespace CM_Semi_Random_Research
             forcePause = true;
             absorbInputAroundWindow = true;
             closeOnClickedOutside = true;
+            doWindowBackground = ResearchSkin.Active == null;
+        }
+
+        public override void PostOpen()
+        {
+            base.PostOpen();
+            openedAt = Time.realtimeSinceStartup;
         }
 
         // Vanilla 640 x 460 at least, taller to fit every card; scrolls only when the screen can't fit them.
@@ -50,20 +65,47 @@ namespace CM_Semi_Random_Research
             get
             {
                 Text.Font = GameFont.Small;
-                float bodyHeight = Text.CalcHeight(body, DialogWidth - Margin * 2f);
-                float height = Margin * 2f + TitleHeight + 4f + bodyHeight + 10f + listHeight + 14f + ButtonHeight;
+                float bodyHeight = Text.CalcHeight(body, DialogWidth - 36f);
+                float height = 36f + TitleHeight + 4f + bodyHeight + 10f + listHeight + 14f + ButtonHeight;
                 return new Vector2(DialogWidth, Mathf.Clamp(height, 460f, UI.screenHeight - 80f));
             }
         }
 
         public override void DoWindowContents(Rect inRect)
         {
+            ResearchSkin skin = ResearchSkin.Active;
+            doWindowBackground = skin == null;
+            if (skin != null)
+            {
+                skin.Begin();
+                try
+                {
+                    if (skin.PopupFrame(inRect, title, Time.realtimeSinceStartup - openedAt, closeAction, out Rect content))
+                    {
+                        DrawBody(content, skin);
+                        return;
+                    }
+                }
+                finally
+                {
+                    skin.End();
+                }
+            }
+
             Text.Font = GameFont.Medium;
             Text.Anchor = TextAnchor.MiddleLeft;
-            Widgets.Label(new Rect(inRect.x, inRect.y, inRect.width, TitleHeight), "CM_Semi_Random_Research_ConfirmSnoozeTitle".Translate(project.LabelCap));
+            Widgets.Label(new Rect(inRect.x, inRect.y, inRect.width, TitleHeight), title);
             Text.Font = GameFont.Small;
             Text.Anchor = TextAnchor.UpperLeft;
-            float y = inRect.y + TitleHeight + 4f;
+            DrawBody(new Rect(inRect.x, inRect.y + TitleHeight + 4f, inRect.width, inRect.height - TitleHeight - 4f), null);
+        }
+
+        // The explanation, the cards and the two buttons, below the title.
+        private void DrawBody(Rect inRect, ResearchSkin skin)
+        {
+            Text.Font = GameFont.Small;
+            Text.Anchor = TextAnchor.UpperLeft;
+            float y = inRect.y;
             float bodyHeight = Text.CalcHeight(body, inRect.width);
             Widgets.Label(new Rect(inRect.x, y, inRect.width, bodyHeight), body);
             y += bodyHeight + 10f;
@@ -84,17 +126,27 @@ namespace CM_Semi_Random_Research
 
             float buttonWidth = (inRect.width - 20f) / 2f;
             Rect back = new Rect(inRect.x, inRect.yMax - ButtonHeight, buttonWidth, ButtonHeight);
-            if (Widgets.ButtonText(back, "GoBack".Translate()))
+            Rect snooze = new Rect(back.xMax + 20f, back.y, buttonWidth, ButtonHeight);
+            if (DialogButton(back, "GoBack".Translate(), SkinTone.Gray, skin))
                 Close();
-            if (Widgets.ButtonText(new Rect(back.xMax + 20f, back.y, buttonWidth, ButtonHeight), "CM_Semi_Random_Research_SnoozeButton".Translate()))
+            if (DialogButton(snooze, "CM_Semi_Random_Research_SnoozeButton".Translate(), SkinTone.Yellow, skin))
                 Confirm();
+        }
+
+        private static bool DialogButton(Rect rect, string label, SkinTone tone, ResearchSkin skin)
+        {
+            if (skin != null && skin.Button(rect, label, tone, true))
+                return Widgets.ButtonInvisible(rect);
+            return Widgets.ButtonText(rect, label);
         }
 
         // Colored like the research tab's cards, with the project's name.
         private static void DrawCard(Rect rect, ResearchProjectDef def)
         {
             Color color = MainTabWindow_NextResearch.GetCategoryColor(def);
-            if (Event.current.type == EventType.Repaint)
+            ResearchSkin skin = ResearchSkin.Active;
+            bool themed = skin != null && skin.Card(rect, MainTabWindow_NextResearch.GetCardStructureAccent(def, color), 0f, false, false, 1f);
+            if (!themed && Event.current.type == EventType.Repaint)
             {
                 Widgets.DrawBoxSolid(rect, Color.Lerp(TexUI.AvailResearchColor, color, 0.25f));
                 GUI.color = MainTabWindow_NextResearch.GetCardStructureAccent(def, color);

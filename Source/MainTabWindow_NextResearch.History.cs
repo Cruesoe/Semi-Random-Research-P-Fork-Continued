@@ -171,12 +171,7 @@ namespace CM_Semi_Random_Research
         {
             Text.Font = GameFont.Small;
             Rect footerContainerRect = new Rect(leftRect.x, leftRect.yMax - totalFooterHeight, leftRect.width, totalFooterHeight);
-            if (IsRepaint)
-            {
-                GUI.color = new Color(0.4f, 0.4f, 0.4f, 0.6f);
-                Widgets.DrawLineHorizontal(footerContainerRect.x, footerContainerRect.y, footerContainerRect.width);
-                GUI.color = Color.white;
-            }
+            DrawDivider(footerContainerRect.x, footerContainerRect.y, footerContainerRect.width, 0.6f);
 
             float buttonWidth = 120f;
             Rect backButtonRect = new Rect(
@@ -185,7 +180,7 @@ namespace CM_Semi_Random_Research
                 buttonWidth,
                 footerHeight);
 
-            if (ColoredButtonText(backButtonRect, "CM_Semi_Random_Research_HistoryBack".Translate(), FooterTreeButtonColor))
+            if (ColoredButtonText(backButtonRect, "CM_Semi_Random_Research_HistoryBack".Translate(), FooterTreeButtonColor, SkinTone.Blue))
             {
                 SoundDefOf.Click.PlayOneShotOnCamera();
                 CloseHistory();
@@ -219,7 +214,13 @@ namespace CM_Semi_Random_Research
             else if (isMouseOver)
                 borderColor = Color.Lerp(structureAccent, Color.white, 0.2f);
 
-            if (IsRepaint)
+            ResearchSkin skin = ResearchSkin.Active;
+            bool themed = skin != null && skin.Card(drawRect, structureAccent, 0f, isSelected, false, 1f);
+            if (themed && IsRepaint)
+            {
+                DrawProjectIcon(layout.IconRect, projectDef);
+            }
+            else if (IsRepaint)
             {
                 Widgets.DrawBoxSolid(drawRect, backgroundColor);
                 if (isMouseOver)
@@ -239,11 +240,11 @@ namespace CM_Semi_Random_Research
             Rect nameRect = layout.NameRect;
             Rect topTextRect = new Rect(nameRect.x, nameRect.y + 2f, nameRect.width, 22f);
             Rect bottomTextRect = new Rect(nameRect.x, nameRect.y + 24f, nameRect.width, 22f);
-            GUI.color = isMouseOver ? Color.white : new Color(0.95f, 0.95f, 0.95f);
+            GUI.color = isMouseOver ? Color.white : themed ? skin.TextBright : new Color(0.95f, 0.95f, 0.95f);
             Text.Anchor = TextAnchor.LowerLeft;
             Widgets.Label(topTextRect, SafeLabel(projectDef));
             Text.Anchor = TextAnchor.UpperLeft;
-            GUI.color = new Color(0.72f, 0.72f, 0.72f);
+            GUI.color = themed ? skin.TextDim : new Color(0.72f, 0.72f, 0.72f);
             Widgets.Label(bottomTextRect, FormatCompletedAgo(entry.tick));
             GUI.color = originalColor;
             Text.Anchor = TextAnchor.MiddleCenter;
@@ -251,7 +252,7 @@ namespace CM_Semi_Random_Research
             Text.WordWrap = false;
             Widgets.Label(layout.CostRect, projectDef.CostApparent.ToString("N0"));
             Text.WordWrap = wordWrap;
-            if (isSelected && IsRepaint)
+            if (!themed && isSelected && IsRepaint)
                 DrawTransparentBox(drawRect, Color.Lerp(structureAccent, Color.white, 0.3f), 2f);
             if (Clicked(drawRect))
             {
@@ -406,7 +407,8 @@ namespace CM_Semi_Random_Research
             bool isMouseOver = Mouse.IsOver(drawRect);
             Color techColor = GetCategoryColor(projectDef);
             Color structureAccent = GetCardStructureAccent(projectDef, techColor);
-            if (IsRepaint)
+            ResearchSkin skin = ResearchSkin.Active;
+            if ((skin == null || !skin.Card(drawRect, structureAccent, 0f, false, false, 1f)) && IsRepaint)
             {
                 Widgets.DrawBoxSolid(drawRect, Color.Lerp(TexUI.AvailResearchColor, techColor, 0.25f));
                 GUI.color = structureAccent;
@@ -437,7 +439,8 @@ namespace CM_Semi_Random_Research
             Color originalColor = GUI.color;
             TextAnchor startingTextAnchor = Text.Anchor;
             Color techColor = GetCategoryColor(projectDef);
-            if (IsRepaint)
+            ResearchSkin skin = ResearchSkin.Active;
+            if ((skin == null || !skin.Card(drawRect, GetCardStructureAccent(projectDef, techColor), 0f, false, true, 1f)) && IsRepaint)
             {
                 Widgets.DrawBoxSolid(drawRect, Color.Lerp(TexUI.AvailResearchColor, techColor, 0.12f));
                 GUI.color = Color.Lerp(GetCardStructureAccent(projectDef, techColor), Color.gray, 0.5f);
