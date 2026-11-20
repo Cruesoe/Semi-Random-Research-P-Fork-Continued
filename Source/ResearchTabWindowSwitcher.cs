@@ -128,12 +128,13 @@ namespace CM_Semi_Random_Research
                     return IsTreeAvailable(PreferredResearchTree.Sleek);
                 case ResearchTabOwner.NiceResearchTab:
                     return IsTreeAvailable(PreferredResearchTree.NiceResearchTab);
+                // Both open whichever window Research: Organized's display mode chooses, so either survives a mode change.
                 case ResearchTabOwner.Organized:
-                    return IsTreeAvailable(PreferredResearchTree.Organized);
+                    return OrganizedInstalled;
                 case ResearchTabOwner.UIRethemed:
                     return IsTreeAvailable(PreferredResearchTree.UIRethemed);
                 case ResearchTabOwner.Organized2:
-                    return IsTreeAvailable(PreferredResearchTree.Organized2);
+                    return OrganizedInstalled;
                 default:
                     return false;
             }
@@ -162,12 +163,11 @@ namespace CM_Semi_Random_Research
                     return YartWindowType;
                 case ResearchTabOwner.NiceResearchTab:
                     return NiceWindowType;
+                case ResearchTabOwner.Organized:
                 case ResearchTabOwner.Organized2:
-                    return Organized2WindowType;
                 case ResearchTabOwner.Vanilla:
                     return VanillaWindowType;
                 case ResearchTabOwner.Sleek:
-                case ResearchTabOwner.Organized:
                 case ResearchTabOwner.UIRethemed:
                     return typeof(MainTabWindow_Research);
                 default:
@@ -327,7 +327,7 @@ namespace CM_Semi_Random_Research
                 return;
 
             ShowHandoverMessage("CM_Semi_Random_Research_Handover_Organized_Restricted", "CM_Semi_Random_Research_Handover_Organized");
-            OpenResearchWindow(typeof(MainTabWindow_Research), windowToClose, ResearchTabOwner.Organized);
+            OpenResearchWindow(VanillaWindowType, windowToClose, ResearchTabOwner.Organized);
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
 
