@@ -20,6 +20,9 @@ namespace CM_Semi_Random_Research
         // The add-on is loaded and has not failed this session.
         public static bool Available => registered != null && !failed;
 
+        // The add-on regardless of the Match UI Rethemed setting, for drawing inside UI Rethemed's own windows.
+        public static ResearchSkin Loaded => Available ? registered : null;
+
         public static ResearchSkin Active =>
             registered != null && !failed && (SemiRandomResearchMod.settings == null || SemiRandomResearchMod.settings.matchUIRethemed)
                 ? registered

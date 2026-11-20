@@ -212,6 +212,7 @@ namespace CM_Semi_Random_Research
             AddTreeOption(treeOptions, PreferredResearchTree.Sleek);
             AddTreeOption(treeOptions, PreferredResearchTree.NiceResearchTab);
             AddTreeOption(treeOptions, PreferredResearchTree.Organized);
+            AddTreeOption(treeOptions, PreferredResearchTree.UIRethemed);
 
             if (anyTree && !ResearchTabWindowSwitcher.IsTreeAvailable(preferredResearchTree))
                 preferredResearchTree = ResearchTabWindowSwitcher.GetEffectivePreferredTree();
@@ -454,6 +455,8 @@ namespace CM_Semi_Random_Research
                 return "CM_Semi_Random_Research_Tree_Nice".Translate();
             if (preferred == PreferredResearchTree.Organized)
                 return "CM_Semi_Random_Research_Tree_Organized".Translate();
+            if (preferred == PreferredResearchTree.UIRethemed)
+                return "CM_Semi_Random_Research_Tree_UIRethemed".Translate();
             return "CM_Semi_Random_Research_Tree_NodeResearch".Translate();
         }
 
