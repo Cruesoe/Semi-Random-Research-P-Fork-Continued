@@ -176,7 +176,7 @@ namespace CM_Semi_Random_Research
 
             List<string> unlockedItems = new List<string>();
 
-            List<Def> unlockedDefs = UnlocksNow.ObtainableOnly(proj.UnlockedDefs);
+            List<Def> unlockedDefs = UnlocksNow.ObtainableOnly(UnlocksNow.TreeList(proj));
             for (int i = 0; i < unlockedDefs.Count; i++)
                 unlockedItems.Add(unlockedDefs[i].LabelCap);
 

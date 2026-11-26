@@ -32,6 +32,36 @@ namespace CM_Semi_Random_Research
             return result;
         }
 
+        // A new list of the project's unlocks as the research tree shows them, so mods that hide defs there (NanameWalls' diagonal walls) hide them here too.
+        public static List<Def> TreeList(ResearchProjectDef project)
+        {
+            List<Def> result = new List<Def>();
+            if (project == null)
+                return result;
+            try
+            {
+                List<Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>>> groups = ResearchPrerequisitesUtility.UnlockedDefsGroupedByPrerequisites(project);
+                for (int i = 0; i < groups.Count; i++)
+                {
+                    List<Def> defs = groups[i].Second;
+                    if (defs == null)
+                        continue;
+                    for (int j = 0; j < defs.Count; j++)
+                    {
+                        if (defs[j] != null && !result.Contains(defs[j]))
+                            result.Add(defs[j]);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                result.Clear();
+                if (project.UnlockedDefs != null)
+                    result.AddRange(project.UnlockedDefs);
+            }
+            return result;
+        }
+
         // A new list of unlocked without the defs the player can never get.
         public static List<Def> ObtainableOnly(List<Def> unlocked)
         {

@@ -294,9 +294,10 @@ namespace CM_Semi_Random_Research
             try
             {
                 // Pick from what finishing it makes available, else from everything it leads to.
-                List<Def> unlocked = UnlocksNow.Filter(project, project.UnlockedDefs);
+                List<Def> tree = UnlocksNow.TreeList(project);
+                List<Def> unlocked = UnlocksNow.Filter(project, tree);
                 if (unlocked.Count == 0)
-                    unlocked = UnlocksNow.ObtainableOnly(project.UnlockedDefs);
+                    unlocked = UnlocksNow.ObtainableOnly(tree);
                 if (!unlocked.NullOrEmpty())
                 {
                     int randomIndex = Rand.RangeInclusiveSeeded(0, unlocked.Count - 1, currentRandomSeed);
@@ -342,9 +343,10 @@ namespace CM_Semi_Random_Research
             try
             {
                 // What finishing it makes available, else everything it leads to (as the card icon does).
-                cachedSelectedUnlocks = UnlocksNow.Filter(selectedProject, selectedProject.UnlockedDefs);
+                List<Def> tree = UnlocksNow.TreeList(selectedProject);
+                cachedSelectedUnlocks = UnlocksNow.Filter(selectedProject, tree);
                 if (cachedSelectedUnlocks.Count == 0)
-                    cachedSelectedUnlocks = UnlocksNow.ObtainableOnly(selectedProject.UnlockedDefs);
+                    cachedSelectedUnlocks = UnlocksNow.ObtainableOnly(tree);
             }
             catch (Exception)
             {
