@@ -176,12 +176,9 @@ namespace CM_Semi_Random_Research
 
             List<string> unlockedItems = new List<string>();
 
-            List<Def> unlockedDefs = proj.UnlockedDefs;
-            if (unlockedDefs != null)
-            {
-                for (int i = 0; i < unlockedDefs.Count; i++)
-                    unlockedItems.Add(unlockedDefs[i].LabelCap);
-            }
+            List<Def> unlockedDefs = UnlocksNow.ObtainableOnly(proj.UnlockedDefs);
+            for (int i = 0; i < unlockedDefs.Count; i++)
+                unlockedItems.Add(unlockedDefs[i].LabelCap);
 
             List<ThingDef> sowUnlocks = SowUnlocksFor(proj);
             if (sowUnlocks != null)

@@ -296,7 +296,7 @@ namespace CM_Semi_Random_Research
                 // Pick from what finishing it makes available, else from everything it leads to.
                 List<Def> unlocked = UnlocksNow.Filter(project, project.UnlockedDefs);
                 if (unlocked.Count == 0)
-                    unlocked = project.UnlockedDefs;
+                    unlocked = UnlocksNow.ObtainableOnly(project.UnlockedDefs);
                 if (!unlocked.NullOrEmpty())
                 {
                     int randomIndex = Rand.RangeInclusiveSeeded(0, unlocked.Count - 1, currentRandomSeed);
@@ -344,7 +344,7 @@ namespace CM_Semi_Random_Research
                 // What finishing it makes available, else everything it leads to (as the card icon does).
                 cachedSelectedUnlocks = UnlocksNow.Filter(selectedProject, selectedProject.UnlockedDefs);
                 if (cachedSelectedUnlocks.Count == 0)
-                    cachedSelectedUnlocks = selectedProject.UnlockedDefs;
+                    cachedSelectedUnlocks = UnlocksNow.ObtainableOnly(selectedProject.UnlockedDefs);
             }
             catch (Exception)
             {
