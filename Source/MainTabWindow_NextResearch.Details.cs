@@ -647,9 +647,10 @@ namespace CM_Semi_Random_Research
             return found;
         }
 
+        // The project's source mod line, shown in dev mode only.
         private float DrawContentSource(Rect rect, ResearchProjectDef project)
         {
-            if (project.modContentPack == null || project.modContentPack.IsCoreMod)
+            if (!Prefs.DevMode || project.modContentPack == null || project.modContentPack.IsCoreMod)
             {
                 return 0f;
             }
