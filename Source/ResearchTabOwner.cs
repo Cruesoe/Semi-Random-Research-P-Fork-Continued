@@ -10,8 +10,6 @@ namespace CM_Semi_Random_Research
         Sleek,
         NiceResearchTab,
         Organized,
-        UIRethemed,
-        // Research: Organized's Rethemed window; the name is kept for saved settings.
-        Organized2
+        UIRethemed
     }
 }

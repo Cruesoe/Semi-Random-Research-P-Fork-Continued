@@ -82,11 +82,9 @@ namespace CM_Semi_Random_Research
         public static bool UIRethemedInstalled =>
             IsInstalled(ref uiRethemedInstalledCached, UIRethemedPackageId);
 
-        // Research: Organized's Rethemed window, while it is chosen in its settings; it also takes the place of the vanilla one.
-        public static bool Organized2Installed => OrganizedInstalled && Organized2WindowType != null;
-
-        // Read from Research: Organized each call, since its display mode can change during play.
-        public static Type Organized2WindowType
+        // Research: Organized's Rethemed window while it is chosen in its settings, else null. Read each call, since its
+        // display mode can change during play.
+        public static Type OrganizedRethemedWindowType
         {
             get
             {
@@ -105,10 +103,10 @@ namespace CM_Semi_Random_Research
 
         // The vanilla tree's window: Research: Organized's Rethemed window while it is in use.
         private static Type VanillaWindowType =>
-            Organized2Installed && Organized2WindowType != null ? Organized2WindowType : typeof(MainTabWindow_Research);
+            OrganizedRethemedWindowType ?? typeof(MainTabWindow_Research);
 
         public static bool AnyTreeInstalled =>
-            NodeResearchInstalled || YartInstalled || SleekInstalled || NiceResearchTabInstalled || OrganizedInstalled || UIRethemedInstalled || Organized2Installed;
+            NodeResearchInstalled || YartInstalled || SleekInstalled || NiceResearchTabInstalled || OrganizedInstalled || UIRethemedInstalled;
 
         // The tab owner records the window last switched to, so the Research button reopens it next session.
         public static bool IsTabOwnerAvailable(ResearchTabOwner owner)
@@ -128,13 +126,10 @@ namespace CM_Semi_Random_Research
                     return IsTreeAvailable(PreferredResearchTree.Sleek);
                 case ResearchTabOwner.NiceResearchTab:
                     return IsTreeAvailable(PreferredResearchTree.NiceResearchTab);
-                // Both open whichever window Research: Organized's display mode chooses, so either survives a mode change.
                 case ResearchTabOwner.Organized:
-                    return OrganizedInstalled;
+                    return IsTreeAvailable(PreferredResearchTree.Organized);
                 case ResearchTabOwner.UIRethemed:
                     return IsTreeAvailable(PreferredResearchTree.UIRethemed);
-                case ResearchTabOwner.Organized2:
-                    return OrganizedInstalled;
                 default:
                     return false;
             }
@@ -163,8 +158,8 @@ namespace CM_Semi_Random_Research
                     return YartWindowType;
                 case ResearchTabOwner.NiceResearchTab:
                     return NiceWindowType;
+                // Research: Organized opens whichever window its display mode chooses.
                 case ResearchTabOwner.Organized:
-                case ResearchTabOwner.Organized2:
                 case ResearchTabOwner.Vanilla:
                     return VanillaWindowType;
                 case ResearchTabOwner.Sleek:
@@ -331,16 +326,6 @@ namespace CM_Semi_Random_Research
             SoundDefOf.TabOpen.PlayOneShotOnCamera();
         }
 
-        public static void SwitchToOrganized2(Window windowToClose)
-        {
-            if (!IsTreeAvailable(PreferredResearchTree.Organized2))
-                return;
-
-            ShowHandoverMessage("CM_Semi_Random_Research_Handover_Organized2_Restricted", "CM_Semi_Random_Research_Handover_Organized2");
-            OpenResearchWindow(Organized2WindowType, windowToClose, ResearchTabOwner.Organized2);
-            SoundDefOf.TabOpen.PlayOneShotOnCamera();
-        }
-
         public static void SwitchToUIRethemed(Window windowToClose)
         {
             if (!UIRethemedInstalled)
@@ -364,11 +349,9 @@ namespace CM_Semi_Random_Research
                 case PreferredResearchTree.NiceResearchTab:
                     return NiceResearchTabInstalled && NiceWindowType != null;
                 case PreferredResearchTree.Organized:
-                    return OrganizedInstalled && Organized2WindowType == null;
+                    return OrganizedInstalled;
                 case PreferredResearchTree.UIRethemed:
                     return UIRethemedInstalled;
-                case PreferredResearchTree.Organized2:
-                    return Organized2Installed;
                 default:
                     return false;
             }
@@ -392,8 +375,6 @@ namespace CM_Semi_Random_Research
                 return PreferredResearchTree.Sleek;
             if (IsTreeAvailable(PreferredResearchTree.NiceResearchTab))
                 return PreferredResearchTree.NiceResearchTab;
-            if (IsTreeAvailable(PreferredResearchTree.Organized2))
-                return PreferredResearchTree.Organized2;
             if (IsTreeAvailable(PreferredResearchTree.Organized))
                 return PreferredResearchTree.Organized;
             if (IsTreeAvailable(PreferredResearchTree.UIRethemed))
@@ -426,9 +407,6 @@ namespace CM_Semi_Random_Research
                         return;
                     case PreferredResearchTree.UIRethemed:
                         SwitchToUIRethemed(windowToClose);
-                        return;
-                    case PreferredResearchTree.Organized2:
-                        SwitchToOrganized2(windowToClose);
                         return;
                 }
             }
