@@ -39,6 +39,7 @@ namespace CM_Semi_Random_Research
         public bool adaptiveSize = false;
         public bool confirmDependentSnooze = true;
         public bool showCompletionDates = false;
+        public bool showResearchLevels = true;
         public bool timingsShowCurrentEra = false;
         public bool matchUIRethemed = true;
 
@@ -49,6 +50,18 @@ namespace CM_Semi_Random_Research
             restrictToFactionTechLevel || ResearchTabWindowSwitcher.NodeResearchInstalled;
 
         private bool loggedSettings = false;
+
+        // Saved as text so the retired Organized2 value (Research: Organized 2's window) loads as Organized.
+        private static void LookTreeEnum<T>(ref T value, string label, T defaultValue) where T : struct
+        {
+            string text = value.ToString();
+            Scribe_Values.Look(ref text, label, defaultValue.ToString());
+            if (Scribe.mode != LoadSaveMode.LoadingVars)
+                return;
+            if (text == "Organized2")
+                text = "Organized";
+            value = System.Enum.TryParse(text, out T parsed) ? parsed : defaultValue;
+        }
 
         public override void ExposeData()
         {
@@ -73,15 +86,16 @@ namespace CM_Semi_Random_Research
             Scribe_Values.Look(ref autoOpenOnCompletion, "autoOpenOnCompletion", true);
             Scribe_Values.Look(ref autoPickNextResearch, "autoPickNextResearch", false);
             Scribe_Values.Look(ref allowSnoozing, "allowSnoozing", true);
-            Scribe_Values.Look(ref researchTabOwner, "researchTabOwner", ResearchTabOwner.SemiRandom);
+            LookTreeEnum(ref researchTabOwner, "researchTabOwner", ResearchTabOwner.SemiRandom);
             Scribe_Values.Look(ref legacyUsingNodeResearch, "usingNodeResearch", false);
-            Scribe_Values.Look(ref preferredResearchTree, "preferredResearchTree", PreferredResearchTree.NodeResearch);
+            LookTreeEnum(ref preferredResearchTree, "preferredResearchTree", PreferredResearchTree.NodeResearch);
             Scribe_Values.Look(ref settingsVersion, "settingsVersion", 0);
             Scribe_Values.Look(ref suppressHandoverMessages, "suppressHandoverMessages", false);
             Scribe_Values.Look(ref colorAndGroupByTechLevel, "colorAndGroupByTechLevel", true);
             Scribe_Values.Look(ref adaptiveSize, "adaptiveSize", false);
             Scribe_Values.Look(ref confirmDependentSnooze, "confirmDependentSnooze", true);
             Scribe_Values.Look(ref showCompletionDates, "showCompletionDates", false);
+            Scribe_Values.Look(ref showResearchLevels, "showResearchLevels", true);
             Scribe_Values.Look(ref timingsShowCurrentEra, "timingsShowCurrentEra", false);
             Scribe_Values.Look(ref matchUIRethemed, "matchUIRethemed", true);
         }
@@ -189,6 +203,8 @@ namespace CM_Semi_Random_Research
             Checkbox(listing, "ColorGroup", ref colorAndGroupByTechLevel);
             Checkbox(listing, "ShowGraph", ref showResearchRateGraph);
             Checkbox(listing, "ShowCompletionDates", ref showCompletionDates);
+            Checkbox(listing, "ShowResearchLevels", ref showResearchLevels,
+                ResearchLevels.Available ? null : "CM_Semi_Random_Research_Setting_ShowResearchLevels_LockedTip".Translate().ToString());
             Checkbox(listing, "TimingsCurrentEra", ref timingsShowCurrentEra);
             Checkbox(listing, "AdaptiveSize", ref adaptiveSize);
             // Only with UI Rethemed - Core, which loads the add-on that supplies the look.
@@ -211,7 +227,6 @@ namespace CM_Semi_Random_Research
             AddTreeOption(treeOptions, PreferredResearchTree.YART);
             AddTreeOption(treeOptions, PreferredResearchTree.Sleek);
             AddTreeOption(treeOptions, PreferredResearchTree.NiceResearchTab);
-            AddTreeOption(treeOptions, PreferredResearchTree.Organized2);
             AddTreeOption(treeOptions, PreferredResearchTree.Organized);
             AddTreeOption(treeOptions, PreferredResearchTree.UIRethemed);
 
@@ -456,8 +471,6 @@ namespace CM_Semi_Random_Research
                 return "CM_Semi_Random_Research_Tree_Nice".Translate();
             if (preferred == PreferredResearchTree.Organized)
                 return "CM_Semi_Random_Research_Tree_Organized".Translate();
-            if (preferred == PreferredResearchTree.Organized2)
-                return "CM_Semi_Random_Research_Tree_Organized2".Translate();
             if (preferred == PreferredResearchTree.UIRethemed)
                 return "CM_Semi_Random_Research_Tree_UIRethemed".Translate();
             return "CM_Semi_Random_Research_Tree_NodeResearch".Translate();
@@ -572,6 +585,7 @@ namespace CM_Semi_Random_Research
                 $"allowSnoozing: {allowSnoozing} " +
                 $"confirmDependentSnooze: {confirmDependentSnooze} " +
                 $"showCompletionDates: {showCompletionDates} " +
+                $"showResearchLevels: {showResearchLevels} " +
                 $"timingsShowCurrentEra: {timingsShowCurrentEra} " +
                 $"suppressHandoverMessages: {suppressHandoverMessages} " +
                 $"colorAndGroupByTechLevel: {colorAndGroupByTechLevel} " +

@@ -14,7 +14,7 @@ namespace CM_Semi_Random_Research
         public SemiRandomResearchMod(ModContentPack content) : base(content)
         {
             var harmony = new Harmony("CM_Semi_Random_Research");
-            harmony.PatchAll();
+            harmony.PatchAll(typeof(SemiRandomResearchMod).Assembly);
             Sleek_Integration.TryHookSleekStandDown();
 
             _instance = this;

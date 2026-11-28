@@ -12,6 +12,9 @@ namespace CM_Semi_Random_Research
         // Research fields on def types added by other mods, per type; session lifetime.
         private static readonly Dictionary<Type, FieldInfo[]> researchFields = new Dictionary<Type, FieldInfo[]>();
 
+        // Buildings some recipe makes; session lifetime.
+        private static HashSet<ThingDef> recipeBuildings;
+
         // A new list; built when the selection changes, never per frame.
         public static List<Def> Filter(ResearchProjectDef project, List<Def> unlocked)
         {
@@ -23,10 +26,84 @@ namespace CM_Semi_Random_Research
             for (int i = 0; i < unlocked.Count; i++)
             {
                 Def def = unlocked[i];
-                if (def != null && AvailableAfter(def, project, ref recipes))
+                if (def != null && Obtainable(def) && AvailableAfter(def, project, ref recipes))
                     result.Add(def);
             }
             return result;
+        }
+
+        // A new list of the project's unlocks as the research tree shows them, so mods that hide defs there (NanameWalls' diagonal walls) hide them here too.
+        public static List<Def> TreeList(ResearchProjectDef project)
+        {
+            List<Def> result = new List<Def>();
+            if (project == null)
+                return result;
+            try
+            {
+                List<Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>>> groups = ResearchPrerequisitesUtility.UnlockedDefsGroupedByPrerequisites(project);
+                for (int i = 0; i < groups.Count; i++)
+                {
+                    List<Def> defs = groups[i].Second;
+                    if (defs == null)
+                        continue;
+                    for (int j = 0; j < defs.Count; j++)
+                    {
+                        if (defs[j] != null && !result.Contains(defs[j]))
+                            result.Add(defs[j]);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                result.Clear();
+                if (project.UnlockedDefs != null)
+                    result.AddRange(project.UnlockedDefs);
+            }
+            return result;
+        }
+
+        // A new list of unlocked without the defs the player can never get.
+        public static List<Def> ObtainableOnly(List<Def> unlocked)
+        {
+            List<Def> result = new List<Def>();
+            if (unlocked == null)
+                return result;
+            for (int i = 0; i < unlocked.Count; i++)
+            {
+                if (unlocked[i] != null && Obtainable(unlocked[i]))
+                    result.Add(unlocked[i]);
+            }
+            return result;
+        }
+
+        // False for a building with no build menu entry that no recipe makes (Anomaly's gray wall, which inherits the vanilla wall's research).
+        public static bool Obtainable(Def def)
+        {
+            if (!(def is ThingDef thing) || thing.category != ThingCategory.Building || thing.BuildableByPlayer)
+                return true;
+            return RecipeBuildings().Contains(thing);
+        }
+
+        private static HashSet<ThingDef> RecipeBuildings()
+        {
+            if (recipeBuildings != null)
+                return recipeBuildings;
+
+            recipeBuildings = new HashSet<ThingDef>();
+            List<RecipeDef> all = DefDatabase<RecipeDef>.AllDefsListForReading;
+            for (int i = 0; i < all.Count; i++)
+            {
+                List<ThingDefCountClass> products = all[i].products;
+                if (products == null)
+                    continue;
+                for (int j = 0; j < products.Count; j++)
+                {
+                    ThingDef product = products[j]?.thingDef;
+                    if (product != null && product.category == ThingCategory.Building)
+                        recipeBuildings.Add(product);
+                }
+            }
+            return recipeBuildings;
         }
 
         // True when some route from project to def needs no other unfinished research; a def with no route found is kept.

@@ -402,19 +402,21 @@ namespace CM_Semi_Random_Research
             return cached;
         }
 
-        // A card's icon: its first unlockable, else Node Research's era icon for an emergence project.
+        // A card's icon: Node Research's era icon for an emergence project, else its first unlockable.
         private void DrawProjectIcon(Rect rect, ResearchProjectDef project)
         {
+            Texture2D era = NodeResearch.EmergenceIcon(project);
+            if (era != null)
+            {
+                GUI.DrawTexture(rect, era, ScaleMode.ScaleToFit);
+                return;
+            }
             Def firstUnlockable = GetFirstUnlockable(project);
             if (firstUnlockable != null)
             {
                 try { DefIcons.Draw(rect, firstUnlockable); }
                 catch (Exception) { }
-                return;
             }
-            Texture2D era = NodeResearch.EmergenceIcon(project);
-            if (era != null)
-                GUI.DrawTexture(rect, era, ScaleMode.ScaleToFit);
         }
 
         private float DrawUnlockableHyperlinks(Rect rect, ResearchProjectDef project)
@@ -645,9 +647,10 @@ namespace CM_Semi_Random_Research
             return found;
         }
 
+        // The project's source mod line, shown in dev mode only.
         private float DrawContentSource(Rect rect, ResearchProjectDef project)
         {
-            if (project.modContentPack == null || project.modContentPack.IsCoreMod)
+            if (!Prefs.DevMode || project.modContentPack == null || project.modContentPack.IsCoreMod)
             {
                 return 0f;
             }

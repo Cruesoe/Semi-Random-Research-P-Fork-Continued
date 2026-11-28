@@ -7,7 +7,6 @@ namespace CM_Semi_Random_Research
         Sleek,
         NiceResearchTab,
         Organized,
-        UIRethemed,
-        Organized2
+        UIRethemed
     }
 }

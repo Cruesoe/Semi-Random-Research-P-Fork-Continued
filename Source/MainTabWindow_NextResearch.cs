@@ -294,9 +294,10 @@ namespace CM_Semi_Random_Research
             try
             {
                 // Pick from what finishing it makes available, else from everything it leads to.
-                List<Def> unlocked = UnlocksNow.Filter(project, project.UnlockedDefs);
+                List<Def> tree = UnlocksNow.TreeList(project);
+                List<Def> unlocked = UnlocksNow.Filter(project, tree);
                 if (unlocked.Count == 0)
-                    unlocked = project.UnlockedDefs;
+                    unlocked = UnlocksNow.ObtainableOnly(tree);
                 if (!unlocked.NullOrEmpty())
                 {
                     int randomIndex = Rand.RangeInclusiveSeeded(0, unlocked.Count - 1, currentRandomSeed);
@@ -342,9 +343,10 @@ namespace CM_Semi_Random_Research
             try
             {
                 // What finishing it makes available, else everything it leads to (as the card icon does).
-                cachedSelectedUnlocks = UnlocksNow.Filter(selectedProject, selectedProject.UnlockedDefs);
+                List<Def> tree = UnlocksNow.TreeList(selectedProject);
+                cachedSelectedUnlocks = UnlocksNow.Filter(selectedProject, tree);
                 if (cachedSelectedUnlocks.Count == 0)
-                    cachedSelectedUnlocks = selectedProject.UnlockedDefs;
+                    cachedSelectedUnlocks = UnlocksNow.ObtainableOnly(tree);
             }
             catch (Exception)
             {
@@ -455,11 +457,19 @@ namespace CM_Semi_Random_Research
         private static bool ShowsAsDependent(ResearchProjectDef dependent) =>
             dependent != null && !dependent.IsFinished && !Compatibility.IsHiddenResearch(dependent);
 
+        // The card's name, with its Research: Costs level when shown.
+        private static string TooltipTitle(ResearchProjectDef project)
+        {
+            if (ResearchLevels.ShowLevels && ResearchLevels.TryGet(project, out int level, out int levels))
+                return SafeLabel(project) + "\n" + "CM_Semi_Random_Research_LevelTip".Translate(level, levels);
+            return SafeLabel(project);
+        }
+
         private string GetDependentResearchTooltip(ResearchProjectDef project)
         {
             List<ResearchProjectDef> dependents = GetDependentResearch(project);
             if (dependents.NullOrEmpty())
-                return SafeLabel(project);
+                return TooltipTitle(project);
 
             int unfinishedCount = 0;
             for (int i = 0; i < dependents.Count; i++)
@@ -468,9 +478,9 @@ namespace CM_Semi_Random_Research
                     unfinishedCount++;
             }
             if (unfinishedCount == 0)
-                return SafeLabel(project);
+                return TooltipTitle(project);
 
-            StringBuilder tooltip = new StringBuilder(SafeLabel(project));
+            StringBuilder tooltip = new StringBuilder(TooltipTitle(project));
             tooltip.Append("\n\n");
             tooltip.Append("CM_Semi_Random_Research_RequiredForResearchCount".Translate(unfinishedCount));
 
