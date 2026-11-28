@@ -39,6 +39,7 @@ namespace CM_Semi_Random_Research
         public bool adaptiveSize = false;
         public bool confirmDependentSnooze = true;
         public bool showCompletionDates = false;
+        public bool showResearchLevels = true;
         public bool timingsShowCurrentEra = false;
         public bool matchUIRethemed = true;
 
@@ -94,6 +95,7 @@ namespace CM_Semi_Random_Research
             Scribe_Values.Look(ref adaptiveSize, "adaptiveSize", false);
             Scribe_Values.Look(ref confirmDependentSnooze, "confirmDependentSnooze", true);
             Scribe_Values.Look(ref showCompletionDates, "showCompletionDates", false);
+            Scribe_Values.Look(ref showResearchLevels, "showResearchLevels", true);
             Scribe_Values.Look(ref timingsShowCurrentEra, "timingsShowCurrentEra", false);
             Scribe_Values.Look(ref matchUIRethemed, "matchUIRethemed", true);
         }
@@ -201,6 +203,8 @@ namespace CM_Semi_Random_Research
             Checkbox(listing, "ColorGroup", ref colorAndGroupByTechLevel);
             Checkbox(listing, "ShowGraph", ref showResearchRateGraph);
             Checkbox(listing, "ShowCompletionDates", ref showCompletionDates);
+            Checkbox(listing, "ShowResearchLevels", ref showResearchLevels,
+                ResearchLevels.Available ? null : "CM_Semi_Random_Research_Setting_ShowResearchLevels_LockedTip".Translate().ToString());
             Checkbox(listing, "TimingsCurrentEra", ref timingsShowCurrentEra);
             Checkbox(listing, "AdaptiveSize", ref adaptiveSize);
             // Only with UI Rethemed - Core, which loads the add-on that supplies the look.
@@ -581,6 +585,7 @@ namespace CM_Semi_Random_Research
                 $"allowSnoozing: {allowSnoozing} " +
                 $"confirmDependentSnooze: {confirmDependentSnooze} " +
                 $"showCompletionDates: {showCompletionDates} " +
+                $"showResearchLevels: {showResearchLevels} " +
                 $"timingsShowCurrentEra: {timingsShowCurrentEra} " +
                 $"suppressHandoverMessages: {suppressHandoverMessages} " +
                 $"colorAndGroupByTechLevel: {colorAndGroupByTechLevel} " +

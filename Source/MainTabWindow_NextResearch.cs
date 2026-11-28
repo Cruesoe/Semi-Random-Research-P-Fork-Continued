@@ -457,11 +457,19 @@ namespace CM_Semi_Random_Research
         private static bool ShowsAsDependent(ResearchProjectDef dependent) =>
             dependent != null && !dependent.IsFinished && !Compatibility.IsHiddenResearch(dependent);
 
+        // The card's name, with its Research: Costs level when shown.
+        private static string TooltipTitle(ResearchProjectDef project)
+        {
+            if (ResearchLevels.ShowLevels && ResearchLevels.TryGet(project, out int level, out int levels))
+                return SafeLabel(project) + "\n" + "CM_Semi_Random_Research_LevelTip".Translate(level, levels);
+            return SafeLabel(project);
+        }
+
         private string GetDependentResearchTooltip(ResearchProjectDef project)
         {
             List<ResearchProjectDef> dependents = GetDependentResearch(project);
             if (dependents.NullOrEmpty())
-                return SafeLabel(project);
+                return TooltipTitle(project);
 
             int unfinishedCount = 0;
             for (int i = 0; i < dependents.Count; i++)
@@ -470,9 +478,9 @@ namespace CM_Semi_Random_Research
                     unfinishedCount++;
             }
             if (unfinishedCount == 0)
-                return SafeLabel(project);
+                return TooltipTitle(project);
 
-            StringBuilder tooltip = new StringBuilder(SafeLabel(project));
+            StringBuilder tooltip = new StringBuilder(TooltipTitle(project));
             tooltip.Append("\n\n");
             tooltip.Append("CM_Semi_Random_Research_RequiredForResearchCount".Translate(unfinishedCount));
 

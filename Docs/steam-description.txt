@@ -13,6 +13,7 @@ Instead of choosing freely from the entire research tree, you choose from a few 
 [*]Double-click an offer to start researching it and close the research window.
 [*]Research can be paused and resumed from the research tab.
 [*]Every offer shows how long it will take at your colony's research speed.
+[*]With Research: Costs, every offer shows its cost level as pips beside its name: filled up to its level, with its era's other levels empty.
 [*]A timings panel under the current research shows your research speed, the time left on the current project and the time to finish all remaining research or your current tech level, with an optional rate graph.
 [*]A progress bar shows completed research for each tech level, with your faction's and the world's tech level.
 [*]Each project lists what it unlocks, its unfinished prerequisites, and the unfinished projects that require it.
@@ -27,12 +28,12 @@ Instead of choosing freely from the entire research tree, you choose from a few 
 [*][b]Rerolls[/b]: reroll every choice when a project is finished, and allow manual rerolls never, once per project or always.
 [*][b]Which projects are offered[/b]: restrict offers to your faction's tech level, finish the lowest tech level first, allow one higher-tech project, and balance the cost of the offers.
 [*][b]Partially researched projects[/b]: offer them normally, never, as a replacement choice or as an extra choice.
-[*][b]Display[/b]: the rate graph, the completion letter and adaptive window size can each be turned off, estimates can show the in-game date they finish instead of the time left, and the timings panel can time your current tech level instead of all research.
+[*][b]Display[/b]: the rate graph, the completion letter and adaptive window size can each be turned off, estimates can show the in-game date they finish instead of the time left, the timings panel can time your current tech level instead of all research, and Research: Costs levels can be hidden.
 [*][b]Snoozing[/b]: allow snoozing, and ask before snoozing a project other research depends on.
 [/list]
 
 [h2]Compatibility[/h2]
-Works with Node Research, YART, Sleek Research Tab, Nice Research Tab, Research: Organized and UI Rethemed - Research, with a button in each to switch back. Also supports Progression: Core, Genesis, Vanilla Factions Expanded - Tribals, Vanilla Gravship Expanded and Save Our Ship 2. Medieval Overhaul research that needs a schematic is offered once that schematic is on a bookshelf in a research room, and Triumphant Research's completion screen works alongside this mod's letter. Works with Research Reinvented on 1.6: it researches the project you pick, and its progress can add a project to the offered choices. Works with Research Commission: commissions are researched outside the offered choices, and your current project resumes once the commission ends. With UI Rethemed - Core, the Match UI Rethemed theme setting gives the research window, the snooze confirmation and the settings page UI Rethemed's look.
+Works with Node Research, YART, Sleek Research Tab, Nice Research Tab, Research: Organized and UI Rethemed - Research, with a button in each to switch back. Also supports Progression: Core, Genesis, Vanilla Factions Expanded - Tribals, Vanilla Gravship Expanded and Save Our Ship 2. Medieval Overhaul research that needs a schematic is offered once that schematic is on a bookshelf in a research room, and Triumphant Research's completion screen works alongside this mod's letter. Works with Research Reinvented on 1.6: it researches the project you pick, and its progress can add a project to the offered choices. Works with Research: Costs: offers show each project's cost level as pips. Works with Research Commission: commissions are researched outside the offered choices, and your current project resumes once the commission ends. With UI Rethemed - Core, the Match UI Rethemed theme setting gives the research window, the snooze confirmation and the settings page UI Rethemed's look.
 Not compatible with Research: Auto or Research Queue, because they choose your research for you.
 Remove any other version of Semi Random Research before enabling this one.
 Safe to add to an existing save.

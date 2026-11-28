@@ -847,6 +847,20 @@ namespace CM_Semi_Random_Research
                 usedTextColor.a *= animProgress;
             }
 
+            // Research: Costs' level as pips at the right end of the title area.
+            if (ResearchLevels.ShowLevels && ResearchLevels.TryGet(projectDef, out int level, out int levels))
+            {
+                float pipsWidth = ResearchLevels.PipsWidth(levels);
+                Rect pipsRect = new Rect(nameRect.xMax - pipsWidth - 8f, nameRect.y, pipsWidth, nameRect.height);
+                nameRect.xMax = pipsRect.x - 8f;
+                if (IsRepaint)
+                {
+                    Color pipColor = Color.Lerp(techColor, Color.white, 0.45f);
+                    pipColor.a *= animProgress;
+                    ResearchLevels.DrawPips(pipsRect, level, levels, pipColor);
+                }
+            }
+
             string nodeTag = GetNodeTechTag(projectDef);
 
             if (!nodeTag.NullOrEmpty())

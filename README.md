@@ -9,6 +9,7 @@ Make research progression less predictable without giving up meaningful choices.
 - Restrict offers by tech level and balance them by research cost.
 - Track progress with completion history, research-rate graphs, and time estimates.
 - Works alongside popular research-tree and tech-progression mods.
+- With Research: Costs, each offer shows its cost level as pips beside its name.
 
 Not compatible with Research: Auto or Research Queue.
 

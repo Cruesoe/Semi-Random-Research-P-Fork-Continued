@@ -84,6 +84,10 @@
   <CM_Semi_Random_Research_Setting_ShowGraph_Description>Shows the research rate graph on the active research card.</CM_Semi_Random_Research_Setting_ShowGraph_Description>
   <CM_Semi_Random_Research_Setting_ShowCompletionDates_Label>Show completion dates instead of time left</CM_Semi_Random_Research_Setting_ShowCompletionDates_Label>
   <CM_Semi_Random_Research_Setting_ShowCompletionDates_Description>Show research estimates (offers, the timings panel and tech level progress) as the in-game dates they should finish on, instead of the time remaining.</CM_Semi_Random_Research_Setting_ShowCompletionDates_Description>
+  <CM_Semi_Random_Research_Setting_ShowResearchLevels_Label>Show research levels</CM_Semi_Random_Research_Setting_ShowResearchLevels_Label>
+  <CM_Semi_Random_Research_Setting_ShowResearchLevels_Description>Show each project's cost level from Research: Costs as pips beside its name: filled up to its level, with its era's other levels empty.</CM_Semi_Random_Research_Setting_ShowResearchLevels_Description>
+  <CM_Semi_Random_Research_Setting_ShowResearchLevels_LockedTip>Needs Research: Costs.</CM_Semi_Random_Research_Setting_ShowResearchLevels_LockedTip>
+  <CM_Semi_Random_Research_LevelTip>Level {0} of {1}</CM_Semi_Random_Research_LevelTip>
   <CM_Semi_Random_Research_Setting_TimingsCurrentEra_Label>Time the current tech level instead of all research</CM_Semi_Random_Research_Setting_TimingsCurrentEra_Label>
   <CM_Semi_Random_Research_Setting_TimingsCurrentEra_Description>In the timings panel, show the time to finish the remaining standard research of your current tech level instead of all remaining research.</CM_Semi_Random_Research_Setting_TimingsCurrentEra_Description>
   <CM_Semi_Random_Research_Setting_ShowLetter_Label>Show completion letter</CM_Semi_Random_Research_Setting_ShowLetter_Label>
